@@ -3,7 +3,20 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Badge, Button, cn } from '@axa/platform';
+import {
+  AppShell as PlatformAppShell,
+  AppShellProvider,
+  Badge,
+  Button,
+  NavigationDrawer,
+  Sidebar,
+  SidebarNav,
+  SidebarTrigger,
+  TopBar,
+  cn,
+  type NavigationGroup,
+  type RenderNavigationLink,
+} from '@axa/platform';
 import { logout, type Principal } from '@/lib/auth';
 import { clearPrincipalCache } from '@/lib/session';
 import { advancedApi } from '@/lib/advanced';
@@ -331,7 +344,6 @@ export function AppShell({
   const router = useRouter();
   const { t } = useI18n();
   const privacy = usePrivacy();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   // Collapsed (icon-rail) vs. expanded sidebar; persisted across sessions.
   const [collapsed, setCollapsed] = useState(false);
@@ -352,11 +364,15 @@ export function AppShell({
   useEffect(() => {
     setCollapsed(localStorage.getItem('munaxa.nav.collapsed') === '1');
   }, []);
-  const toggleCollapsed = () =>
-    setCollapsed((c) => {
-      localStorage.setItem('munaxa.nav.collapsed', c ? '0' : '1');
-      return !c;
-    });
+  /*
+   * Persistence stays here. The platform's shell holds the collapsed state but deliberately writes
+   * nothing — where a preference lives is an application decision, and a shared package storing it
+   * would have to bake a product's key name into code four products share.
+   */
+  const setCollapsedPersisted = (next: boolean) => {
+    localStorage.setItem('munaxa.nav.collapsed', next ? '1' : '0');
+    setCollapsed(next);
+  };
 
   // Global search keyboard shortcut: ⌘K / Ctrl-K.
   useEffect(() => {
@@ -387,11 +403,6 @@ export function AppShell({
       .catch(() => setFlags({}));
   }, []);
 
-  // Close the mobile drawer whenever the route changes.
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
   async function onLogout() {
     await logout();
     clearPrincipalCache();
@@ -412,55 +423,43 @@ export function AppShell({
         : true,
   );
 
-  const renderNav = (mini: boolean) => (
-    <nav className={cn('flex flex-1 flex-col', mini ? 'gap-2' : 'gap-5')}>
-      {groupsForHost.map((group, gi) => {
-        const groupItems = group.items.filter(canSee);
-        if (groupItems.length === 0) return null;
-        return (
-          <div key={group.titleKey ?? gi} className="flex flex-col gap-1">
-            {group.titleKey ? (
-              mini ? (
-                <div className="mx-auto my-1 h-px w-6 bg-border" aria-hidden="true" />
-              ) : (
-                <p className="px-3 pb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                  {t(group.titleKey)}
-                </p>
-              )
-            ) : null}
-            {groupItems.map((item) => {
-              const active = isActive(item.href);
-              // next typedRoutes: hrefs come from this static nav table rather than literal route
-              // types, so the cast is required by `next build` even though local tooling can't see it.
-              const href = item.href as never;
-              return (
-                <Link
-                  key={item.href}
-                  href={href}
-                  aria-current={active ? 'page' : undefined}
-                  title={mini ? t(item.labelKey) : undefined}
-                  className={cn(
-                    'group flex items-center gap-3 rounded-lg text-sm transition-colors',
-                    mini ? 'justify-center px-0 py-2.5' : 'px-3 py-2',
-                    active
-                      ? 'bg-gradient-to-r from-primary to-primary/85 font-medium text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )}
-                >
-                  <NavIcon name={item.icon} className="shrink-0" />
-                  {!mini ? <span className="truncate">{t(item.labelKey)}</span> : null}
-                </Link>
-              );
-            })}
-          </div>
-        );
-      })}
-    </nav>
+  /*
+   * Navigation, fully resolved before it reaches the platform. Host mode, permissions and feature
+   * flags are all business rules — the shared shell receives the answers, not the questions.
+   */
+  const groups: NavigationGroup[] = groupsForHost
+    .map((group) => ({
+      ...(group.titleKey ? { title: t(group.titleKey) } : {}),
+      id: group.titleKey ?? 'root',
+      items: group.items.filter(canSee).map((item) => ({
+        href: item.href,
+        label: t(item.labelKey),
+        icon: <NavIcon name={item.icon} />,
+        active: isActive(item.href),
+      })),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  // The platform imports no router. Next's typed routes cannot see hrefs coming from the static
+  // nav table, so the cast is required by `next build` exactly as it was before.
+  const renderLink: RenderNavigationLink = ({ href, children, ...rest }) => (
+    <Link href={href as never} {...rest}>
+      {children}
+    </Link>
   );
+
+  const navLabel = t('shell.mainNavigation');
+
+  const brand = (collapsed: boolean) =>
+    collapsed ? (
+      <Logo variant="symbol" size={30} priority />
+    ) : (
+      <Logo variant="horizontal" size={26} priority />
+    );
 
   const sessionFooter = (
     <div
-      className="mt-4 rounded-lg border border-border bg-background/40 p-3 text-xs"
+      className="rounded-lg border border-border bg-background/40 p-3 text-xs"
       aria-label={`${principal.roles.join(', ') || '—'} · ${principal.tenantId}`}
     >
       <p className="truncate text-muted-foreground">{principal.roles.join(', ') || '—'}</p>
@@ -473,187 +472,134 @@ export function AppShell({
     </div>
   );
 
+  const backdrop = (
+    /* Aurora backdrop — a brand-tinted mesh behind all content (decorative). */
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 -z-10"
+      style={{
+        background:
+          'radial-gradient(1200px 560px at 8% -10%, color-mix(in oklch, var(--accent-cool) 14%, transparent), transparent 60%), radial-gradient(1000px 520px at 100% -8%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 60%)',
+      }}
+    />
+  );
+
   return (
-    <div className="flex min-h-screen">
-      {/* Aurora backdrop — subtle brand-tinted mesh behind all content (decorative). */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          background:
-            'radial-gradient(1200px 560px at 8% -10%, color-mix(in oklch, var(--accent-cool) 14%, transparent), transparent 60%), radial-gradient(1000px 520px at 100% -8%, color-mix(in oklch, var(--primary) 16%, transparent), transparent 60%)',
-        }}
-      />
-      {/* Skip link — first focusable element; jumps keyboard/SR users past the nav. */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-toast focus:rounded-lg focus:border focus:border-border focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:shadow-card"
-      >
-        {t('shell.skipToContent')}
-      </a>
-      {/* Desktop sidebar — floating, collapsible icon rail ⇄ labelled panel. */}
-      <aside
-        className={cn(
-          'sticky top-0 hidden h-screen shrink-0 self-start p-3 transition-[width] duration-300 ease-in-out md:block',
-          collapsed ? 'w-[84px]' : 'w-64',
-        )}
-      >
-        <div className="relative flex h-full flex-col rounded-2xl border border-border bg-card/80 p-3 shadow-card backdrop-blur">
-          {/* Brand */}
-          <div
-            className={cn(
-              'flex items-center gap-2 py-2',
-              collapsed ? 'justify-center px-0' : 'px-2',
-            )}
+    <AppShellProvider collapsed={collapsed} onCollapsedChange={setCollapsedPersisted}>
+      <PlatformAppShell
+        backdrop={backdrop}
+        skipLinkLabel={t('shell.skipToContent')}
+        sidebar={
+          <Sidebar
+            brand={brand}
+            footer={sessionFooter}
+            collapseLabel={t('shell.collapseNav')}
+            expandLabel={t('shell.expandNav')}
           >
-            {collapsed ? (
-              <Logo variant="symbol" size={30} priority />
-            ) : (
-              <Logo variant="horizontal" size={26} priority />
-            )}
-          </div>
-
-          {/* Collapse / expand toggle on the rail edge */}
-          <button
-            type="button"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? t('shell.expandNav') : t('shell.collapseNav')}
-            aria-pressed={!collapsed}
-            title={collapsed ? t('shell.expandNav') : t('shell.collapseNav')}
-            className="absolute -end-2.5 top-16 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-card transition-colors hover:text-foreground"
+            <SidebarNav groups={groups} label={navLabel} renderLink={renderLink} />
+          </Sidebar>
+        }
+        drawer={
+          <NavigationDrawer
+            label={navLabel}
+            brand={<Logo variant="horizontal" size={26} priority />}
+            footer={sessionFooter}
+            closeLabel={t('shell.closeMenu')}
           >
-            <ChevronIcon expanded={!collapsed} />
-          </button>
-
-          <div className="scrollbar-none mt-3 flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
-            {renderNav(collapsed)}
-          </div>
-          {!collapsed ? sessionFooter : null}
-        </div>
-      </aside>
-
-      {/* Mobile drawer */}
-      {menuOpen ? (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div
-            className="absolute inset-0 bg-foreground/40"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden="true"
-          />
-          <aside className="scrollbar-none absolute inset-y-0 start-0 flex w-72 max-w-[85%] flex-col overflow-y-auto border-e border-border bg-card p-4 shadow-xl">
-            <div className="flex items-center justify-between px-2 py-3">
-              <div className="flex items-center gap-2">
-                <Logo variant="horizontal" size={26} priority />
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMenuOpen(false)}
-                aria-label={t('shell.closeMenu')}
-              >
-                ✕
-              </Button>
-            </div>
-            <div className="mt-4 flex flex-1 flex-col">{renderNav(false)}</div>
-            {sessionFooter}
-          </aside>
-        </div>
-      ) : null}
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMenuOpen(true)}
-            aria-label={t('shell.openMenu')}
-          >
-            ☰
-          </Button>
-
-          {/* Search — opens the ⌘K palette; styled as the global search bar. */}
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            aria-label={t('search.title')}
-            aria-keyshortcuts="Control+K Meta+K"
-            className="flex h-9 max-w-xl flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
-          >
-            <span aria-hidden="true">⌕</span>
-            <span className="flex-1 truncate text-start">{t('search.placeholder')}</span>
-            <kbd className="hidden rounded border border-border px-1 font-mono text-[10px] sm:inline">
-              ⌘K
-            </kbd>
-          </button>
-
-          <div className="ms-auto flex items-center gap-2">
-            <CurrentYearIndicator />
-            <span
-              className="hidden items-center gap-2 rounded-lg border border-border px-3 py-1.5 lg:flex"
-              title={principal.isPlatform ? t('shell.platformPlane') : t('shell.schoolPlane')}
-            >
-              <NavIcon name="structure" className="shrink-0 text-muted-foreground" />
-              <span className="max-w-[160px] truncate font-mono text-xs text-muted-foreground">
-                {principal.tenantId}
-              </span>
-            </span>
-            {canFinance ? (
-              <button
-                type="button"
-                onClick={privacy.toggle}
-                aria-pressed={privacy.enabled}
-                title={privacy.enabled ? t('privacy.reveal') : t('privacy.hide')}
-                className={cn(
-                  'hidden h-9 items-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors sm:flex',
-                  privacy.enabled
-                    ? 'border-primary/30 bg-primary/10 text-primary-strong'
-                    : 'border-border text-muted-foreground hover:bg-accent',
-                )}
-              >
-                {privacy.enabled ? <EyeOffIcon /> : <EyeIcon />}
-                <span className="hidden lg:inline">
-                  {privacy.enabled ? t('privacy.on') : t('privacy.off')}
+            <SidebarNav
+              groups={groups}
+              label={navLabel}
+              renderLink={renderLink}
+              collapsed={false}
+            />
+          </NavigationDrawer>
+        }
+        topBar={
+          <TopBar
+            actions={
+              <>
+                <CurrentYearIndicator />
+                <span
+                  className="hidden items-center gap-2 rounded-lg border border-border px-3 py-1.5 lg:flex"
+                  title={principal.isPlatform ? t('shell.platformPlane') : t('shell.schoolPlane')}
+                >
+                  <NavIcon name="structure" className="shrink-0 text-muted-foreground" />
+                  <span className="max-w-[160px] truncate font-mono text-xs text-muted-foreground">
+                    {principal.tenantId}
+                  </span>
                 </span>
-              </button>
-            ) : null}
-            <ThemeLocaleToggle />
+                {canFinance ? (
+                  <button
+                    type="button"
+                    onClick={privacy.toggle}
+                    aria-pressed={privacy.enabled}
+                    title={privacy.enabled ? t('privacy.reveal') : t('privacy.hide')}
+                    className={cn(
+                      'hidden h-9 items-center gap-2 rounded-lg border px-3 text-xs font-medium transition-colors sm:flex',
+                      privacy.enabled
+                        ? 'border-primary/30 bg-primary/10 text-primary-strong'
+                        : 'border-border text-muted-foreground hover:bg-accent',
+                    )}
+                  >
+                    {privacy.enabled ? <EyeOffIcon /> : <EyeIcon />}
+                    <span className="hidden lg:inline">
+                      {privacy.enabled ? t('privacy.on') : t('privacy.off')}
+                    </span>
+                  </button>
+                ) : null}
+                <ThemeLocaleToggle />
+                <button
+                  type="button"
+                  aria-label={t('shell.notifications')}
+                  className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <BellIcon />
+                </button>
+                <div className="flex items-center gap-2 rounded-lg border border-border py-1 ps-1 pe-2">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary-strong"
+                  >
+                    {principal.roles[0]?.[0]?.toUpperCase() ?? 'U'}
+                  </span>
+                  <span className="hidden leading-tight sm:block">
+                    <span className="block text-xs font-medium">
+                      {principal.roles[0] ?? t('shell.account')}
+                    </span>
+                    <span className="block text-[10px] text-muted-foreground">
+                      {principal.isPlatform ? t('shell.platformPlane') : t('shell.schoolPlane')}
+                    </span>
+                  </span>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => void onLogout()}>
+                  {t('auth.signOut')}
+                </Button>
+              </>
+            }
+          >
+            <SidebarTrigger label={t('shell.openMenu')} />
+            {/* Search — opens the ⌘K palette; styled as the global search bar. */}
             <button
               type="button"
-              aria-label={t('shell.notifications')}
-              className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={() => setSearchOpen(true)}
+              aria-label={t('search.title')}
+              aria-keyshortcuts="Control+K Meta+K"
+              className="flex h-9 max-w-xl flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent"
             >
-              <BellIcon />
+              <span aria-hidden="true">⌕</span>
+              <span className="flex-1 truncate text-start">{t('search.placeholder')}</span>
+              <kbd className="hidden rounded border border-border px-1 font-mono text-[10px] sm:inline">
+                ⌘K
+              </kbd>
             </button>
-            <div className="flex items-center gap-2 rounded-lg border border-border py-1 ps-1 pe-2">
-              <span
-                aria-hidden="true"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary-strong"
-              >
-                {principal.roles[0]?.[0]?.toUpperCase() ?? 'U'}
-              </span>
-              <span className="hidden leading-tight sm:block">
-                <span className="block text-xs font-medium">
-                  {principal.roles[0] ?? t('shell.account')}
-                </span>
-                <span className="block text-[10px] text-muted-foreground">
-                  {principal.isPlatform ? t('shell.platformPlane') : t('shell.schoolPlane')}
-                </span>
-              </span>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => void onLogout()}>
-              {t('auth.signOut')}
-            </Button>
-          </div>
-        </header>
-
-        <main id="main-content" className="flex-1 p-6">
-          {children}
-        </main>
-      </div>
+          </TopBar>
+        }
+      >
+        <div className="p-6">{children}</div>
+      </PlatformAppShell>
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} principal={principal} />
-    </div>
+    </AppShellProvider>
   );
 }
 
@@ -754,26 +700,6 @@ function EyeIcon() {
     >
       <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" />
       <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-/** Rail toggle chevron — points "in" when expanded, "out" when collapsed. RTL-safe via flip. */
-function ChevronIcon({ expanded }: { expanded: boolean }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.25"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={cn('transition-transform rtl:-scale-x-100', expanded ? '' : 'rotate-180')}
-    >
-      <path d="m14 6-6 6 6 6" />
     </svg>
   );
 }
