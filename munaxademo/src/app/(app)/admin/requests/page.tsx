@@ -262,7 +262,7 @@ function ProvisionDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-900/70 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-900/70 p-4 backdrop-blur-xs">
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Provision demo account · {request.schoolName}</CardTitle>

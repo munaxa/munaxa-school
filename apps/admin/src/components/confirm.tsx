@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { useI18n } from './i18n-provider';
-import { Button } from '@axa/platform';
+import { Button, Dialog } from '@axa/platform';
 
 interface ConfirmOptions {
   title?: string;
@@ -89,25 +89,23 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   return (
     <DialogContext.Provider value={api.current}>
       {children}
+      {/*
+        The platform's `Dialog` rather than the hand-rolled modal this used to render. The markup it
+        replaces had `role="dialog" aria-modal="true"` and a scrim, and none of what those attributes
+        promise: no focus trap, so Tab walked out of the dialog and into the page behind it; no
+        Escape; no scroll lock; and no focus restoration, so dismissing a confirmation left focus on
+        `<body>` and a keyboard user had to tab from the top of the page again. All four come from
+        `useFocusTrap` inside the platform dialog, and every one of them was a real defect on a
+        control that guards destructive actions.
+      */}
       {state ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="absolute inset-0 bg-foreground/40"
-            onClick={() => close(false)}
-            aria-hidden="true"
-          />
-          <div className="relative w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-card">
-            <h2 className="font-display text-lg font-semibold">
-              {opts?.title ?? t(isAlert ? 'common.error' : 'common.confirmTitle')}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {opts?.description ?? (isAlert ? '' : t('common.confirmDeleteBody'))}
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
+        <Dialog
+          open
+          onClose={() => close(false)}
+          title={opts?.title ?? t(isAlert ? 'common.error' : 'common.confirmTitle')}
+          className="max-w-sm"
+          footer={
+            <div className="flex w-full justify-end gap-2">
               {isAlert ? null : (
                 <Button variant="outline" size="sm" onClick={() => close(false)}>
                   {opts?.cancelLabel ?? t('common.cancel')}
@@ -122,8 +120,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 {opts?.confirmLabel ?? t(isAlert ? 'common.ok' : 'common.delete')}
               </Button>
             </div>
-          </div>
-        </div>
+          }
+        >
+          <p className="text-sm text-muted-foreground">
+            {opts?.description ?? (isAlert ? '' : t('common.confirmDeleteBody'))}
+          </p>
+        </Dialog>
       ) : null}
     </DialogContext.Provider>
   );

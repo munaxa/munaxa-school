@@ -278,7 +278,7 @@ function StudentForm({
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-900/70 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-900/70 p-4 backdrop-blur-xs">
       <Card className="w-full max-w-lg">
         <CardContent className="p-6">
           <h2 className="font-display text-lg font-semibold">

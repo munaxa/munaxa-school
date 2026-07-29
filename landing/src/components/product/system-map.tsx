@@ -96,7 +96,7 @@ export function SystemMap() {
         className="absolute left-1/2 top-1/2 z-10 flex h-[26%] w-[26%] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border border-primary/30 bg-card text-center shadow-[0_20px_60px_-20px_var(--glow)] transition-transform duration-300"
         aria-label="Munaxa OS — the shared record every module reads and writes"
       >
-        <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-white p-1 shadow-sm ring-1 ring-border">
+        <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-white p-1 shadow-xs ring-1 ring-border">
           <Image
             src="/logo-mark.png"
             alt="Munaxa"

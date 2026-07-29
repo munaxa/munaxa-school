@@ -79,7 +79,7 @@ export function LiveShowcase() {
           {/* Live activity feed — believable, updating notifications. */}
           <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center sm:justify-start">
             <div
-              className="flex max-w-full items-center gap-2 rounded-full border border-border bg-background/90 px-3 py-1.5 shadow-sm backdrop-blur"
+              className="flex max-w-full items-center gap-2 rounded-full border border-border bg-background/90 px-3 py-1.5 shadow-xs backdrop-blur"
               aria-live="polite"
             >
               <span className="relative flex h-2 w-2 shrink-0" aria-hidden>

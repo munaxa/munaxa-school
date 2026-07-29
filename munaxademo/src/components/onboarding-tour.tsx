@@ -128,7 +128,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     <OnboardingContext.Provider value={api}>
       {children}
       {open ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-900/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-900/70 p-4 backdrop-blur-xs">
           <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-card">
             <div className="flex items-start gap-4">
               <Logo size={56} priority />

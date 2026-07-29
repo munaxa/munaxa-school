@@ -53,7 +53,7 @@ export function Fragmentation() {
             <span
               key={t.label}
               className={cn(
-                'absolute rounded-xl border border-border bg-card/80 px-3.5 py-2 text-sm text-muted-foreground shadow-sm backdrop-blur',
+                'absolute rounded-xl border border-border bg-card/80 px-3.5 py-2 text-sm text-muted-foreground shadow-xs backdrop-blur',
                 t.x,
                 t.rotate,
                 i % 3 === 0 && 'opacity-90',

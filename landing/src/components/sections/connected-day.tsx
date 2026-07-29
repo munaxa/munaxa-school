@@ -117,7 +117,7 @@ export function ConnectedDay() {
                 style={{ transitionDelay: `${i * 110}ms` }}
                 className="day-step relative flex gap-5 pb-9 last:pb-0"
               >
-                <div className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-border bg-card text-primary-strong shadow-sm">
+                <div className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-border bg-card text-primary-strong shadow-xs">
                   <Icon className="h-5 w-5" aria-hidden />
                 </div>
                 <div className="pt-1">

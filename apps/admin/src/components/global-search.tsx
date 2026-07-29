@@ -1,8 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createPortal } from 'react-dom';
+import {
+  Button,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandPalette,
+} from '@axa/platform';
 import { useI18n } from './i18n-provider';
 import {
   fullNameEn,
@@ -29,11 +37,32 @@ const ROUTE: Record<Hit['type'], string> = {
   employee: '/people/employees',
 };
 
+const TYPES: Hit['type'][] = ['student', 'teacher', 'employee'];
+
 /**
  * Global command-palette search. Searches across the entities the signed-in user is permitted to
- * see (permission pre-filtered, per the DS Search UX rules — never query an entity the role can't
- * access), reusing the existing list APIs (no new endpoints). Selecting a hit navigates to that
- * module. Opens via the header button or ⌘K / Ctrl-K; full keyboard + screen-reader support.
+ * see (permission pre-filtered — never query an entity the role can't access), reusing the existing
+ * list APIs (no new endpoints). Selecting a hit navigates to that module. Opens via the header
+ * button or ⌘K / Ctrl-K.
+ *
+ * The palette itself is `@axa/platform`'s `CommandPalette` — a `Command` inside the platform
+ * `Dialog`. What remains here is the part that is genuinely School's: which entities this user may
+ * search, how each list API is called, the session cache for the two lists with no server-side
+ * search, and where a hit navigates to.
+ *
+ * The 130 lines of interaction that used to live here are gone, and with them four defects the
+ * markup had:
+ *
+ * - **Invalid listbox semantics.** It rendered `<button role="option">` inside `<li>` inside a
+ *   `<ul role="listbox">`. `role="listbox"` replaces the list's implicit role, orphaning every
+ *   `<li>`, and an option may not contain a control — so assistive technology saw a listbox with no
+ *   options in it. `cmdk` owns those semantics now.
+ * - **No `aria-activedescendant`.** The arrow keys moved a visual highlight and `aria-selected`, but
+ *   focus stayed in the input with nothing pointing at the active option, so a screen-reader user
+ *   heard nothing as they moved through the results.
+ * - **No focus trap.** Tab walked straight out of the modal into the page behind it.
+ * - **No focus restoration.** Dismissing the palette dropped focus on `<body>`, so a keyboard user
+ *   had to tab from the top of the page to get back to where they were.
  */
 export function GlobalSearch({
   open,
@@ -46,11 +75,8 @@ export function GlobalSearch({
 }) {
   const { t } = useI18n();
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listId = useId();
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
-  const [active, setActive] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const held = new Set(principal.permissions);
@@ -115,7 +141,6 @@ export function GlobalSearch({
       } finally {
         setBusy(false);
         setHits(out);
-        setActive(0);
       }
     },
     [principal.permissions], // eslint-disable-line react-hooks/exhaustive-deps
@@ -128,29 +153,12 @@ export function GlobalSearch({
     return () => clearTimeout(id);
   }, [query, open, run]);
 
-  // Reset + focus on open; lock body scroll. Also close on Escape at the document level so the
-  // shortcut works no matter where focus lands (input, an option button, or the backdrop).
+  // Each opening starts from an empty palette rather than the previous session's results.
   useEffect(() => {
     if (!open) return;
     setQuery('');
     setHits([]);
-    setActive(0);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const focusId = setTimeout(() => inputRef.current?.focus(), 0);
-    const onEsc = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', onEsc);
-    return () => {
-      document.body.style.overflow = prev;
-      clearTimeout(focusId);
-      document.removeEventListener('keydown', onEsc);
-    };
-  }, [open, onClose]);
+  }, [open]);
 
   function choose(hit: Hit) {
     onClose();
@@ -160,111 +168,58 @@ export function GlobalSearch({
     router.push(ROUTE[hit.type] as never);
   }
 
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Escape') onClose();
-    else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActive((i) => Math.min(i + 1, hits.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActive((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' && hits[active]) {
-      e.preventDefault();
-      choose(hits[active]);
-    }
-  }
-
-  if (!open || typeof document === 'undefined') return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-modal flex items-start justify-center p-4 pt-[10vh]"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+  return (
+    <CommandPalette
+      open={open}
+      onClose={onClose}
+      title={t('search.title')}
+      // Filtering is ours: students come back already matched by the server, and the other two are
+      // filtered against the cached lists above. Leaving cmdk's filter on would match a second time
+      // against the rendered labels and silently drop hits whose match was in a field we do not
+      // render.
+      shouldFilter={false}
     >
-      <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm" aria-hidden="true" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('search.title')}
-        className="relative z-modal w-full max-w-xl overflow-hidden rounded-xl border border-border bg-card shadow-card"
-      >
-        <div className="flex items-center border-b border-border">
-          <input
-            ref={inputRef}
-            type="search"
-            role="combobox"
-            aria-expanded={hits.length > 0}
-            aria-controls={listId}
-            aria-autocomplete="list"
-            value={query}
-            placeholder={t('search.placeholder')}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={onKeyDown}
-            className="w-full bg-transparent px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label={t('common.close')}
-            title={t('common.close')}
-            className="me-2 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <ul id={listId} role="listbox" className="max-h-[50vh] overflow-auto p-1">
-          {query.trim() && !busy && hits.length === 0 ? (
-            <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-              {t('search.noResults')}
-            </li>
-          ) : null}
-          {hits.map((h, i) => (
-            <li key={`${h.type}-${h.id}`}>
-              <button
-                type="button"
-                role="option"
-                aria-selected={i === active}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => choose(h)}
-                className={
-                  'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-start text-sm ' +
-                  (i === active
-                    ? 'bg-secondary/80 text-foreground'
-                    : 'text-foreground hover:bg-secondary/50')
-                }
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{h.label}</span>
-                  {h.sub ? (
-                    <span className="block truncate text-xs text-muted-foreground">{h.sub}</span>
-                  ) : null}
-                </span>
-                <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {t(`search.type.${h.type}`)}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
-          {t('search.hint')}
-        </div>
+      <CommandInput value={query} onValueChange={setQuery} placeholder={t('search.placeholder')} />
+      <CommandList>
+        {query.trim() && !busy && hits.length === 0 ? (
+          <CommandEmpty>{t('search.noResults')}</CommandEmpty>
+        ) : null}
+        {TYPES.map((type) => {
+          const group = hits.filter((hit) => hit.type === type);
+          if (group.length === 0) return null;
+          return (
+            <CommandGroup key={type} heading={t(`search.type.${type}`)}>
+              {group.map((hit) => (
+                <CommandItem
+                  key={`${hit.type}-${hit.id}`}
+                  value={`${hit.type}-${hit.id}`}
+                  onSelect={() => choose(hit)}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{hit.label}</span>
+                    {hit.sub ? (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {hit.sub}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {t(`search.type.${hit.type}`)}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          );
+        })}
+      </CommandList>
+      <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+        <span>{t('search.hint')}</span>
+        {/* Escape closes the palette; the button keeps the same affordance the old markup had for
+            anyone who reaches for a visible control rather than the key. */}
+        <Button variant="ghost" size="sm" onClick={onClose}>
+          {t('common.close')}
+        </Button>
       </div>
-    </div>,
-    document.body,
+    </CommandPalette>
   );
 }
