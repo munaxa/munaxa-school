@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { ADVANCED_MODULES, advancedApi, type FeatureFlag } from '@/lib/advanced';
-import { Button, Card, CardContent } from '@axa/platform';
+import { Button, Card, CardContent, Page, PageHeader, Stack } from '@axa/platform';
 
 export default function ModulesPage() {
   const { t } = useI18n();
@@ -52,11 +52,8 @@ export default function ModulesPage() {
 
   return (
     <Shell>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">{t('nav.modules')}</h1>
-          <p className="text-sm text-muted-foreground">{t('modules.subtitle')}</p>
-        </div>
+      <Page width="content">
+        <PageHeader title={t('nav.modules')} description={t('modules.subtitle')} />
 
         {error ? (
           <p className="text-sm text-destructive" role="alert">
@@ -64,7 +61,7 @@ export default function ModulesPage() {
           </p>
         ) : null}
 
-        <ul className="space-y-3">
+        <Stack as="ul" gap={3}>
           {ADVANCED_MODULES.map((m) => {
             const on = flags[m.key] ?? false;
             return (
@@ -88,8 +85,8 @@ export default function ModulesPage() {
               </li>
             );
           })}
-        </ul>
-      </div>
+        </Stack>
+      </Page>
     </Shell>
   );
 }
