@@ -1,0 +1,42 @@
+# Parents domain components
+
+## Overview and purpose
+These components encode parents concepts while preserving permission, workflow, notification, accessibility, RTL, and dark-mode contracts.
+
+| Component | Purpose | Variants | States |
+|---|---|---|---|
++| ParentCard | Encodes the parent card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentProfileHeader | Encodes the parent profile header concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentContactCard | Encodes the parent contact card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| GuardianRelationshipCard | Encodes the guardian relationship card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentCommunicationCard | Encodes the parent communication card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentChildrenList | Encodes the parent children list concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentSummaryCard | Encodes the parent summary card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentStatusBadge | Encodes the parent status badge concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentQuickActions | Encodes the parent quick actions concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ParentMetrics | Encodes the parent metrics concept | default, compact, or actionable | empty-safe and domain-state aware |
+
+## Usage rules
+Use inside approved patterns after permission filtering. Pass localized values and stable states. Keep fetching, authorization, mutation, and transitions outside presentation components.
+
+## Do
+- Reuse shared foundations.
+- Provide explicit state, scope, and accessible labels.
+- Compose loading, empty, denied, error, approval, and read-only states.
+
+## Don’t
+- Copy markup or add one-off status colors.
+- Hide unauthorized data only in the browser.
+- Use cards without workflow purpose.
+
+## Accessibility
+Text accompanies status. Controls work by keyboard, have names, preserve focus, and do not rely on hover, color, sound, or motion.
+
+## RTL
+Use logical flow and real Arabic. Isolate amounts, phone numbers, IDs, and mixed-direction strings.
+
+## Dark mode
+Use semantic tokens only. No neon, glow, glassmorphism, or luminous statuses.
+
+## Examples
+Complete compositions under domain-components/examples use only approved APIs.

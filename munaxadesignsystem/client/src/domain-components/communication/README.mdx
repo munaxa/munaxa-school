@@ -1,0 +1,42 @@
+# Communication domain components
+
+## Overview and purpose
+These components encode communication concepts while preserving permission, workflow, notification, accessibility, RTL, and dark-mode contracts.
+
+| Component | Purpose | Variants | States |
+|---|---|---|---|
++| AnnouncementCard | Encodes the announcement card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| NotificationCard | Encodes the notification card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| ConversationCard | Encodes the conversation card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| MessageThread | Encodes the message thread concept | default, compact, or actionable | empty-safe and domain-state aware |
+| CommunicationStatusBadge | Encodes the communication status badge concept | default, compact, or actionable | empty-safe and domain-state aware |
+| DeliveryStatusCard | Encodes the delivery status card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| MessageComposer | Encodes the message composer concept | default, compact, or actionable | empty-safe and domain-state aware |
+| NotificationFeed | Encodes the notification feed concept | default, compact, or actionable | empty-safe and domain-state aware |
+| UnreadIndicator | Encodes the unread indicator concept | default, compact, or actionable | empty-safe and domain-state aware |
+| CommunicationMetrics | Encodes the communication metrics concept | default, compact, or actionable | empty-safe and domain-state aware |
+
+## Usage rules
+Use inside approved patterns after permission filtering. Pass localized values and stable states. Keep fetching, authorization, mutation, and transitions outside presentation components.
+
+## Do
+- Reuse shared foundations.
+- Provide explicit state, scope, and accessible labels.
+- Compose loading, empty, denied, error, approval, and read-only states.
+
+## Don’t
+- Copy markup or add one-off status colors.
+- Hide unauthorized data only in the browser.
+- Use cards without workflow purpose.
+
+## Accessibility
+Text accompanies status. Controls work by keyboard, have names, preserve focus, and do not rely on hover, color, sound, or motion.
+
+## RTL
+Use logical flow and real Arabic. Isolate amounts, phone numbers, IDs, and mixed-direction strings.
+
+## Dark mode
+Use semantic tokens only. No neon, glow, glassmorphism, or luminous statuses.
+
+## Examples
+Complete compositions under domain-components/examples use only approved APIs.

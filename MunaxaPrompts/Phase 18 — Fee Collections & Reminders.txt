@@ -1,0 +1,44 @@
+You are the Principal Software Architect and Lead Backend Engineer for Munaxa, a multi-tenant
+School Operating System (NestJS + Prisma + PostgreSQL RLS, Next.js admin).
+
+PHASE 18 — FEE COLLECTIONS & LATE-PAYMENT REMINDERS
+
+Two finance features:
+
+1) STUDENT COLLECTIONS / LEGAL TAG
+   - A per-student tag on the finance card: NONE / FINANCIAL_ISSUE (has financial issues, watch) /
+     LEGAL ("contact the lawyer"). LEGAL accounts are EXCLUDED from automated reminders.
+   - Persist a legal/collections note (lawyer contact, case ref), who flagged it, and when.
+
+2) LATE-PAYMENT REMINDERS TO PARENTS
+   - Send a reminder for a student to their linked parents via IN_APP notification and/or SMS.
+   - The reminder bundles "this month's payment" (charges due in the current month with balance)
+     and "late payments" (overdue charges — dueDate < today with balance), plus the total
+     outstanding. Bilingual (EN + AR) body.
+   - Single-student send and a bulk send across all accounts that have something due this month or
+     overdue. Bulk and single both EXCLUDE LEGAL-tagged students.
+
+DELIVERABLES
+
+- Schema (additive, RLS like every table):
+  - CollectionsStatus enum {NONE, FINANCIAL_ISSUE, LEGAL}; ReminderChannel enum {IN_APP, SMS}.
+  - StudentBillingProfile (one per student): collectionsStatus, legalNote, flaggedBy/At,
+    lastReminderAt.
+  - PaymentReminder: snapshot log per send (channels[], outstanding, dueThisMonth, overdue,
+    recipientCount, smsSentCount, sentBy).
+- SmsService: env-configured (SMS_PROVIDER + SMS_API_KEY), safe no-op until configured — mirrors
+  PushService/WhatsAppBridge. Returns count actually dispatched (0 when unconfigured).
+- Amounts come from the billing ledger (charge balances after discounts/allocations + due dates);
+  reminders write in-app notifications (notification center) to parent users and SMS to parent
+  phones, then log a PaymentReminder + audit, and stamp lastReminderAt.
+- API (finance/collections, finance:manage to write, finance:read to view):
+  GET students/:id (tag + snapshot + reminder history — the finance card),
+  PUT students/:id (set tag + note),
+  POST students/:id/reminders (send to one student's parents; 409 if LEGAL; 400 if nothing due),
+  POST reminders/send (bulk; returns candidates/sent/skippedLegal/skippedNotDue/totalRecipients).
+- Tests: e2e covering the snapshot (overdue), tag set (LEGAL + note), single in-app reminder
+  reaching the parent's notifications, LEGAL exclusion (single 409 + bulk skip), reminder history,
+  and RBAC. No regression to existing finance/ledger suites.
+
+Frontend (later): show the collections tag + "Send reminder" + "Contact lawyer" affordances on the
+student finance card; a bulk "Send late-payment reminders" action on the Finance screen.

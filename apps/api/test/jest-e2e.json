@@ -1,0 +1,16 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "setupFiles": ["<rootDir>/setup-env.ts"],
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@school/domain$": "<rootDir>/../../../packages/domain/src/index.ts",
+    "^@school/contracts$": "<rootDir>/../../../packages/contracts/src/index.ts",
+    "^@school/utils$": "<rootDir>/../../../packages/utils/src/index.ts",
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  }
+}

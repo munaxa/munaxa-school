@@ -1,0 +1,38 @@
+# AI generation rules
+
+## Screen composition rules
+
+Identify role, scope, decision, workflow state, locale, and device. Select a documented pattern. Compose context, one primary action, status/metrics, primary content, exceptions, and system states with public templates and components.
+
+## Permission rules
+
+Use capabilities plus resource scope; never infer access from role labels alone. Filter sensitive data before rendering. Hide permanently unavailable actions, disable state-dependent actions with a reason, and implement read-only, denied, and approval-pending states. Server authorization is authoritative.
+
+## Workflow rules
+
+Represent admissions, attendance resolution, fee collection, transport, and communication as server-owned state machines. Render only valid transitions, include approvals, write audit events, handle conflicts, and recover without losing input.
+
+## Notification rules
+
+Create notifications from domain events. Choose category, priority, durable destination, and channel from the notification matrix. Deduplicate, localize, protect previews, and distinguish read, acknowledged, and resolved.
+
+## Domain component rules
+
+Import from @/design-system/components/domain. Do not recreate cards or statuses with one-off markup. Format locale-sensitive values first, keep fetching and authorization outside presentation components, and label actions.
+
+## RTL rules
+
+Arabic is first class. Use real Arabic content, logical positioning, localized plural/date/number rules, and directional isolation for identifiers and amounts. Mirror directional navigation but not universal symbols, charts, media controls, logos, clocks, or numbers.
+
+## Dark mode rules
+
+Use semantic tokens and the existing enterprise palette. Preserve hierarchy and contrast. No neon, glow, glassmorphism, decorative gradients, or luminous status colors.
+
+## Validation checklist
+
+- Permission and scope enforced by API and reflected in UI.
+- Workflow state and valid transitions explicit.
+- Approval, audit, notification, and recovery paths present.
+- Public patterns, templates, and domain components reused.
+- Keyboard, screen-reader, zoom, contrast, reduced-motion, dark, and RTL states verified.
+

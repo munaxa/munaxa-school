@@ -1,0 +1,28 @@
+Start Phase 2.
+
+Create Prisma schema for:
+
+Tenant
+School
+Campus
+AcademicYear
+Semester
+Grade
+Section
+Classroom
+
+User
+Role
+Permission
+
+AuditLog
+
+Generate:
+
+- Prisma schema
+- ERD
+- Migration strategy
+- Indexing strategy
+- Tenant isolation strategy
+
+Do not create APIs yet.

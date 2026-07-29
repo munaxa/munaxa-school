@@ -1,0 +1,35 @@
+You are the Principal Software Architect and Lead Backend Engineer for Munaxa, a multi-tenant
+School Operating System (NestJS + Prisma + PostgreSQL RLS, Next.js admin).
+
+PHASE 19 — FINANCE ↔ JOFOTARA BRIDGE
+
+Connect the finance modules to the e-invoicing engine so fee billing produces compliant JoFotara
+documents automatically, reusing Phase 16 (e-invoicing) + Phase 17 (billing ledger). No changes to
+the e-invoicing engine or finance ledger internals — a thin bridge maps between them.
+
+DELIVERABLES
+
+- Settings flags (EInvoiceSettings, additive): autoIssueOnCharge, autoCreditOnAdjustment
+  (both default false).
+- FinanceBridge (in the e-invoicing module, which finance imports):
+  - issueForCharge(chargeId): build a RECEIVABLE invoice from the charge — line = charge
+    description × 1 @ amount, line discount = the charge's active deductions; buyer = the student's
+    PRIMARY guardian (name + national ID as NIN). Create draft + queue. Idempotent: a charge that
+    already has a non-cancelled e-invoice is refused (409). Deterministic invoice number per charge.
+  - issueCreditForCharge(chargeId, amount, reason): find the charge's ACCEPTED invoice and issue a
+    381 credit note referencing it (mirrors the line at the credit amount, quantity 1).
+  - tryIssueForCharge / tryCreditForCharge: best-effort variants (read settings, act only if
+    enabled + the matching flag) that NEVER throw — a finance action must never be blocked by an
+    e-invoicing problem.
+- Hooks: ChargeService.create → tryIssueForCharge after the charge is persisted;
+  LedgerService.applyAdjustment → tryCreditForCharge when the deduction targets an (invoiced) charge.
+- Endpoints (einvoicing, finance:manage): POST from-charge/:chargeId, POST credit-from-charge/:id
+  (amount + reason). Wizard "Invoice mapping" step exposes the two automation toggles.
+- Tests: e2e covering auto-issue on charge (guardian buyer, NIN, amount, QUEUED→ACCEPTED in
+  SIMULATION, currencyID="JO", type 021), idempotency (409), auto credit note on discount
+  (381 + BillingReference + reason, ACCEPTED), and best-effort (charge with no guardian still
+  succeeds; explicit issue returns 400). No regression to existing suites.
+
+Note: a generic overpayment refund is a cash movement, not a credit note — credit notes are issued
+for reductions of an INVOICED charge (discount/waiver/withdrawal), which is the correct JoFotara
+semantics (381 references the original invoice).

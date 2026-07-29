@@ -1,0 +1,26 @@
+Start Phase 1.
+
+Deliver:
+
+1. Turborepo structure.
+2. NestJS initialization.
+3. Next.js initialization.
+4. Flutter initialization.
+5. Shared packages.
+6. Environment management.
+7. Docker setup.
+8. Docker Compose.
+9. CI/CD pipelines.
+10. Sentry integration.
+11. PostHog integration.
+12. Prisma initialization.
+13. Code quality tooling.
+
+Generate:
+
+- Folder structure
+- Configuration files
+- Docker files
+- Environment examples
+
+No business modules yet.

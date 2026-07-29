@@ -1,0 +1,54 @@
+You are the Principal Software Architect and Lead Backend Engineer for Munaxa, a multi-tenant
+School Operating System (NestJS + Prisma + PostgreSQL RLS, Next.js admin).
+
+PHASE 17 — STUDENT BILLING LEDGER
+
+Goal: turn the finance module from a basic charges+payments sub-ledger into a fully traceable
+student billing ledger that answers "which payment settled which charge, what was deducted, and
+what credit/refund is owed" — without breaking the existing charge/transaction/statement API.
+
+Build on the existing models (Charge = debit, Transaction = payment) — do NOT replace them.
+
+DELIVERABLES
+
+1. Schema (additive, RLS like every table):
+   - FeeAdjustment — a deduction. type ∈ {SCHOLARSHIP, DISCOUNT, SIBLING_DISCOUNT, STAFF_DISCOUNT,
+     WAIVER, CREDIT_MEMO, CORRECTION}; amount (JOD, 3dp) or percent; reason; status APPLIED/REVERSED;
+     chargeId nullable (null = account-level credit memo); created/reversed audit fields.
+   - PaymentAllocation — applies (part of) a verified payment to a specific charge; reversedAt
+     null = active.
+   - Refund — returns available credit to the payer; method/reference/reason; status
+     PENDING/VERIFIED/REJECTED (same maker-checker shape as a payment).
+
+2. Derived figures (recomputed from source rows — never denormalised counters that can drift):
+   - Per charge: gross, discount (Σ applied adjustments), net = gross − discount,
+     allocated (Σ active allocations), balance = net − allocated.
+   - Charge.status recomputed on every allocation/adjustment change:
+     net ≤ 0 → WAIVED; allocated ≥ net → PAID; allocated > 0 or discount > 0 → PARTIAL; else PENDING.
+   - Account: netCharged = Σcharges − Σcharge-discounts; coverage = Σverified-payments +
+     Σaccount-credits; outstanding = max(netCharged − coverage, 0);
+     creditBalance = max(coverage − netCharged, 0) − Σverified-refunds.
+
+3. Behaviour & guards:
+   - Verifying a payment that targets a charge auto-allocates it (capped at the charge balance);
+     unallocated payments become refundable credit. Manual allocate endpoint for splitting.
+   - Allocation cannot exceed the unallocated payment or the charge balance.
+   - Percent deductions require a charge; deduction cannot exceed the charge's remaining net;
+     account-level deductions must be CREDIT_MEMO.
+   - Refund cannot exceed available credit (re-checked at verify time).
+   - Every mutation writes an AuditLog in the same transaction.
+
+4. API (finance/ledger, finance:manage to write, finance:read via statement):
+   POST adjustments, POST adjustments/:id/reverse, POST allocate, POST refunds,
+   POST refunds/:id/verify, POST refunds/:id/reject. Extend the student statement with
+   adjustments, refunds, per-charge balances, and the new totals (discounts, credits, refunded,
+   creditBalance) while keeping charged/paid/outstanding back-compatible.
+
+5. Tests: e2e covering auto-allocation → PARTIAL/PAID, percent scholarship reducing net+outstanding,
+   over-deduction guard, overpayment → credit, refund request→verify zeroing credit, over-refund
+   guard, account credit memo, adjustment reversal (traceability), manual allocation +
+   over-allocation guards, and RBAC. No regression to the existing finance suite.
+
+Note for a later phase: this ledger is JoFotara-ready — charge discounts map to UBL line
+AllowanceCharge, and refunds/credit memos map to 381 credit notes — but wiring finance ↔ JoFotara
+is a separate phase.

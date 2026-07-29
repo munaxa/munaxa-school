@@ -1,0 +1,44 @@
+{
+  // Cloudflare Workers config for the Munaxa demo (deployed via the OpenNext adapter).
+  // The demo is a pnpm-workspace member: builds run from the monorepo root so the shared
+  // packages (@school/ui, design-tokens, icons) are installed and bundled. See CLOUDFLARE_DEPLOY.md.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "munaxademo",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // Allow PBKDF2 password hashing to complete (requires the Workers Standard plan).
+  // Alternatively lower DEMO_PBKDF2_ITERATIONS below.
+  // "limits": {
+    // "cpu_ms": 300
+  // },
+  "vars": {
+    // Tuned down from the Node default (600k) to fit Workers CPU limits.
+    "DEMO_PBKDF2_ITERATIONS": "10000",
+    "DEMO_SESSION_TTL_MINUTES": "120",
+    "DEMO_DEFAULT_EXPIRY_DAYS": "14",
+    // "Book a Demo" intake emails (sent via Resend). RESEND_DEMO is a secret (below).
+    "DEMO_NOTIFY_EMAIL": "demo@mail.munaxa.com",
+    "DEMO_FROM_EMAIL": "Munaxa Demo <demo@mail.munaxa.com>"
+  },
+  // Persists admin-created demo accounts (no database). Create the namespace with:
+  //   npx wrangler kv namespace create DEMO_ACCOUNTS
+  // then paste the returned id below.
+  "kv_namespaces": [
+    {
+      "binding": "DEMO_ACCOUNTS",
+      "id": "768a66ef383d4713bcfd216d0a20c7a4"
+    }
+  ]
+  // Secrets (NOT vars) — set each with `npx wrangler secret put <NAME>`:
+  //   DEMO_SESSION_SECRET   signing key for the session cookie
+  //   RESEND_DEMO           Resend API key for the "Book a Demo" intake emails
+  //                         (RESEND_API_KEY is also accepted as a fallback)
+}

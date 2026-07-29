@@ -1,0 +1,27 @@
+Start Phase 8.
+
+Implement:
+
+Homework
+
+Homework Attachments
+
+Behavior Logs
+
+Grade Import Engine
+
+CSV Import
+
+Grade Reports
+
+Parent Academic View
+
+Student Academic View
+
+Generate:
+
+Database
+Backend
+Admin Portal
+Flutter
+Tests

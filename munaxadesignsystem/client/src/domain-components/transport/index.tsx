@@ -1,0 +1,17 @@
+import { Bus, MapPinned, Route, UserRound, Wrench } from "lucide-react";
+import { InfoGrid, MetricCard, StatusBadge, SummaryPanel } from "../shared";
+
+export type TransportState="scheduled"|"boarding"|"in-transit"|"delayed"|"arrived"|"cancelled"|"maintenance";
+const transportTone={scheduled:"neutral",boarding:"info","in-transit":"primary",delayed:"warning",arrived:"success",cancelled:"danger",maintenance:"warning"} as const;
+export function TransportStatusBadge({status}:{status:TransportState}){return <StatusBadge label={status} tone={transportTone[status]}/>;}
+export function BusCard({number,plate,capacity,status}:{number:string;plate:string;capacity:string;status:TransportState}){return <SummaryPanel title={number} description={plate} action={<TransportStatusBadge status={status}/>}><InfoGrid items={[{label:"Capacity",value:capacity}]}/></SummaryPanel>;}
+export function RouteCard({name,stops,status}:{name:string;stops:number;status:TransportState}){return <SummaryPanel title={name} description={`${stops} stops`} action={<TransportStatusBadge status={status}/>}><Route className="size-5 text-primary" aria-hidden/></SummaryPanel>;}
+export function DriverCard({name,phone,vehicle}:{name:string;phone?:string;vehicle?:string}){return <SummaryPanel title={name} description={vehicle} action={<UserRound className="size-5 text-primary" aria-hidden/>}>{phone&&<a href={`tel:${phone}`} dir="ltr" className="text-sm text-primary">{phone}</a>}</SummaryPanel>;}
+export function TripCard({route,time,passengers,status}:{route:string;time:string;passengers:number;status:TransportState}){return <SummaryPanel title={route} description={time} action={<TransportStatusBadge status={status}/>}><InfoGrid items={[{label:"Passengers",value:passengers}]}/></SummaryPanel>;}
+export type BoardingState="not-boarded"|"boarded"|"absent"|"dropped-off"|"exception";
+export function BoardingStatusCard({student,status,stop}:{student:string;status:BoardingState;stop:string}){const tone=status==="dropped-off"?"success":status==="exception"?"danger":status==="absent"?"warning":status==="boarded"?"info":"neutral";return <SummaryPanel title={student} description={stop} action={<StatusBadge label={status} tone={tone}/>}/>}
+export function TransportMetrics({items}:{items:{label:string;value:string;detail?:string}[]}){return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{items.map(x=><MetricCard key={x.label}{...x}/>)}</div>;}
+export function RouteSummary({route,driver,vehicle,students}:{route:string;driver:string;vehicle:string;students:number}){return <SummaryPanel title={route} action={<MapPinned className="size-5 text-primary" aria-hidden/>}><InfoGrid columns={3} items={[{label:"Driver",value:driver},{label:"Vehicle",value:vehicle},{label:"Students",value:students}]}/></SummaryPanel>;}
+export function VehicleStatusCard({vehicle,status,detail}:{vehicle:string;status:TransportState;detail?:string}){return <SummaryPanel title={vehicle} description={detail} action={<div className="flex items-center gap-2"><Wrench className="size-4 text-muted-foreground" aria-hidden/><TransportStatusBadge status={status}/></div>}/>}
+export function StudentTransportCard({student,route,stop,status}:{student:string;route:string;stop:string;status:BoardingState}){return <SummaryPanel title={student} description={route} action={<Bus className="size-5 text-primary" aria-hidden/>}><BoardingStatusCard student="Boarding" stop={stop} status={status}/></SummaryPanel>;}
+

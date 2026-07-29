@@ -1,0 +1,10 @@
+node_modules
+.next
+.open-next
+out
+dist
+*.local
+.turbo
+.wrangler
+next-env.d.ts
+cloudflare-env.d.ts

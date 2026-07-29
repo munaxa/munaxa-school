@@ -1,0 +1,30 @@
+Start Phase 6.
+
+Implement:
+
+MasterTimetable
+
+ScheduleExceptions
+
+Substitute Teachers
+
+Ramadan Mode
+
+Current Class Engine
+
+Current Class Algorithm:
+
+1. Check ScheduleExceptions.
+2. If found, use exception.
+3. Otherwise use MasterTimetable.
+4. If Ramadan Mode enabled, use Ramadan schedule.
+
+Generate:
+
+Database
+Backend
+Admin Portal
+Mobile
+Tests
+
+Include complete algorithm documentation.

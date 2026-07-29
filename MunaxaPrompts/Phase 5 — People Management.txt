@@ -1,0 +1,29 @@
+Start Phase 5.
+
+Implement:
+
+Students
+
+Parents
+
+Teachers
+
+Employees
+
+Secretary Accounts
+
+Bulk CSV Import
+
+QR ID Generation
+
+Parent-Student Linking
+
+Teacher Assignment
+
+Generate:
+
+Database
+Backend
+Admin Portal
+Mobile Integration
+Tests

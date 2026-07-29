@@ -1,0 +1,19 @@
+# School components
+
+## Overview
+Typed, reusable components for student, teacher, parent, attendance, finance, transport, school selection, identity, status, and metric concepts.
+
+## Usage
+Import from `@/design-system/components`. Provide domain data through typed props and compose actions through the documented action slot.
+
+## Examples
+The `examples` package demonstrates roster, profile, attendance, finance, reports, and settings workflows using these components.
+
+## Best Practices
+Use these APIs instead of copying their markup. Format locale-sensitive amounts and dates before passing display strings. Keep permission logic outside presentation components.
+
+## Accessibility Notes
+Components use semantic headings, named controls, textual statuses, decorative-icon hiding, and visible focus behavior. Consumers remain responsible for action labels and page heading order.
+
+## RTL Notes
+Layouts use logical flow and Tailwind logical spacing. Format identifiers, currency, and phone numbers with an isolated LTR container where required.

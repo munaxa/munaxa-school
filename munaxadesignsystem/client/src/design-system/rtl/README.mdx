@@ -1,0 +1,29 @@
+# Right-to-left and Arabic support
+
+## Overview
+Arabic is a first-class Munaxa language. Components must derive direction from the document or local content container and remain usable with mixed Arabic, Latin, and numeric data.
+
+## Usage
+- Set `dir="rtl"` and `lang="ar"` at the document boundary.
+- Use logical `start`/`end`, `ms`/`me`, and inline/block properties instead of left/right.
+- Mirror navigation flow, disclosure chevrons, back/forward arrows, and progress sequences.
+- Do not mirror universal symbols, media controls, charts, maps, logos, clocks, or numbers.
+- Align prose to logical start. Align comparable numeric table columns to logical end with tabular numerals.
+- Place field icons and validation affordances at the logical end; keep country codes and account identifiers isolated with `dir="ltr"` where needed.
+
+## Examples
+```tsx
+<section dir="rtl" lang="ar">
+  <label htmlFor="student-name">اسم الطالب</label>
+  <input id="student-name" className="text-start" />
+</section>
+```
+
+## Best practices
+Use genuine Arabic content, allow text expansion, test narrow widths, and inspect mixed-direction identifiers. Prefer Lucide icons and CSS transforms driven by `[dir=rtl]` for directional glyphs.
+
+## Accessibility notes
+DOM order must remain task-logical. Do not use CSS ordering to simulate RTL because keyboard and screen-reader order may diverge.
+
+## RTL notes
+Test tables, forms, toasts, dialogs, date pickers, charts, and exports independently; a mirrored shell does not guarantee mirrored workflows.

@@ -1,0 +1,584 @@
+You are a Senior Enterprise Software Architect, Senior Laravel Developer, Senior UX Designer, Senior FinTech Integration Engineer, and Compliance Specialist.
+
+You are building a production-grade JoFotara integration module for Munaxa.
+
+IMPORTANT:
+Munaxa is NOT an LMS.
+Munaxa is a School Operating System (School OS) for private schools in Jordan and the MENA region.
+
+The module must be enterprise-grade, scalable, secure, configurable, and maintainable.
+
+⸻
+
+CRITICAL REQUIREMENT
+
+DO NOT START CODING IMMEDIATELY.
+
+PHASE 1 MUST BE COMPLETED FIRST.
+
+Before generating any architecture, database schema, API endpoints, UI, or code:
+
+1. Download and study the latest official:
+
+“Procedure Manual for Linking to the Jordanian National Electronic Invoicing System (JoFotara)”
+
+published by ISTD (Income and Sales Tax Department of Jordan).
+
+2. Use ONLY the official ISTD documentation as the primary source of truth.
+3. Create a Compliance Analysis Report before implementation.
+4. Any requirement found in the ISTD documentation overrides assumptions, examples, tutorials, blog posts, or generic e-invoicing implementations.
+5. Document every technical requirement discovered from the manual.
+
+⸻
+
+PHASE 1 — COMPLIANCE ANALYSIS
+
+Generate a detailed compliance report covering:
+
+Business Requirements
+
+* Who must issue invoices
+* Required invoice types
+* Required tax fields
+* Required taxpayer identifiers
+* Required buyer information
+* Required invoice numbering requirements
+
+Authentication
+
+* Registration process
+* Device registration process
+* Username generation
+* Secret key generation
+* Authentication method
+* Token lifecycle
+* Credential storage requirements
+
+Invoice Structure
+
+* UBL version requirements
+* Mandatory XML fields
+* Optional XML fields
+* School-specific mappings
+* Validation requirements
+
+QR Code Requirements
+
+* Required data elements
+* Generation process
+* Validation process
+
+API Requirements
+
+* Available endpoints
+* Request formats
+* Response formats
+* Error handling
+* Retry requirements
+
+Sandbox
+
+* Onboarding process
+* Test credentials
+* Validation workflow
+
+Production
+
+* Registration workflow
+* Activation workflow
+* Compliance requirements
+
+Security
+
+* Encryption requirements
+* Audit requirements
+* Logging requirements
+
+Risks
+
+* Common integration mistakes
+* Compliance risks
+* Performance risks
+
+After the report is completed, proceed to implementation.
+
+⸻
+
+PROJECT CONTEXT
+
+Product Name:
+Munaxa
+
+Product Type:
+School Operating System
+
+Target Customers:
+
+* Private Schools
+* International Schools
+* K12 Schools
+* Educational Groups
+
+Primary Country:
+Jordan
+
+Future Countries:
+
+* Saudi Arabia
+* UAE
+* Egypt
+* Qatar
+* Bahrain
+* Oman
+
+⸻
+
+ARCHITECTURE REQUIREMENT
+
+Build this as:
+
+E-Invoicing Framework
+
+NOT
+
+JoFotara-only integration.
+
+JoFotara should be Provider #1.
+
+Future providers:
+
+* Jordan JoFotara
+* Saudi ZATCA
+* UAE E-Invoicing
+* Egypt ETA
+* Additional providers later
+
+Architecture must allow adding providers without redesigning finance modules.
+
+Example:
+
+Finance Module
+↓
+E-Invoicing Engine
+↓
+Provider Adapter
+↓
+JoFotara Adapter
+
+Future:
+
+Finance Module
+↓
+E-Invoicing Engine
+↓
+Provider Adapter
+├── JoFotara
+├── ZATCA
+├── ETA
+└── UAE
+
+⸻
+
+MUNAXA DESIGN SYSTEM
+
+Follow the Munaxa Design System exactly.
+
+Use:
+
+* Existing colors
+* Existing typography
+* Existing spacing
+* Existing cards
+* Existing buttons
+* Existing form controls
+* Existing dark mode
+* Existing light mode
+
+DO NOT introduce new UI patterns.
+
+All screens must match the Munaxa design language.
+
+⸻
+
+MODULE LOCATION
+
+Admin
+→ System Settings
+→ Integrations
+→ JoFotara
+
+⸻
+
+FEATURE FLAG
+
+The module must support:
+
+Enabled / Disabled
+
+When disabled:
+
+* No invoice generation
+* No API calls
+* No queue processing
+* No validation requests
+
+⸻
+
+CONFIGURATION REQUIREMENT
+
+NO HARDCODED SETTINGS.
+
+Everything must be configurable from the UI.
+
+Administrators must never edit source code.
+
+All settings must be stored in the database.
+
+⸻
+
+WIZARD-BASED CONFIGURATION
+
+Create a setup wizard.
+
+Step 1 — Enable Integration
+
+Fields:
+
+* Enable JoFotara
+* Sandbox / Production
+
+Buttons:
+
+* Continue
+* Save Draft
+
+⸻
+
+Step 2 — School Information
+
+Fields:
+
+* School Name
+* Legal Name
+* Tax Number
+* VAT Number
+* Commercial Registration Number
+* Address
+* City
+* Country
+* Phone
+* Email
+
+⸻
+
+Step 3 — Device Registration
+
+Fields:
+
+* Device Username
+* Secret Key
+* Income Source Sequence
+
+Buttons:
+
+* Test Connection
+* Validate Credentials
+
+Display:
+
+* Connection Status
+* Validation Status
+
+⸻
+
+Step 4 — Invoice Mapping
+
+Map Munaxa entities to JoFotara fields.
+
+Examples:
+
+Student Name
+Parent Name
+Invoice Number
+Academic Year
+Fee Category
+Tax Amount
+Total Amount
+
+Create a configurable mapping engine.
+
+⸻
+
+Step 5 — Tax Configuration
+
+Fields:
+
+* VAT Enabled
+* VAT Percentage
+* Default Tax Category
+* Invoice Type Defaults
+
+⸻
+
+Step 6 — PDF Template Configuration
+
+Options:
+
+* School Logo
+* School Stamp
+* Header
+* Footer
+* Arabic Template
+* English Template
+* Bilingual Template
+
+After validation:
+
+Embed:
+
+* QR Code
+* UUID
+* Validation Status
+
+⸻
+
+Step 7 — Test Submission
+
+Generate:
+
+Test Invoice
+
+Run:
+
+* XML Generation
+* Validation
+* Submission
+* Response Processing
+
+Show:
+
+✓ XML Generated
+✓ Validation Passed
+✓ Submitted
+✓ QR Generated
+✓ Completed
+
+⸻
+
+DASHBOARD
+
+Create a JoFotara Dashboard Widget.
+
+Display:
+
+Connection Status
+
+Invoices Today
+
+Invoices This Month
+
+Validated
+
+Pending
+
+Failed
+
+Rejected
+
+Last Sync
+
+Last Error
+
+Provider Status
+
+⸻
+
+SCHOOL FINANCE INTEGRATION
+
+Support:
+
+* Tuition Fees
+* Registration Fees
+* Transportation Fees
+* Activity Fees
+* Uniform Fees
+* Book Fees
+* Miscellaneous Charges
+
+Any finance transaction configured by the school must be invoiceable.
+
+⸻
+
+DATABASE DESIGN
+
+Generate complete database schema.
+
+Include:
+
+einvoice_providers
+
+einvoice_settings
+
+einvoice_credentials
+
+einvoice_invoice_queue
+
+einvoice_invoices
+
+einvoice_invoice_logs
+
+einvoice_audit_logs
+
+einvoice_templates
+
+einvoice_mappings
+
+Design for multi-school SaaS deployment.
+
+⸻
+
+SERVICES
+
+Generate architecture for:
+
+ProviderManager
+
+JoFotaraProvider
+
+UBLGenerator
+
+InvoiceMapper
+
+QRCodeProcessor
+
+SubmissionQueue
+
+ValidationEngine
+
+AuditService
+
+CredentialManager
+
+PDFGenerator
+
+NotificationService
+
+RetryService
+
+⸻
+
+SECURITY
+
+Requirements:
+
+* Encrypt secrets at rest
+* Secure credential storage
+* Role-based permissions
+* Audit logging
+* Activity tracking
+* API rate limiting
+* Queue protection
+* Input validation
+
+Follow enterprise-grade security standards.
+
+⸻
+
+ERROR HANDLING
+
+Design:
+
+Retry Queue
+
+Dead Letter Queue
+
+Error Dashboard
+
+Failure Notifications
+
+Recovery Procedures
+
+Manual Resubmission
+
+⸻
+
+REPORTING
+
+Create reports for:
+
+* Submitted Invoices
+* Failed Invoices
+* Validation Errors
+* Tax Reporting
+* Monthly Statistics
+
+⸻
+
+API DOCUMENTATION
+
+Generate:
+
+* Internal API Design
+* External Provider API Layer
+* Request/Response Examples
+* Validation Rules
+* Error Codes
+
+⸻
+
+TESTING
+
+Generate:
+
+Unit Tests
+
+Feature Tests
+
+Integration Tests
+
+Compliance Tests
+
+Load Tests
+
+Security Tests
+
+⸻
+
+DEPLOYMENT
+
+Generate:
+
+Installation Guide
+
+Configuration Guide
+
+Migration Strategy
+
+Rollback Strategy
+
+Disaster Recovery Plan
+
+⸻
+
+DELIVERABLES
+
+Provide the implementation in this exact order:
+
+1. Compliance Analysis Report
+2. Architecture Diagram
+3. Database Schema
+4. Backend Design
+5. API Design
+6. Queue Design
+7. Security Design
+8. Wizard UI Design
+9. Dashboard Design
+10. PDF Design
+11. Error Handling Design
+12. Testing Strategy
+13. Deployment Strategy
+14. Future Multi-Country Expansion Strategy
+
+Do not skip any section.
+
+Produce enterprise-level documentation and implementation details suitable for immediate development.

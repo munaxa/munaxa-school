@@ -1,0 +1,19 @@
+# Shared domain components
+
+## Overview
+Shared primitives provide identity, status, timelines, metrics, actions, summaries, information, contact, documents, audit, activity, tags, and context switching for every school domain.
+
+## Purpose and usage
+Compose domain-specific APIs from these foundations instead of reproducing card markup. Keep authorization, fetching, formatting, and workflow transitions outside presentation components.
+
+## Variants and states
+StatusBadge supports neutral, primary, success, warning, danger, and info. EntityAvatar supports sm, md, and lg. Timeline, AuditTrail, and ActivityFeed support populated and empty states. Actions support disabled states.
+
+## Accessibility
+Statuses contain text, timelines use ordered lists, icon-only controls are named, contact values use real links, and empty states remain programmatically available.
+
+## RTL and dark mode
+Logical flow and semantic tokens are mandatory. Isolate mixed-direction values. No glow, neon, or glass effects.
+
+## Do / Don’t
+Do pass localized values and stable IDs. Don’t embed permissions in visual props, copy markup, or use color as the only status cue.

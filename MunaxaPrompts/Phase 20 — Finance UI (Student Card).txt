@@ -1,0 +1,34 @@
+You are the Lead Frontend Engineer for Munaxa, a multi-tenant School OS (Next.js 15 App Router,
+Tailwind, the Munaxa design system in packages/config-tailwind/preset.ts + apps/admin globals.css).
+
+PHASE 20 — FINANCE UI (STUDENT FINANCE CARD)
+
+Surface everything from Phases 16–19 on the admin Finance screen, using the EXISTING design system
+(violet/coral/aqua on dark surfaces, Sora/Inter/JetBrains Mono, the shared UI kit: Card, Badge,
+Button, Field, Input, Select, Table, Spinner). No new UI patterns; RTL-safe via logical properties.
+
+Build a single Finance page driven by a student picker (search by student/father/family name) that
+loads the statement + collections profile and renders a full "finance card":
+
+- Collections banner: the legal/collections tag (NONE / FINANCIAL_ISSUE / LEGAL "contact lawyer")
+  with tone, a legal/collections note field + save, the live snapshot (outstanding, overdue,
+  this-month due), and "Send reminder" (in-app, and app+SMS) buttons — DISABLED when LEGAL or when
+  nothing is due (mirrors the API's exclusion rule). Show last-reminder time + count.
+- KPI cards: Charged, Paid (aqua), Discounts, Outstanding (coral), Credit (aqua), Refunded — mono,
+  3-dp JOD.
+- Charges table with per-charge balances (gross/discount/net/balance + status badge) and row
+  actions: Discount (inline amount-or-percent + reason), e-Invoice (issue via the bridge), Credit
+  (inline amount + reason → 381 credit note). Plus an add-charge form (description/amount/due date).
+- Deductions table (type/reason/amount/status) with Reverse.
+- Payments table with Verify/Reject for PENDING.
+- Refunds card: shows credit balance, a request-refund form (disabled when no credit), and the
+  refunds list with Verify.
+
+Data layer: extend apps/admin/src/lib/finance.ts with the statement (new totals + chargeBalances +
+adjustments + refunds), ledger (applyAdjustment/reverse/refund create+verify), and collections
+(profile/set/remind) calls; reuse lib/einvoicing.ts issueFromCharge/creditFromCharge. All writes
+require finance:manage (the API enforces it); reads use finance:read.
+
+Acceptance: admin typecheck + lint clean; every action wired to the real endpoints with toast
+feedback and reload. (Screens are driven by the existing tokens — the attached design system v1 is
+already encoded in the preset, so no token changes are needed.)

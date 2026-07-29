@@ -1,0 +1,24 @@
+Start Phase 4.
+
+Implement:
+
+School Management
+
+Campus Management
+
+Academic Years
+
+Semesters
+
+Grades
+
+Sections
+
+Classrooms
+
+Generate:
+
+Database
+Backend
+Admin Portal
+Tests

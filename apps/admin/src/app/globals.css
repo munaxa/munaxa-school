@@ -1,0 +1,159 @@
+@import 'tailwindcss';
+/* Munaxa theme: the shared AXA theme contract + the Munaxa palette. */
+@import '@axa/platform/css/themes/school';
+@import 'tw-animate-css';
+@source '../../../../../platform/ui';
+
+/* Brand gradients (the old preset's backgroundImage). */
+@utility bg-grad-primary {
+  background-image: linear-gradient(135deg, #00b8db 0%, #007595 55%, #005066 120%);
+}
+@utility bg-grad-hero {
+  background-image: radial-gradient(
+    ellipse 80% 60% at 50% 0%,
+    color-mix(in oklch, var(--primary) 16%, transparent) 0%,
+    transparent 62%
+  );
+}
+
+@layer base {
+  :root {
+    /* --font-display / --font-body / --font-mono are provided by next/font (see layout.tsx). */
+    --radius: 0.5rem;
+    /* Tell the browser which palette to render native controls in (select option lists,
+     * scrollbars, date pickers). Without this, dark mode shows washed-out/illegible
+     * <option> text because popups fall back to the light scheme. Follows the `.dark` class. */
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body;
+  }
+}
+
+/*
+ * Sign-in screen. The split-screen layout (brand/marketing panel + sign-in card) is built almost
+ * entirely from the theme design tokens (bg-card, text-primary, border-border, bg-grad-primary, …)
+ * so it follows light/dark automatically via the app's `.dark` class. Only a few helpers live here.
+ */
+@layer components {
+  /* Soft light-bloom behind the sign-in card (the "studio light" in the reference). */
+  .login-glow {
+    background: radial-gradient(
+      circle at center,
+      color-mix(in oklch, var(--primary) 45%, transparent) 0%,
+      transparent 70%
+    );
+  }
+  /* Aurora ambient lighting for the auth backdrop — soft primary/secondary/accent blooms. Tuned
+   * for the dark backdrop; on light it reads as faint tints. */
+  .login-aurora {
+    background-image:
+      radial-gradient(
+        40% 48% at 10% 15%,
+        color-mix(in oklch, var(--primary) 20%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        46% 55% at 92% 22%,
+        color-mix(in oklch, var(--primary) 16%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        55% 60% at 80% 95%,
+        color-mix(in oklch, var(--accent) 10%, transparent),
+        transparent 60%
+      );
+  }
+  /* Shared sign-in text input (icon-padded, transparent over the field wrapper). */
+  .login-input-field {
+    width: 100%;
+    background: transparent;
+    padding-block: 0.75rem;
+    padding-inline: 2.75rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    outline: none;
+  }
+  .login-input-field::placeholder {
+    color: color-mix(in oklch, var(--muted-foreground) 70%, transparent);
+  }
+
+  /* Breathing brand-teal glow behind the sign-in logo. The bloom lives on a ::before so it
+   * sits behind the mark and never affects layout; the slow pulse draws the eye to the brand
+   * on load. Frozen automatically by the prefers-reduced-motion guard below. */
+  .login-logo-glow {
+    position: relative;
+    isolation: isolate;
+  }
+  .login-logo-glow::before {
+    content: '';
+    position: absolute;
+    inset: -60%;
+    z-index: -1;
+    border-radius: 9999px;
+    background: radial-gradient(
+      circle at center,
+      color-mix(in oklch, var(--primary) 55%, transparent) 0%,
+      color-mix(in oklch, var(--primary) 22%, transparent) 38%,
+      transparent 70%
+    );
+    filter: blur(6px);
+    animation: login-logo-pulse 3.2s ease-in-out infinite;
+  }
+  @keyframes login-logo-pulse {
+    0%,
+    100% {
+      opacity: 0.4;
+      transform: scale(0.9);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.1);
+    }
+  }
+
+  /* Jordanian flag mark — fixed national colours (kept here so the JSX stays free of raw hex). */
+  .jo-black {
+    fill: #000000;
+  }
+  .jo-white {
+    fill: #ffffff;
+  }
+  .jo-green {
+    fill: #007a3d;
+  }
+  .jo-red {
+    fill: #ce1126;
+  }
+}
+
+@layer utilities {
+  /* Hide the scrollbar while keeping the element scrollable — used for the sidebar nav so a long,
+   * scrollable menu doesn't show an ugly track. Cross-browser (Firefox, IE/Edge, WebKit). */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Respect users who prefer reduced motion (WCAG 2.3.3): neutralize animations,
+ * transitions and smooth scrolling app-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

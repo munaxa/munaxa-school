@@ -1,0 +1,42 @@
+# Transport domain components
+
+## Overview and purpose
+These components encode transport concepts while preserving permission, workflow, notification, accessibility, RTL, and dark-mode contracts.
+
+| Component | Purpose | Variants | States |
+|---|---|---|---|
++| BusCard | Encodes the bus card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| RouteCard | Encodes the route card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| DriverCard | Encodes the driver card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| TripCard | Encodes the trip card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| TransportStatusBadge | Encodes the transport status badge concept | default, compact, or actionable | empty-safe and domain-state aware |
+| BoardingStatusCard | Encodes the boarding status card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| TransportMetrics | Encodes the transport metrics concept | default, compact, or actionable | empty-safe and domain-state aware |
+| RouteSummary | Encodes the route summary concept | default, compact, or actionable | empty-safe and domain-state aware |
+| VehicleStatusCard | Encodes the vehicle status card concept | default, compact, or actionable | empty-safe and domain-state aware |
+| StudentTransportCard | Encodes the student transport card concept | default, compact, or actionable | empty-safe and domain-state aware |
+
+## Usage rules
+Use inside approved patterns after permission filtering. Pass localized values and stable states. Keep fetching, authorization, mutation, and transitions outside presentation components.
+
+## Do
+- Reuse shared foundations.
+- Provide explicit state, scope, and accessible labels.
+- Compose loading, empty, denied, error, approval, and read-only states.
+
+## Don’t
+- Copy markup or add one-off status colors.
+- Hide unauthorized data only in the browser.
+- Use cards without workflow purpose.
+
+## Accessibility
+Text accompanies status. Controls work by keyboard, have names, preserve focus, and do not rely on hover, color, sound, or motion.
+
+## RTL
+Use logical flow and real Arabic. Isolate amounts, phone numbers, IDs, and mixed-direction strings.
+
+## Dark mode
+Use semantic tokens only. No neon, glow, glassmorphism, or luminous statuses.
+
+## Examples
+Complete compositions under domain-components/examples use only approved APIs.

@@ -1,0 +1,30 @@
+Start Phase 9.
+
+Implement:
+
+Fee Plans
+
+Charges
+
+Transactions
+
+CliQ Receipt Uploads
+
+E-Wallet Receipt Uploads
+
+Outstanding Balance Formula:
+
+Outstanding Balance =
+SUM(Charges)
+-
+SUM(Transactions)
+
+Generate:
+
+Database
+Backend
+Admin Portal
+Parent Mobile App
+Tests
+
+All financial actions must generate Audit Logs.

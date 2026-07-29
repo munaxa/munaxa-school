@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# OpenNext / Cloudflare Workers
+.open-next/
+.wrangler/
+.dev.vars
+
+# Env files (real secrets) — keep .env.example
+.env
+.env.*
+!.env.example
+
+# Build artifacts & caches
+dist/
+*.tsbuildinfo
+
+# Logs & OS noise
+*.log
+.DS_Store

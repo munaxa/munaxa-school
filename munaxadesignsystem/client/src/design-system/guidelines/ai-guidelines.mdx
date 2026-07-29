@@ -1,0 +1,52 @@
+# AI-generated interface guidelines
+
+## Overview
+AI-generated Munaxa screens must look and behave like deliberate product work. Start from a documented template or pattern, use semantic tokens, compose existing components, and introduce a new primitive only when the system cannot express the requirement.
+
+## How AI should build screens
+1. Identify the user role, decision, data sensitivity, locale, and device.
+2. Select one documented pattern and preserve its hierarchy.
+3. Use templates for page structure and school components for domain concepts.
+4. Add realistic loading, empty, error, and permission states.
+5. Validate keyboard order, accessible names, contrast, dark mode, and RTL before output.
+
+## Component and token rules
+- Import from `design-system/components`, `templates`, and `tokens`; do not copy component markup.
+- Use semantic CSS variables for surfaces, text, borders, focus, and status. Never place raw hex values in a component.
+- Prefer component variants over one-off class combinations.
+- Use Lucide icons with `aria-hidden` when decorative and an accessible label on icon-only controls.
+
+## Screen composition rules
+- One page title and one primary action per task context.
+- Use a maximum of four summary metrics before the primary content.
+- Put filters beside the content they affect and persist shareable state in the URL.
+- Use progressive disclosure for secondary details; never hide required context behind hover.
+
+## Dashboard rules
+- Tie every metric and chart to a decision. Include scope, units, and freshness.
+- Put exceptions and follow-up actions near the relevant trend.
+- Avoid card grids that give all information equal weight.
+
+## Data table rules
+- Use real table semantics, persistent headers for long tables, explicit sort state, and pagination or virtualization.
+- Keep row actions keyboard accessible. Provide bulk actions only after selection.
+- Align text to the logical start and numeric data to the logical end with tabular numerals.
+
+## Form rules
+- Use visible labels, helpful descriptions, and field-level errors linked with `aria-describedby`.
+- Preserve input after errors. Confirm destructive or irreversible changes.
+- Keep logical reading order in both LTR and RTL.
+
+## Dark mode and RTL rules
+- Use semantic variables; never invert images or status meaning.
+- Use logical properties (`margin-inline`, `padding-inline`, `start`, `end`) and direction-aware icons.
+- Arabic copy must be real content, not reversed English or placeholder glyphs.
+
+## Best practices
+Generate the smallest complete workflow, reuse real domain language, and state assumptions in code comments only when they affect implementation.
+
+## Accessibility notes
+Target WCAG 2.2 AA. Support keyboard-only use, 200% zoom, reduced motion, screen readers, and non-color status cues.
+
+## RTL notes
+Test the entire workflow under `dir="rtl"`, including charts, tables, pagination, focus order, and mixed Arabic/numeric content.

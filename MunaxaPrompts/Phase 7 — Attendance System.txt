@@ -1,0 +1,27 @@
+Start Phase 7.
+
+Implement:
+
+Student Attendance
+
+Teacher Attendance
+
+QR Attendance
+
+Offline Attendance Queue
+
+Background Synchronization
+
+Attendance Dashboard
+
+Parent Attendance View
+
+Generate:
+
+Database
+Backend
+Admin Portal
+Flutter
+Tests
+
+Offline-first architecture is mandatory.

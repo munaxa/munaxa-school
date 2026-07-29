@@ -1,0 +1,27 @@
+Start Phase 3.
+
+Implement:
+
+Authentication:
+
+- Firebase Auth
+- Local Login
+- JWT
+- Refresh Tokens
+- Password Reset
+- First Login Password Change
+
+Authorization:
+
+- RBAC
+- Permission Guards
+- Tenant Isolation Guards
+
+Generate:
+
+Backend
+Admin Portal
+Flutter Screens
+Swagger
+Unit Tests
+Integration Tests

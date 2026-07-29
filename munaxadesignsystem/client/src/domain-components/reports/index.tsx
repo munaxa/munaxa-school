@@ -1,0 +1,18 @@
+import type { ReactNode } from "react";
+import { CalendarClock, Download, FileChartColumn, Lightbulb, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MetricCard, StatusBadge, SummaryPanel } from "../shared";
+
+export type ReportExportState="queued"|"processing"|"ready"|"failed"|"expired";
+export function ReportExportStatus({status}:{status:ReportExportState}){const tone=status==="ready"?"success":status==="failed"?"danger":status==="processing"?"info":status==="queued"?"warning":"neutral";return <StatusBadge label={status} tone={tone}/>}
+export function ReportCard({title,owner,updated,onOpen}:{title:string;owner:string;updated:string;onOpen?:()=>void}){return <SummaryPanel title={title} description={`Owner: ${owner}`} action={onOpen?<Button size="sm" variant="outline" onClick={onOpen}>Open</Button>:undefined}><p className="text-xs text-muted-foreground">Updated {updated}</p></SummaryPanel>;}
+export function ReportMetric(props:{label:string;value:string;detail?:string}){return <MetricCard {...props} icon={<FileChartColumn className="size-4" aria-hidden/>}/>}
+export function ReportFilterBar({children,onRun,running=false}:{children:ReactNode;onRun?:()=>void;running?:boolean}){return <div role="search" aria-label="Report filters" className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4"><div className="flex min-w-0 flex-1 flex-wrap gap-3">{children}</div><Button onClick={onRun} disabled={running}>{running?"Running…":"Run report"}</Button></div>;}
+export function ReportSummary({title,items}:{title:string;items:{label:string;value:string}[]}){return <SummaryPanel title={title}><dl className="grid gap-3 sm:grid-cols-2">{items.map(x=><div key={x.label} className="rounded-lg bg-muted/40 p-3"><dt className="text-xs text-muted-foreground">{x.label}</dt><dd className="mt-1 font-semibold">{x.value}</dd></div>)}</dl></SummaryPanel>;}
+export function ReportScheduleCard({name,schedule,nextRun}:{name:string;schedule:string;nextRun:string}){return <SummaryPanel title={name} description={schedule} action={<CalendarClock className="size-5 text-primary" aria-hidden/>}><p className="text-sm text-muted-foreground">Next run: {nextRun}</p></SummaryPanel>;}
+export function ReportCategoryCard({name,count}:{name:string;count:number}){return <SummaryPanel title={name} action={<FileChartColumn className="size-5 text-primary" aria-hidden/>}><p className="text-sm text-muted-foreground">{count} reports</p></SummaryPanel>;}
+export function ReportInsightCard({title,insight}:{title:string;insight:string}){return <SummaryPanel title={title} action={<Lightbulb className="size-5 text-warning" aria-hidden/>}><p className="text-sm text-muted-foreground">{insight}</p></SummaryPanel>;}
+export function ReportTrendCard({title,value,change}:{title:string;value:string;change:string}){return <SummaryPanel title={title} action={<TrendingUp className="size-5 text-success" aria-hidden/>}><p className="text-3xl font-semibold">{value}</p><p className="text-sm text-muted-foreground">{change}</p></SummaryPanel>;}
+export function ReportVisualizationWrapper({title,description,children}:{title:string;description?:string;children:ReactNode}){return <SummaryPanel title={title} description={description}><div className="min-h-64" role="group" aria-label={title}>{children}</div></SummaryPanel>;}
+export function ReportExportAction({status,onExport}:{status:ReportExportState;onExport?:()=>void}){return <div className="flex items-center gap-2"><ReportExportStatus status={status}/><Button variant="outline" size="sm" onClick={onExport} disabled={status==="processing"||status==="queued"}><Download aria-hidden/>Export</Button></div>;}
+

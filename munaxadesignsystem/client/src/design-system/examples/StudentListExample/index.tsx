@@ -1,0 +1,6 @@
+import { MoreHorizontal, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { StudentCard } from "../../components";
+export function StudentListExample() { return <section aria-labelledby="student-list-title" className="space-y-4"><div className="flex flex-wrap items-end justify-between gap-3"><div><h2 id="student-list-title" className="text-2xl font-semibold">Students</h2><p className="text-sm text-muted-foreground">1,842 active students</p></div><Button>Add student</Button></div><label className="relative block max-w-md"><span className="sr-only">Search students</span><Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden /><Input className="ps-9" placeholder="Search by name or ID" /></label><div className="grid gap-3 md:grid-cols-2"><StudentCard name="Lina Haddad" subtitle="Grade 8 · MUN-2048" meta="Active enrollment" action={<Button variant="ghost" size="icon" aria-label="Actions for Lina Haddad"><MoreHorizontal aria-hidden /></Button>} /><StudentCard name="Omar Saleh" subtitle="Grade 6 · MUN-1932" meta="Active enrollment" /></div></section>; }
+export default StudentListExample;

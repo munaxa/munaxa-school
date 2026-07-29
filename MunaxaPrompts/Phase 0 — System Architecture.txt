@@ -1,0 +1,22 @@
+Start Phase 0.
+
+Deliver:
+
+1. Complete system architecture.
+2. Monorepo architecture.
+3. Domain architecture.
+4. Multi-tenant architecture.
+5. Database ERD.
+6. RBAC matrix.
+7. API architecture.
+8. Mobile architecture.
+9. Deployment architecture.
+10. Security architecture.
+11. Audit logging strategy.
+12. Backup strategy.
+13. Disaster recovery strategy.
+14. Notification architecture.
+
+Do not generate implementation code.
+
+Generate diagrams using Mermaid where appropriate.
