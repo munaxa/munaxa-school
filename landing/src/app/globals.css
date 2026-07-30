@@ -14,7 +14,7 @@
 
 @layer base {
   :root {
-    --radius: 0.875rem; /* 14px — munaxadesignsystem --radius */
+    --radius: 0.875rem; /* 14px — the app-level radius the Platform contract derives sm/md/lg from */
     /* Editorial hairline + dot-grid tints, derived from the brand so they track the theme. */
     --hairline: color-mix(in oklch, var(--foreground) 8%, transparent);
     --dot: color-mix(in oklch, var(--foreground) 6%, transparent);
@@ -35,7 +35,7 @@
   body {
     @apply bg-background text-foreground font-body;
   }
-  /* munaxadesignsystem: RTL/Arabic resolves display + body to Cairo. */
+  /* RTL/Arabic resolves display + body to Cairo. */
   html[dir='rtl'] {
     --font-display: var(--font-arabic);
     --font-body: var(--font-arabic);

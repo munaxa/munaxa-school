@@ -5,7 +5,7 @@ import { SITE_NAME, SITE_URL, THEME_COLOR_LIGHT, THEME_COLOR_DARK } from '@/lib/
 
 const sora = Sora({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
-// munaxadesignsystem: Cairo backs --font-arabic, used for display/body type when dir="rtl".
+// Cairo backs --font-arabic, used for display/body type when dir="rtl".
 const cairo = Cairo({ subsets: ['latin', 'arabic'], variable: '--font-arabic', display: 'swap' });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
