@@ -51,6 +51,7 @@ For **each** Workers project (`munaxademo`, `landing`), set in
 | **Root directory** | `/` (the **repository root** — *not* `school/` and *not* the app subfolder) |
 | **Build command** | `pnpm --filter <app> run cf:build` |
 | **Deploy command** | `pnpm --filter <app> exec wrangler deploy` |
+| **Build watch paths** | `*` (see below) |
 
 Replace `<app>` with `munaxademo` or `@school/landing`.
 
@@ -62,6 +63,20 @@ Replace `<app>` with `munaxademo` or `@school/landing`.
   that app's `wrangler.jsonc` and the freshly built `.open-next/worker.js`.
 - Node version: the repo pins **Node 22** via `.nvmrc`. If the build image defaults to something
   else, set the `NODE_VERSION` build variable to `22`.
+
+#### Build watch paths — why they must not be scoped to the app folder
+
+Workers Builds only starts a build when a push touches a **build watch path**. Scoping a project's
+include paths to its own folder (`school/munaxademo/*`) looks tidy and is wrong here: both apps
+render their entire UI from `@axa/platform`, and `cf:build` rebuilds that dependency first. A
+platform-only or shared-package-only merge would then produce **no build at all**, and the live
+Worker would keep serving the previous bundle — a silent stale deploy, with a green `main` and
+nothing in the dashboard to indicate it.
+
+Set **Include paths** to `*` on both projects. A merge that changes nothing they consume costs one
+short cached build; the alternative costs correctness. If narrowing is ever justified, the minimum
+correct set is the app folder **plus** every path its build reads: `platform/**`,
+`school/packages/**`, `pnpm-lock.yaml` and `pnpm-workspace.yaml`.
 
 ### Runtime secrets (set once per project, not in the repo)
 
