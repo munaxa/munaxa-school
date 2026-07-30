@@ -12,6 +12,7 @@ import {
   EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -177,12 +178,10 @@ export default function FeeCatalogPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="font-display text-2xl font-semibold">Fee catalog</h1>
-        <p className="text-sm text-muted-foreground">
-          Define fee items and set per-grade, per-year amounts used by admissions quotations.
-        </p>
-      </header>
+      <PageHeader
+        title="Fee catalog"
+        description="Define fee items and set per-grade, per-year amounts used by admissions quotations."
+      />
 
       <Card>
         <CardHeader>

@@ -15,18 +15,19 @@ import {
   Button,
   Card,
   CardContent,
-  EmptyState,
   CardHeader,
   CardTitle,
+  EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
-  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
+  Table,
 } from '@axa/platform';
 
 const EMPTY: CreateTeacherInput = {
@@ -81,7 +82,7 @@ export default function TeachersPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.teachers')}</h1>
+        <PageHeader title={t('nav.teachers')} />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

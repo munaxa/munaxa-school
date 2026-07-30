@@ -13,6 +13,7 @@ import {
   EntityPicker,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -75,7 +76,7 @@ export default function ClinicPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.clinic')}</h1>
+        <PageHeader title={t('nav.clinic')} />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

@@ -11,17 +11,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
-  Table,
   TBody,
   TD,
-  Textarea,
   TH,
   THead,
   TR,
-  EmptyState,
+  Table,
+  Textarea,
 } from '@axa/platform';
 
 const AUDIENCES = ['ALL', 'PARENTS', 'TEACHERS', 'STUDENTS'];
@@ -70,7 +71,7 @@ export default function CommunicationPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-3xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.communication')}</h1>
+        <PageHeader title={t('nav.communication')} />
 
         <Card>
           <CardHeader>

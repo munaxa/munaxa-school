@@ -12,6 +12,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -145,7 +146,7 @@ export default function MyHrPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('hr.myHr')}</h1>
+        <PageHeader title={t('hr.myHr')} />
 
         <Card>
           <CardHeader>

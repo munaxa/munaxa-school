@@ -14,6 +14,7 @@ import {
   EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -64,7 +65,7 @@ export default function AcademicStructurePage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.academicStructure')}</h1>
+        <PageHeader title={t('nav.academicStructure')} />
 
         <Card>
           <CardContent className="grid gap-3 pt-6 sm:grid-cols-2">

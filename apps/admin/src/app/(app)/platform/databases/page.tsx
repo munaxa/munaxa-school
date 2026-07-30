@@ -11,6 +11,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   useToast,
 } from '@axa/platform';
 import { useI18n } from '@/components/i18n-provider';
@@ -78,10 +79,7 @@ export default function TenantDatabasesPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-semibold">{t('platformDb.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('platformDb.subtitle')}</p>
-        </header>
+        <PageHeader title={t('platformDb.title')} description={t('platformDb.subtitle')} />
 
         <Card>
           <CardHeader>

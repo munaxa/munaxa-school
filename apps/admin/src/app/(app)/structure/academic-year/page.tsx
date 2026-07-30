@@ -14,6 +14,7 @@ import {
   EmptyState,
   Field,
   Input,
+  PageHeader,
   Progress,
   ReadinessRing,
   Select,
@@ -92,10 +93,7 @@ export default function AcademicYearWorkspacePage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-semibold">{t('academicYear.title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('academicYear.subtitle')}</p>
-        </header>
+        <PageHeader title={t('academicYear.title')} description={t('academicYear.subtitle')} />
 
         <Card>
           <CardContent className="grid gap-3 pt-6 sm:grid-cols-2">

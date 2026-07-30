@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  PageHeader,
   Progress,
   Select,
   Spinner,
@@ -91,13 +92,10 @@ export default function SubscriptionSettingsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-semibold">Subscription</h1>
-          <p className="text-sm text-muted-foreground">
-            Your current plan, usage and renewal. To change plan, request an upgrade — our team
-            reviews and applies it (no downtime).
-          </p>
-        </header>
+        <PageHeader
+          title="Subscription"
+          description="Your current plan, usage and renewal. To change plan, request an upgrade — our team reviews and applies it (no downtime)."
+        />
 
         {/* Current plan */}
         <Card>

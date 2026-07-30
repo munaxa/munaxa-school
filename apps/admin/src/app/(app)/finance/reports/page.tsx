@@ -12,14 +12,15 @@ import {
   CardHeader,
   CardTitle,
   Field,
+  PageHeader,
   Select,
   Spinner,
-  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
+  Table,
 } from '@axa/platform';
 
 type Dimension = 'category' | 'academicYear' | 'grade' | 'campus';
@@ -94,7 +95,7 @@ export default function FinanceReportsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.finance')} · Reports</h1>
+        <PageHeader title={<>{t('nav.finance')} · Reports</>} />
 
         {/* Account-first outstanding — finance is account-centric; students are a drill-down. */}
         <Card>

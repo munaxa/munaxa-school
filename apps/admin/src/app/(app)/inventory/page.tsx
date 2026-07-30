@@ -19,16 +19,17 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
-  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  EmptyState,
+  Table,
 } from '@axa/platform';
 
 export default function InventoryPage() {
@@ -71,7 +72,7 @@ export default function InventoryPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.inventory')}</h1>
+        <PageHeader title={t('nav.inventory')} />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

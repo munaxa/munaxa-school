@@ -12,6 +12,7 @@ import {
   EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -95,13 +96,10 @@ export default function FeeConfigPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-semibold">Fee configuration</h1>
-          <p className="text-sm text-muted-foreground">
-            Grade fees, transport fares, discount rules and the billing policy that drive enrollment
-            quotes. No values are hardcoded.
-          </p>
-        </header>
+        <PageHeader
+          title="Fee configuration"
+          description="Grade fees, transport fares, discount rules and the billing policy that drive enrollment quotes. No values are hardcoded."
+        />
 
         {/* Campus + academic-year context for the fee/transport tabs */}
         <div className="flex flex-wrap items-end gap-2">

@@ -9,6 +9,7 @@ import {
   Card,
   CardContent,
   ErrorState,
+  PageHeader,
   Tabs,
   TabsContent,
   TabsList,
@@ -50,7 +51,7 @@ function Transport() {
   if (data.unavailable) {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.fleet')}</h1>
+        <PageHeader title={t('nav.fleet')} />
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground">
             {t('fleet.unavailable')}

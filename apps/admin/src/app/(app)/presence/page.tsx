@@ -14,6 +14,7 @@ import {
   EntityPicker,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -82,7 +83,7 @@ export default function PresencePage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.presence')}</h1>
+        <PageHeader title={t('nav.presence')} />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

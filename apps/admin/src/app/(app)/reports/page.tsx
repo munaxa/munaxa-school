@@ -16,6 +16,7 @@ import {
   EntityPicker,
   Field,
   Input,
+  PageHeader,
   TBody,
   TD,
   TH,
@@ -128,10 +129,7 @@ export default function ReportsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-semibold">{t('nav.reports')}</h1>
-          <p className="text-sm text-muted-foreground">{t('reports.subtitle')}</p>
-        </header>
+        <PageHeader title={t('nav.reports')} description={t('reports.subtitle')} />
 
         <div className="flex flex-wrap gap-2">
           {KINDS.map((k) => (

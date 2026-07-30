@@ -10,6 +10,7 @@ import {
   CardTitle,
   EmptyState,
   Field,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -106,12 +107,10 @@ export default function AdmissionsReportsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="font-display text-2xl font-semibold">Admissions reports</h1>
-        <p className="text-sm text-muted-foreground">
-          Registrations, re-enrollments and fee modifications.
-        </p>
-      </header>
+      <PageHeader
+        title="Admissions reports"
+        description="Registrations, re-enrollments and fee modifications."
+      />
 
       <div className="flex gap-2">
         <Button

@@ -14,6 +14,7 @@ import {
   EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
   Spinner,
   TBody,
@@ -223,12 +224,10 @@ function FinanceWorkspace() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="space-y-1">
-          <h1 className="font-display text-2xl font-semibold">Finance</h1>
-          <p className="text-sm text-muted-foreground">
-            Search an account and manage its finances — one account pays for all its students.
-          </p>
-        </header>
+        <PageHeader
+          title="Finance"
+          description="Search an account and manage its finances — one account pays for all its students."
+        />
 
         <Card>
           <CardContent className="p-4">

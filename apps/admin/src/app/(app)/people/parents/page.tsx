@@ -10,17 +10,18 @@ import {
   Button,
   Card,
   CardContent,
-  EmptyState,
   CardHeader,
   CardTitle,
+  EmptyState,
   Field,
   Input,
-  Table,
+  PageHeader,
   TBody,
   TD,
   TH,
   THead,
   TR,
+  Table,
 } from '@axa/platform';
 
 const EMPTY: CreateParentInput = {
@@ -79,7 +80,7 @@ export default function ParentsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.parents')}</h1>
+        <PageHeader title={t('nav.parents')} />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

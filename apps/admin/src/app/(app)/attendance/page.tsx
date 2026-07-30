@@ -10,6 +10,7 @@ import {
   EntityPicker,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -100,7 +101,7 @@ export default function AttendancePage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.attendance')}</h1>
+        <PageHeader title={t('nav.attendance')} />
 
         <div className="flex flex-wrap items-end gap-2">
           <Field label={t('attendance.section')} className="flex-1">

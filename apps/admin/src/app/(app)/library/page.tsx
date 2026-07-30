@@ -16,16 +16,17 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
-  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  EmptyState,
+  Table,
 } from '@axa/platform';
 import { LoanStatusBadge } from '@/components/domain';
 
@@ -78,7 +79,7 @@ export default function LibraryPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('nav.library')}</h1>
+        <PageHeader title={t('nav.library')} />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

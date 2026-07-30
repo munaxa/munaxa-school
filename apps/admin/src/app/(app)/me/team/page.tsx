@@ -10,6 +10,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  PageHeader,
   TBody,
   TD,
   TH,
@@ -65,7 +66,7 @@ export default function MyTeamPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="font-display text-2xl font-semibold">{t('hr.myTeam')}</h1>
+        <PageHeader title={t('hr.myTeam')} />
 
         <Card>
           <CardHeader>
