@@ -10,16 +10,17 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
   Input,
   PageHeader,
   Select,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import {
@@ -227,19 +228,15 @@ export default function MyHrPage() {
                 />
               </Field>
               <Field label={t('hr.startDate')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={form.startDate}
-                  onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                  onChange={(value) => setForm({ ...form, startDate: value })}
                 />
               </Field>
               <Field label={t('hr.endDate')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={form.endDate}
-                  onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                  onChange={(value) => setForm({ ...form, endDate: value })}
                 />
               </Field>
               <div className="sm:col-span-2 flex justify-end">

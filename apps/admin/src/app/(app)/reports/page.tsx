@@ -13,16 +13,16 @@ import {
   Button,
   Card,
   CardContent,
+  DatePicker,
   EntityPicker,
   Field,
-  Input,
   PageHeader,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
 } from '@axa/platform';
 import { Shell } from '@/components/shell';
 import { loadSectionOptions } from '@/lib/pickers';
@@ -158,18 +158,13 @@ export default function ReportsPage() {
               />
             </Field>
             <Field label="From">
-              <Input
-                type="date"
+              <DatePicker
                 value={filters.from ?? ''}
-                onChange={(e) => setField('from', e.target.value)}
+                onChange={(value) => setField('from', value)}
               />
             </Field>
             <Field label="To">
-              <Input
-                type="date"
-                value={filters.to ?? ''}
-                onChange={(e) => setField('to', e.target.value)}
-              />
+              <DatePicker value={filters.to ?? ''} onChange={(value) => setField('to', value)} />
             </Field>
             <Button disabled={busy} onClick={() => void run()}>
               {busy ? t('common.loading') : t('reports.run')}

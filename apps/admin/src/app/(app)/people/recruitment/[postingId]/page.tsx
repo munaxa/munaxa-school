@@ -13,6 +13,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DateTimePicker,
   Field,
   Input,
   PageHeader,
@@ -314,11 +315,9 @@ function ApplicantCard({
           {canManage && !hired ? (
             <div className="mt-2 flex flex-wrap items-end gap-2">
               <Field label={t('hr.interviewTime')}>
-                <Input
-                  type="datetime-local"
-                  dir="ltr"
+                <DateTimePicker
                   value={interview.scheduledAt}
-                  onChange={(e) => setInterview({ ...interview, scheduledAt: e.target.value })}
+                  onChange={(value) => setInterview({ ...interview, scheduledAt: value })}
                 />
               </Field>
               <Field label={t('hr.mode')}>

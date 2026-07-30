@@ -2,9 +2,21 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { getMessages } from '@school/i18n';
+import { LocaleProvider } from '@axa/platform';
 import { DEFAULT_LOCALE, directionForLocale, type Locale } from '@/lib/i18n';
 
 const LOCALE_KEY = 'munaxa.locale';
+
+/**
+ * BCP-47 tag for the Platform date engine, keyed to Munaxa's market.
+ *
+ * The app's two languages are `en` and `ar`, but the date conventions that matter here — the week
+ * starting on Saturday, the day-before-month field order — are Jordan's, and they are the same in
+ * both languages. Pinning the region to `JO` is School owning its behaviour: it is the deliberate
+ * reason a picker parses `3/4` as April and opens on a Saturday-first grid, rather than inheriting
+ * whatever region the visitor's browser happens to report.
+ */
+const DATE_LOCALE: Record<Locale, string> = { en: 'en-JO', ar: 'ar-JO' };
 
 interface I18nApi {
   locale: Locale;
@@ -61,5 +73,16 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const messages = getMessages(locale);
   const t = useCallback((path: string) => resolve(messages, path), [messages]);
 
-  return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>;
+  return (
+    <I18nContext.Provider value={{ locale, setLocale, t }}>
+      {/*
+        Every Platform date control below resolves its locale, direction and week start from here,
+        so a date reads the same way — and parses the same way — on every screen, in whichever
+        language the user has chosen.
+      */}
+      <LocaleProvider locale={DATE_LOCALE[locale]} direction={directionForLocale(locale)}>
+        {children}
+      </LocaleProvider>
+    </I18nContext.Provider>
+  );
 }

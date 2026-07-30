@@ -9,16 +9,17 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
   Input,
   Select,
   Spinner,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import { useI18n } from '@/components/i18n-provider';
@@ -143,19 +144,15 @@ export default function AttendanceOpsPage() {
                 </Select>
               </Field>
               <Field label={t('attendanceOps.from')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={lockForm.periodStart}
-                  onChange={(e) => setLockForm({ ...lockForm, periodStart: e.target.value })}
+                  onChange={(value) => setLockForm({ ...lockForm, periodStart: value })}
                 />
               </Field>
               <Field label={t('attendanceOps.to')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={lockForm.periodEnd}
-                  onChange={(e) => setLockForm({ ...lockForm, periodEnd: e.target.value })}
+                  onChange={(value) => setLockForm({ ...lockForm, periodEnd: value })}
                 />
               </Field>
               <Field label={t('common.note')} className="flex-1 min-w-40">
@@ -391,19 +388,15 @@ export default function AttendanceOpsPage() {
           <CardContent className="space-y-4">
             <div className="flex flex-wrap items-end gap-2">
               <Field label={t('attendanceOps.from')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={range.from}
-                  onChange={(e) => setRange({ ...range, from: e.target.value })}
+                  onChange={(value) => setRange({ ...range, from: value })}
                 />
               </Field>
               <Field label={t('attendanceOps.to')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={range.to}
-                  onChange={(e) => setRange({ ...range, to: e.target.value })}
+                  onChange={(value) => setRange({ ...range, to: value })}
                 />
               </Field>
               <Button size="sm" onClick={() => void loadAnalytics()}>

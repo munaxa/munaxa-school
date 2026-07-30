@@ -9,15 +9,16 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
   Input,
   Select,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import {
@@ -106,11 +107,9 @@ export function AttendanceTab({
           <CardContent>
             <div className="flex flex-wrap items-end gap-2">
               <Field label={t('hr.date')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={form.date}
-                  onChange={(ev) => setForm({ ...form, date: ev.target.value })}
+                  onChange={(value) => setForm({ ...form, date: value })}
                 />
               </Field>
               <Field label={t('common.status')}>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Button, Field, Input, Select, useToast } from '@axa/platform';
+import { Button, DatePicker, Field, Input, Select, useToast } from '@axa/platform';
 import {
   employeesApi,
   EMPLOYEE_ENTRY_STATUSES,
@@ -209,11 +209,9 @@ export function EmployeeEditor({
               </Select>
             </Field>
             <Field label={t('hr.dob')}>
-              <Input
-                type="date"
-                dir="ltr"
+              <DatePicker
                 value={form.dateOfBirth}
-                onChange={(e) => set('dateOfBirth', e.target.value)}
+                onChange={(value) => set('dateOfBirth', value)}
               />
             </Field>
             <Field label={t('people.nationalId')}>
@@ -303,19 +301,12 @@ export function EmployeeEditor({
               </Field>
             ) : null}
             <Field label={t('hr.hireDate')}>
-              <Input
-                type="date"
-                dir="ltr"
-                value={form.hireDate}
-                onChange={(e) => set('hireDate', e.target.value)}
-              />
+              <DatePicker value={form.hireDate} onChange={(value) => set('hireDate', value)} />
             </Field>
             <Field label={t('hr.probationEnd')}>
-              <Input
-                type="date"
-                dir="ltr"
+              <DatePicker
                 value={form.probationEndDate}
-                onChange={(e) => set('probationEndDate', e.target.value)}
+                onChange={(value) => set('probationEndDate', value)}
               />
             </Field>
             <Field label={t('hr.workingHours')}>

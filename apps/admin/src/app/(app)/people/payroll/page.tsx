@@ -10,15 +10,15 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
-  Input,
   PageHeader,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import { attendanceApi, type PayrollPrepResult } from '@/lib/people';
@@ -81,19 +81,15 @@ export default function PayrollPrepPage() {
           <CardContent>
             <div className="flex flex-wrap items-end gap-2">
               <Field label={t('hr.startDate')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={range.from}
-                  onChange={(e) => setRange({ ...range, from: e.target.value })}
+                  onChange={(value) => setRange({ ...range, from: value })}
                 />
               </Field>
               <Field label={t('hr.endDate')}>
-                <Input
-                  type="date"
-                  dir="ltr"
+                <DatePicker
                   value={range.to}
-                  onChange={(e) => setRange({ ...range, to: e.target.value })}
+                  onChange={(value) => setRange({ ...range, to: value })}
                 />
               </Field>
               <Button size="sm" onClick={() => void run()} disabled={loading}>

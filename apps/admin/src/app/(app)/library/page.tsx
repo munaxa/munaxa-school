@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
   DataGrid,
+  DatePicker,
   EmptyState,
   Field,
   Input,
@@ -355,13 +356,11 @@ function Checkout({
         />
       </Field>
       <Field label={t('library.due')} htmlFor="checkout-due">
-        <Input
-          id="checkout-due"
-          type="date"
+        <DatePicker
           value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
+          onChange={(value) => setDueDate(value)}
+          id="checkout-due"
           required
-          dir="ltr"
         />
       </Field>
       <Button type="submit" disabled={busy}>

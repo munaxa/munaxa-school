@@ -11,18 +11,19 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  DatePicker,
   Dialog,
   EmptyState,
   Field,
   Input,
   Select,
   Spinner,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import {
@@ -729,10 +730,9 @@ export function DocumentsSection({ studentId }: { studentId: string }) {
             />
           </Field>
           <Field label={t('studentProfile.signedDate')}>
-            <Input
-              type="date"
+            <DatePicker
               value={signForm.signedAt}
-              onChange={(e) => setSignForm({ ...signForm, signedAt: e.target.value })}
+              onChange={(value) => setSignForm({ ...signForm, signedAt: value })}
             />
           </Field>
         </div>

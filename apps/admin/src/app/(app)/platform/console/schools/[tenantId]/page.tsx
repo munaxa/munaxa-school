@@ -11,6 +11,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
   Input,
   PageHeader,
@@ -359,7 +360,7 @@ function OverridesCard({
             </Field>
           ) : null}
           <Field label="Expires (optional)">
-            <Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+            <DatePicker value={expiresAt} onChange={(value) => setExpiresAt(value)} />
           </Field>
         </div>
         <Field label="Reason (audited)">

@@ -1,23 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shell } from '@/components/shell';
-import {
-  Badge,
-  Card,
-  CardContent,
-  PageHeader,
-  Spinner,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
-  useToast,
-} from '@axa/platform';
+import { Badge, DataGrid, EmptyState, PageHeader, useToast, type ColumnDef } from '@axa/platform';
 import { platformConsoleApi, type SubscriptionRow } from '@/lib/platform-console';
+import { useGridLabels } from '@/components/grid-labels';
 import { PlatformNav } from '../platform-nav';
 
 const TONE: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'muted'> = {
@@ -33,6 +21,7 @@ const TONE: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'muted
 export default function PlatformSubscriptionsPage() {
   const toast = useToast();
   const router = useRouter();
+  const labels = useGridLabels();
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +39,42 @@ export default function PlatformSubscriptionsPage() {
     void load();
   }, [load]);
 
+  const columns = useMemo<ColumnDef<(typeof rows)[number]>[]>(
+    () => [
+      {
+        id: 'school',
+        header: 'School',
+        value: (r) => r.tenant.name,
+        sortable: true,
+        rowHeader: true,
+        multiline: true,
+        cell: (r) => (
+          <div>
+            <div className="font-medium">{r.tenant.name}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">{r.tenant.slug}</div>
+          </div>
+        ),
+      },
+      { id: 'plan', header: 'Plan', value: (r) => r.plan.name, sortable: true },
+      {
+        id: 'status',
+        header: 'Status',
+        value: (r) => r.status,
+        sortable: true,
+        cell: (r) => <Badge tone={TONE[r.status] ?? 'muted'}>{r.status}</Badge>,
+      },
+      { id: 'cycle', header: 'Cycle', value: (r) => r.billingCycle, sortable: true },
+      {
+        id: 'renewal',
+        header: 'Renewal',
+        value: (r) => r.currentPeriodEnd ?? '',
+        sortable: true,
+        cell: (r) => (r.currentPeriodEnd ? new Date(r.currentPeriodEnd).toLocaleDateString() : '—'),
+      },
+    ],
+    [],
+  );
+
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
@@ -59,62 +84,18 @@ export default function PlatformSubscriptionsPage() {
           actions={<PlatformNav active="subscriptions" />}
         />
 
-        <Card>
-          <CardContent className="pt-6">
-            {loading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Spinner /> Loading…
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH>School</TH>
-                      <TH>Plan</TH>
-                      <TH>Status</TH>
-                      <TH>Cycle</TH>
-                      <TH>Renewal</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {rows.map((r) => (
-                      <TR
-                        key={r.id}
-                        className="cursor-pointer"
-                        onClick={() => router.push(`/platform/console/schools/${r.tenantId}`)}
-                      >
-                        <TD>
-                          <div className="font-medium">{r.tenant.name}</div>
-                          <div className="font-mono text-[10px] text-muted-foreground">
-                            {r.tenant.slug}
-                          </div>
-                        </TD>
-                        <TD>{r.plan.name}</TD>
-                        <TD>
-                          <Badge tone={TONE[r.status] ?? 'muted'}>{r.status}</Badge>
-                        </TD>
-                        <TD>{r.billingCycle}</TD>
-                        <TD>
-                          {r.currentPeriodEnd
-                            ? new Date(r.currentPeriodEnd).toLocaleDateString()
-                            : '—'}
-                        </TD>
-                      </TR>
-                    ))}
-                    {rows.length === 0 ? (
-                      <TR>
-                        <TD colSpan={5} className="text-center text-muted-foreground">
-                          No subscriptions yet.
-                        </TD>
-                      </TR>
-                    ) : null}
-                  </TBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          getRowId={(r) => r.id}
+          getRowLabel={(r) => r.tenant.name}
+          labels={labels}
+          searchable={false}
+          loading={loading}
+          onRowActivate={(r) => router.push(`/platform/console/schools/${r.tenantId}`)}
+          aria-label="Subscriptions"
+          emptyState={<EmptyState title="No subscriptions yet." />}
+        />
       </div>
     </Shell>
   );

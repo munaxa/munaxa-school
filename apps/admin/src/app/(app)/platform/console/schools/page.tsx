@@ -1,24 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shell } from '@/components/shell';
 import {
   Badge,
-  Card,
-  CardContent,
+  DataGrid,
+  EmptyState,
   Input,
   PageHeader,
-  Spinner,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
   useToast,
+  type ColumnDef,
 } from '@axa/platform';
 import { platformConsoleApi, type SchoolRow } from '@/lib/platform-console';
+import { useGridLabels } from '@/components/grid-labels';
 import { PlatformNav } from '../platform-nav';
 
 const SUB_TONE: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'muted'> = {
@@ -35,6 +30,7 @@ const SUB_TONE: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'm
 export default function PlatformSchoolsPage() {
   const toast = useToast();
   const router = useRouter();
+  const labels = useGridLabels();
   const [rows, setRows] = useState<SchoolRow[]>([]);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
@@ -60,6 +56,73 @@ export default function PlatformSchoolsPage() {
       r.slug.toLowerCase().includes(q.toLowerCase()),
   );
 
+  const columns = useMemo<ColumnDef<SchoolRow>[]>(
+    () => [
+      {
+        id: 'school',
+        header: 'School',
+        value: (r) => r.name,
+        sortable: true,
+        rowHeader: true,
+        multiline: true,
+        cell: (r) => (
+          <div>
+            <div className="font-medium">{r.name}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">{r.slug}</div>
+          </div>
+        ),
+      },
+      {
+        id: 'plan',
+        header: 'Plan',
+        value: (r) => r.plan?.name ?? '',
+        sortable: true,
+        cell: (r) => r.plan?.name ?? <span className="text-muted-foreground">—</span>,
+      },
+      {
+        id: 'subscription',
+        header: 'Subscription',
+        value: (r) => r.subscriptionStatus,
+        sortable: true,
+        cell: (r) => (
+          <Badge tone={SUB_TONE[r.subscriptionStatus] ?? 'muted'}>{r.subscriptionStatus}</Badge>
+        ),
+      },
+      {
+        id: 'students',
+        header: 'Students',
+        value: (r) => r.students,
+        sortable: true,
+        align: 'end',
+        cell: (r) => r.students.toLocaleString(),
+      },
+      {
+        id: 'campuses',
+        header: 'Campuses',
+        value: (r) => r.campuses,
+        sortable: true,
+        align: 'end',
+      },
+      {
+        id: 'renewal',
+        header: 'Renewal',
+        value: (r) => r.renewal ?? '',
+        sortable: true,
+        cell: (r) => (
+          <>
+            {r.renewal ? new Date(r.renewal).toLocaleDateString() : '—'}
+            {r.trialEndsAt ? (
+              <Badge tone="default" className="ml-1">
+                trial
+              </Badge>
+            ) : null}
+          </>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
@@ -69,69 +132,18 @@ export default function PlatformSchoolsPage() {
           <Input placeholder="Search schools…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            {loading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Spinner /> Loading…
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH>School</TH>
-                      <TH>Plan</TH>
-                      <TH>Subscription</TH>
-                      <TH>Students</TH>
-                      <TH>Campuses</TH>
-                      <TH>Renewal</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {filtered.map((r) => (
-                      <TR
-                        key={r.id}
-                        className="cursor-pointer"
-                        onClick={() => router.push(`/platform/console/schools/${r.id}`)}
-                      >
-                        <TD>
-                          <div className="font-medium">{r.name}</div>
-                          <div className="font-mono text-[10px] text-muted-foreground">
-                            {r.slug}
-                          </div>
-                        </TD>
-                        <TD>{r.plan?.name ?? <span className="text-muted-foreground">—</span>}</TD>
-                        <TD>
-                          <Badge tone={SUB_TONE[r.subscriptionStatus] ?? 'muted'}>
-                            {r.subscriptionStatus}
-                          </Badge>
-                        </TD>
-                        <TD>{r.students.toLocaleString()}</TD>
-                        <TD>{r.campuses}</TD>
-                        <TD>
-                          {r.renewal ? new Date(r.renewal).toLocaleDateString() : '—'}
-                          {r.trialEndsAt ? (
-                            <Badge tone="default" className="ml-1">
-                              trial
-                            </Badge>
-                          ) : null}
-                        </TD>
-                      </TR>
-                    ))}
-                    {filtered.length === 0 ? (
-                      <TR>
-                        <TD colSpan={6} className="text-center text-muted-foreground">
-                          No schools found.
-                        </TD>
-                      </TR>
-                    ) : null}
-                  </TBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DataGrid
+          rows={filtered}
+          columns={columns}
+          getRowId={(r) => r.id}
+          getRowLabel={(r) => r.name}
+          labels={labels}
+          searchable={false}
+          loading={loading}
+          onRowActivate={(r) => router.push(`/platform/console/schools/${r.id}`)}
+          aria-label="Schools"
+          emptyState={<EmptyState title="No schools found." />}
+        />
       </div>
     </Shell>
   );

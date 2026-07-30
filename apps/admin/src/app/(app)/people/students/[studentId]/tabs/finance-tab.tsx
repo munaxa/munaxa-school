@@ -9,17 +9,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   EmptyState,
   Field,
   Input,
   Select,
   Spinner,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import { ChargeStatusBadge, TransactionStatusBadge } from '@/components/domain';
@@ -522,10 +523,9 @@ export function FinanceTab({
               />
             </Field>
             <Field label="First due date">
-              <Input
-                type="date"
+              <DatePicker
                 value={planForm.firstDueDate}
-                onChange={(e) => setPlanForm({ ...planForm, firstDueDate: e.target.value })}
+                onChange={(value) => setPlanForm({ ...planForm, firstDueDate: value })}
               />
             </Field>
             {planForm.isReplace && (
@@ -1013,10 +1013,9 @@ function CollectionsPanel({
                 />
               </Field>
               <Field label="Expected date">
-                <Input
-                  type="date"
+                <DatePicker
                   value={promiseForm.promiseBy}
-                  onChange={(e) => setPromiseForm({ ...promiseForm, promiseBy: e.target.value })}
+                  onChange={(value) => setPromiseForm({ ...promiseForm, promiseBy: value })}
                 />
               </Field>
               <Field label="Note" className="sm:col-span-1">

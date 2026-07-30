@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
   Input,
   Select,
@@ -275,20 +276,10 @@ function ContractEditor({
             <Input value={form.title} onChange={(e) => set({ title: e.target.value })} />
           </Field>
           <Field label={t('hr.startDate')}>
-            <Input
-              type="date"
-              dir="ltr"
-              value={form.startDate}
-              onChange={(e) => set({ startDate: e.target.value })}
-            />
+            <DatePicker value={form.startDate} onChange={(value) => set({ startDate: value })} />
           </Field>
           <Field label={t('hr.endDate')}>
-            <Input
-              type="date"
-              dir="ltr"
-              value={form.endDate}
-              onChange={(e) => set({ endDate: e.target.value })}
-            />
+            <DatePicker value={form.endDate} onChange={(value) => set({ endDate: value })} />
           </Field>
           <Field label={t('hr.baseSalary')}>
             <Input

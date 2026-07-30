@@ -9,21 +9,22 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  DatePicker,
   EmptyState,
   Field,
   Input,
   PageHeader,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
   Table,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
   useToast,
 } from '@axa/platform';
 import { useConfirm } from '@/components/confirm';
@@ -277,11 +278,9 @@ function GradeFees({
             />
           </Field>
           <Field label="Effective from">
-            <Input
-              type="date"
+            <DatePicker
               value={form.effectiveFrom}
-              onChange={(e) => setForm({ ...form, effectiveFrom: e.target.value })}
-              dir="ltr"
+              onChange={(value) => setForm({ ...form, effectiveFrom: value })}
             />
           </Field>
           <div className="flex items-end gap-2">

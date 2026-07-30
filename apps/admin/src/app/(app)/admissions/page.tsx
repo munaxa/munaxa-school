@@ -11,17 +11,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   EntityPicker,
   Field,
   Input,
   PageHeader,
   Select,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import { loadParentOptions, loadStudentOptions } from '@/lib/pickers';
@@ -439,11 +440,7 @@ export default function AdmissionPage() {
                   </Field>
                 )}
                 <Field label="First due date">
-                  <Input
-                    type="date"
-                    value={firstDueDate}
-                    onChange={(e) => setFirstDueDate(e.target.value)}
-                  />
+                  <DatePicker value={firstDueDate} onChange={(value) => setFirstDueDate(value)} />
                 </Field>
               </div>
 

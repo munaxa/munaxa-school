@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
   Input,
   Select,
@@ -134,12 +135,7 @@ export function DocumentsTab({
               />
             </Field>
             <Field label={t('hr.expiryDate')}>
-              <Input
-                type="date"
-                dir="ltr"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-              />
+              <DatePicker value={expiryDate} onChange={(value) => setExpiryDate(value)} />
             </Field>
             <Field label={t('hr.file')}>
               <input

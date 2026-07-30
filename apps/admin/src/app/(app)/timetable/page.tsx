@@ -12,6 +12,7 @@ import {
   Input,
   PageHeader,
   Select,
+  TimePicker,
   useToast,
   type Tone,
 } from '@axa/platform';
@@ -675,17 +676,15 @@ export default function TimetableWorkspace() {
               />
             </Field>
             <Field label="Start">
-              <Input
-                type="time"
+              <TimePicker
                 value={editing.form.startTime}
-                onChange={(e) => setForm({ startTime: e.target.value })}
+                onChange={(value) => setForm({ startTime: value })}
               />
             </Field>
             <Field label="End">
-              <Input
-                type="time"
+              <TimePicker
                 value={editing.form.endTime}
-                onChange={(e) => setForm({ endTime: e.target.value })}
+                onChange={(value) => setForm({ endTime: value })}
               />
             </Field>
             <Field label="Subject" className="col-span-2">

@@ -12,13 +12,14 @@ import {
   Field,
   Input,
   Select,
+  Table,
   TBody,
   TD,
+  Textarea,
   TH,
   THead,
+  TimePicker,
   TR,
-  Table,
-  Textarea,
   useToast,
 } from '@axa/platform';
 import { useI18n } from '@/components/i18n-provider';
@@ -422,19 +423,15 @@ function RoutesCard({
               </Select>
             </Field>
             <Field label={t('fleet.round1')}>
-              <Input
-                type="time"
+              <TimePicker
                 value={form.round1Time}
-                onChange={(e) => setForm({ ...form, round1Time: e.target.value })}
-                dir="ltr"
+                onChange={(value) => setForm({ ...form, round1Time: value })}
               />
             </Field>
             <Field label={t('fleet.round2')}>
-              <Input
-                type="time"
+              <TimePicker
                 value={form.round2Time}
-                onChange={(e) => setForm({ ...form, round2Time: e.target.value })}
-                dir="ltr"
+                onChange={(value) => setForm({ ...form, round2Time: value })}
               />
             </Field>
             {editingId ? (

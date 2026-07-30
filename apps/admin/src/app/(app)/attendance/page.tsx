@@ -7,17 +7,17 @@ import {
   Button,
   Card,
   CardContent,
+  DatePicker,
   EntityPicker,
   Field,
-  Input,
   PageHeader,
   Select,
+  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
-  Table,
   useToast,
 } from '@axa/platform';
 import { useI18n } from '@/components/i18n-provider';
@@ -113,7 +113,7 @@ export default function AttendancePage() {
             />
           </Field>
           <Field label={t('attendance.date')}>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DatePicker value={date} onChange={(value) => setDate(value)} />
           </Field>
           <Field label={t('attendance.period')}>
             <Select

@@ -10,6 +10,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Dialog,
   EmptyState,
   Field,
@@ -872,17 +873,15 @@ function CreateYearDialog({
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t('structure.start')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.startDate}
-              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, startDate: value })}
             />
           </Field>
           <Field label={t('structure.end')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.endDate}
-              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, endDate: value })}
             />
           </Field>
         </div>
@@ -891,17 +890,15 @@ function CreateYearDialog({
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t('academicYear.registrationStart')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.registrationStartDate}
-              onChange={(e) => setForm({ ...form, registrationStartDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, registrationStartDate: value })}
             />
           </Field>
           <Field label={t('academicYear.registrationEnd')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.registrationEndDate}
-              onChange={(e) => setForm({ ...form, registrationEndDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, registrationEndDate: value })}
             />
           </Field>
         </div>
@@ -991,17 +988,15 @@ function EditYearDialog({
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t('structure.start')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.startDate}
-              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, startDate: value })}
             />
           </Field>
           <Field label={t('structure.end')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.endDate}
-              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, endDate: value })}
             />
           </Field>
         </div>
@@ -1010,17 +1005,15 @@ function EditYearDialog({
         </p>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t('academicYear.registrationStart')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.registrationStartDate}
-              onChange={(e) => setForm({ ...form, registrationStartDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, registrationStartDate: value })}
             />
           </Field>
           <Field label={t('academicYear.registrationEnd')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.registrationEndDate}
-              onChange={(e) => setForm({ ...form, registrationEndDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, registrationEndDate: value })}
             />
           </Field>
         </div>
@@ -1141,20 +1134,18 @@ function Semesters({ academicYearId, readOnly }: { academicYearId: string; readO
             />
           </Field>
           <Field label={t('structure.start')}>
-            <Input
-              className="h-8"
-              type="date"
+            <DatePicker
               value={form.startDate}
-              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, startDate: value })}
+              className="h-8"
               required
             />
           </Field>
           <Field label={t('structure.end')}>
-            <Input
-              className="h-8"
-              type="date"
+            <DatePicker
               value={form.endDate}
-              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, endDate: value })}
+              className="h-8"
               required
             />
           </Field>
@@ -1230,20 +1221,18 @@ function SemesterEditRow({
         />
       </Field>
       <Field label={t('structure.start')}>
-        <Input
-          className="h-8"
-          type="date"
+        <DatePicker
           value={form.startDate}
-          onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+          onChange={(value) => setForm({ ...form, startDate: value })}
+          className="h-8"
           required
         />
       </Field>
       <Field label={t('structure.end')}>
-        <Input
-          className="h-8"
-          type="date"
+        <DatePicker
           value={form.endDate}
-          onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+          onChange={(value) => setForm({ ...form, endDate: value })}
+          className="h-8"
           required
         />
       </Field>

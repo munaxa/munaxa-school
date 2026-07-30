@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   Field,
   Input,
   Select,
@@ -160,20 +161,16 @@ function ProfileCard({
             />
           </Field>
           <Field label={t('hr.licenseExpiry')}>
-            <Input
-              type="date"
-              dir="ltr"
+            <DatePicker
               value={form.licenseExpiry}
-              onChange={(e) => set({ licenseExpiry: e.target.value })}
+              onChange={(value) => set({ licenseExpiry: value })}
               disabled={!canManage}
             />
           </Field>
           <Field label={t('hr.medicalCertExpiry')}>
-            <Input
-              type="date"
-              dir="ltr"
+            <DatePicker
               value={form.medicalCertExpiry}
-              onChange={(e) => set({ medicalCertExpiry: e.target.value })}
+              onChange={(value) => set({ medicalCertExpiry: value })}
               disabled={!canManage}
             />
           </Field>
@@ -268,11 +265,9 @@ function InfractionsCard({
         {canManage ? (
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label={t('hr.date')}>
-              <Input
-                type="date"
-                dir="ltr"
+              <DatePicker
                 value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                onChange={(value) => setForm({ ...form, date: value })}
               />
             </Field>
             <Field label={t('hr.infractionType')}>

@@ -18,19 +18,20 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DatePicker,
   EmptyState,
   EntityPicker,
   Field,
   Input,
   PageHeader,
   Select,
+  Table,
   TBody,
   TD,
+  Textarea,
   TH,
   THead,
   TR,
-  Table,
-  Textarea,
   useToast,
 } from '@axa/platform';
 import { useI18n } from '@/components/i18n-provider';
@@ -113,10 +114,9 @@ function HomeworkSection() {
             />
           </Field>
           <Field label={t('academics.due')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.dueDate}
-              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              onChange={(value) => setForm({ ...form, dueDate: value })}
               required
             />
           </Field>
@@ -357,10 +357,9 @@ function BehaviorSection() {
             />
           </Field>
           <Field label={t('academics.date')}>
-            <Input
-              type="date"
+            <DatePicker
               value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              onChange={(value) => setForm({ ...form, date: value })}
               required
             />
           </Field>

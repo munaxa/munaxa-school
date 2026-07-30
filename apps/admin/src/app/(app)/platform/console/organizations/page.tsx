@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shell } from '@/components/shell';
 import {
@@ -10,24 +10,22 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
+  EmptyState,
   Field,
   Input,
   PageHeader,
-  Spinner,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
   useToast,
+  type ColumnDef,
 } from '@axa/platform';
 import { platformConsoleApi, type OrganizationRow } from '@/lib/platform-console';
+import { useGridLabels } from '@/components/grid-labels';
 import { PlatformNav } from '../platform-nav';
 
 export default function OrganizationsPage() {
   const toast = useToast();
   const router = useRouter();
+  const labels = useGridLabels();
   const [rows, setRows] = useState<OrganizationRow[]>([]);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
@@ -71,6 +69,46 @@ export default function OrganizationsPage() {
 
   const filtered = rows.filter(
     (r) => !q || r.name.toLowerCase().includes(q.toLowerCase()) || r.slug.includes(q.toLowerCase()),
+  );
+
+  const columns = useMemo<ColumnDef<OrganizationRow>[]>(
+    () => [
+      {
+        id: 'organization',
+        header: 'Organization',
+        value: (r) => r.name,
+        sortable: true,
+        rowHeader: true,
+        multiline: true,
+        cell: (r) => (
+          <div>
+            <div className="font-medium">{r.name}</div>
+            <div className="font-mono text-[10px] text-muted-foreground">{r.slug}</div>
+          </div>
+        ),
+      },
+      { id: 'schools', header: 'Schools', value: (r) => r.schools, sortable: true, align: 'end' },
+      {
+        id: 'billingEmail',
+        header: 'Billing email',
+        value: (r) => r.billingEmail ?? '',
+        sortable: true,
+        cell: (r) => r.billingEmail ?? '—',
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        value: (r) => (r.isArchived ? 'Archived' : 'Active'),
+        sortable: true,
+        cell: (r) =>
+          r.isArchived ? (
+            <Badge tone="muted">Archived</Badge>
+          ) : (
+            <Badge tone="success">Active</Badge>
+          ),
+      },
+    ],
+    [],
   );
 
   return (
@@ -133,60 +171,18 @@ export default function OrganizationsPage() {
           </label>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            {loading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Spinner /> Loading…
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH>Organization</TH>
-                      <TH>Schools</TH>
-                      <TH>Billing email</TH>
-                      <TH>Status</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {filtered.map((r) => (
-                      <TR
-                        key={r.id}
-                        className="cursor-pointer"
-                        onClick={() => router.push(`/platform/console/organizations/${r.id}`)}
-                      >
-                        <TD>
-                          <div className="font-medium">{r.name}</div>
-                          <div className="font-mono text-[10px] text-muted-foreground">
-                            {r.slug}
-                          </div>
-                        </TD>
-                        <TD>{r.schools}</TD>
-                        <TD>{r.billingEmail ?? '—'}</TD>
-                        <TD>
-                          {r.isArchived ? (
-                            <Badge tone="muted">Archived</Badge>
-                          ) : (
-                            <Badge tone="success">Active</Badge>
-                          )}
-                        </TD>
-                      </TR>
-                    ))}
-                    {filtered.length === 0 ? (
-                      <TR>
-                        <TD colSpan={4} className="text-center text-muted-foreground">
-                          No organizations.
-                        </TD>
-                      </TR>
-                    ) : null}
-                  </TBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <DataGrid
+          rows={filtered}
+          columns={columns}
+          getRowId={(r) => r.id}
+          getRowLabel={(r) => r.name}
+          labels={labels}
+          searchable={false}
+          loading={loading}
+          onRowActivate={(r) => router.push(`/platform/console/organizations/${r.id}`)}
+          aria-label="Organizations"
+          emptyState={<EmptyState title="No organizations." />}
+        />
       </div>
     </Shell>
   );
