@@ -1,21 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
-import {
-  Card,
-  CardContent,
-  Input,
-  PageHeader,
-  Spinner,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
-  useToast,
-} from '@axa/platform';
+import { DataGrid, Input, PageHeader, useToast, type ColumnDef } from '@axa/platform';
 import { platformConsoleApi, type AuditRow } from '@/lib/platform-console';
 import { PlatformNav } from '../platform-nav';
 
@@ -40,6 +27,58 @@ export default function PlatformAuditPage() {
     void load();
   }, [load]);
 
+  const columns = useMemo<ColumnDef<AuditRow>[]>(
+    () => [
+      {
+        id: 'when',
+        header: 'When',
+        value: (r) => r.createdAt,
+        sortable: true,
+        width: 180,
+        cell: (r) => (
+          <span className="text-xs text-muted-foreground">
+            {new Date(r.createdAt).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: 'action',
+        header: 'Action',
+        value: (r) => r.action,
+        sortable: true,
+        rowHeader: true,
+        cell: (r) => <span className="font-mono text-xs">{r.action}</span>,
+      },
+      {
+        id: 'entity',
+        header: 'Entity',
+        value: (r) => r.entityType,
+        sortable: true,
+        cell: (r) => (
+          <span className="text-xs">
+            {r.entityType}
+            {r.entityId ? (
+              <span className="text-muted-foreground"> · {r.entityId.slice(0, 8)}</span>
+            ) : null}
+          </span>
+        ),
+      },
+      {
+        id: 'tenant',
+        header: 'Tenant',
+        value: (r) => r.tenantId ?? '',
+        sortable: true,
+        width: 120,
+        cell: (r) => (
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {r.tenantId ? r.tenantId.slice(0, 8) : '—'}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
@@ -53,57 +92,20 @@ export default function PlatformAuditPage() {
           />
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            {loading ? (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Spinner /> Loading…
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH>When</TH>
-                      <TH>Action</TH>
-                      <TH>Entity</TH>
-                      <TH>Tenant</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {rows.map((r) => (
-                      <TR key={r.id}>
-                        <TD className="whitespace-nowrap text-xs text-muted-foreground">
-                          {new Date(r.createdAt).toLocaleString()}
-                        </TD>
-                        <TD className="font-mono text-xs">{r.action}</TD>
-                        <TD className="text-xs">
-                          {r.entityType}
-                          {r.entityId ? (
-                            <span className="text-muted-foreground">
-                              {' '}
-                              · {r.entityId.slice(0, 8)}
-                            </span>
-                          ) : null}
-                        </TD>
-                        <TD className="font-mono text-[10px] text-muted-foreground">
-                          {r.tenantId ? r.tenantId.slice(0, 8) : '—'}
-                        </TD>
-                      </TR>
-                    ))}
-                    {rows.length === 0 ? (
-                      <TR>
-                        <TD colSpan={4} className="text-center text-muted-foreground">
-                          No audit entries.
-                        </TD>
-                      </TR>
-                    ) : null}
-                  </TBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/*
+          The action filter above stays School's — it is a server query parameter, not a client
+          text match — so the grid's own search is off and it renders the rows the query returned.
+          `loading` is handed over too: the grid draws skeleton rows in place of the spinner.
+        */}
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          getRowId={(r) => r.id}
+          getRowLabel={(r) => r.action}
+          searchable={false}
+          loading={loading}
+          aria-label="Audit log"
+        />
       </div>
     </Shell>
   );

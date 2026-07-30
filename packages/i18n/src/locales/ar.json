@@ -66,6 +66,21 @@
     "approve": "موافقة",
     "reject": "رفض"
   },
+  "grid": {
+    "search": "بحث",
+    "searchPlaceholder": "بحث…",
+    "columns": "الأعمدة",
+    "selectAll": "تحديد كل الصفوف",
+    "selectRow": "تحديد {name}",
+    "sortedAscending": "مرتّب تصاعدياً",
+    "sortedDescending": "مرتّب تنازلياً",
+    "notSorted": "غير مرتّب",
+    "resizeColumn": "تغيير عرض {name}",
+    "rowCount": "{n} صفاً",
+    "loading": "جارٍ تحميل الصفوف…",
+    "empty": "لا يوجد ما يُعرض",
+    "actions": "الإجراءات"
+  },
   "auth": {
     "signIn": "تسجيل الدخول",
     "signOut": "تسجيل الخروج",

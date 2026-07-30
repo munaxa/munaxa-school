@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
 import {
   Badge,
@@ -9,17 +9,13 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   Field,
   Input,
   Select,
   Spinner,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
   useToast,
+  type ColumnDef,
 } from '@axa/platform';
 import {
   einvoicingApi,
@@ -173,6 +169,66 @@ export default function JoFotaraPage() {
       toast.error(e instanceof Error ? e.message : 'Failed to requeue');
     }
   }
+
+  const docColumns = useMemo<ColumnDef<EInvoiceDocument>[]>(
+    () => [
+      {
+        id: 'number',
+        header: 'Number',
+        value: (d) => d.invoiceNumber,
+        sortable: true,
+        rowHeader: true,
+        cell: (d) => <span className="font-mono text-xs">{d.invoiceNumber}</span>,
+      },
+      {
+        id: 'type',
+        header: 'Type',
+        value: (d) => (d.docType === 'CREDIT_NOTE' ? 'Credit note' : 'Invoice'),
+        sortable: true,
+      },
+      {
+        id: 'buyer',
+        header: 'Buyer',
+        value: (d) => d.buyerName ?? '',
+        sortable: true,
+        cell: (d) => <span dir="auto">{d.buyerName ?? '—'}</span>,
+      },
+      {
+        id: 'amount',
+        header: 'Amount (JOD)',
+        // Sorts as a number even though it renders with three fixed decimals.
+        value: (d) => Number(d.payableAmount),
+        sortable: true,
+        cell: (d) => <span className="font-mono">{Number(d.payableAmount).toFixed(3)}</span>,
+      },
+      {
+        id: 'icv',
+        header: 'ICV',
+        value: (d) => d.icv ?? null,
+        sortable: true,
+        cell: (d) => <span className="font-mono">{d.icv ?? '—'}</span>,
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        value: (d) => d.status,
+        sortable: true,
+        cell: (d) => <Badge tone={STATUS_TONE[d.status] ?? 'default'}>{d.status}</Badge>,
+      },
+      {
+        id: 'error',
+        header: 'Error',
+        value: (d) => d.lastError ?? '',
+        sortable: true,
+        cell: (d) => (
+          <span className="text-xs text-muted-foreground" title={d.lastError ?? ''}>
+            {d.lastError ?? ''}
+          </span>
+        ),
+      },
+    ],
+    [],
+  );
 
   if (loading) {
     return (
@@ -586,44 +642,21 @@ export default function JoFotaraPage() {
             {docs.length === 0 ? (
               <p className="text-sm text-muted-foreground">No e-invoices yet.</p>
             ) : (
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Number</TH>
-                    <TH>Type</TH>
-                    <TH>Buyer</TH>
-                    <TH>Amount (JOD)</TH>
-                    <TH>ICV</TH>
-                    <TH>Status</TH>
-                    <TH>Error</TH>
-                    <TH />
-                  </TR>
-                </THead>
-                <TBody>
-                  {docs.map((d) => (
-                    <TR key={d.id}>
-                      <TD className="font-mono text-xs">{d.invoiceNumber}</TD>
-                      <TD>{d.docType === 'CREDIT_NOTE' ? 'Credit note' : 'Invoice'}</TD>
-                      <TD dir="auto">{d.buyerName ?? '—'}</TD>
-                      <TD className="font-mono">{Number(d.payableAmount).toFixed(3)}</TD>
-                      <TD className="font-mono">{d.icv ?? '—'}</TD>
-                      <TD>
-                        <Badge tone={STATUS_TONE[d.status] ?? 'default'}>{d.status}</Badge>
-                      </TD>
-                      <TD className="max-w-[260px] truncate text-xs text-muted-foreground">
-                        {d.lastError ?? ''}
-                      </TD>
-                      <TD>
-                        {d.status === 'REJECTED' || d.status === 'DEAD_LETTER' ? (
-                          <Button size="sm" variant="outline" onClick={() => void requeue(d.id)}>
-                            Resubmit
-                          </Button>
-                        ) : null}
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
+              <DataGrid
+                rows={docs}
+                columns={docColumns}
+                getRowId={(d) => d.id}
+                getRowLabel={(d) => d.invoiceNumber}
+                rowActionsWidth={112}
+                aria-label="E-invoice documents"
+                rowActions={(d) =>
+                  d.status === 'REJECTED' || d.status === 'DEAD_LETTER' ? (
+                    <Button size="sm" variant="outline" onClick={() => void requeue(d.id)}>
+                      Resubmit
+                    </Button>
+                  ) : null
+                }
+              />
             )}
           </CardContent>
         </Card>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import {
   Badge,
   Button,
@@ -10,18 +11,14 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   EmptyState,
   EntityPicker,
   Field,
   Input,
   PageHeader,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
+  type ColumnDef,
   type PickerOption,
 } from '@axa/platform';
 import { loadStudentOptions } from '@/lib/pickers';
@@ -44,6 +41,7 @@ const TYPE_TONE: Record<PresenceEventType, 'success' | 'muted'> = {
 
 export default function PresencePage() {
   const { t } = useI18n();
+  const labels = useGridLabels();
   const [events, setEvents] = useState<PresenceEvent[]>([]);
   const [students, setStudents] = useState<PickerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +69,45 @@ export default function PresencePage() {
     for (const s of students) map.set(s.id, s.label);
     return map;
   }, [students]);
+
+  const eventColumns = useMemo<ColumnDef<PresenceEvent>[]>(
+    () => [
+      {
+        id: 'student',
+        header: t('presence.student'),
+        value: (ev) => nameById.get(ev.studentId) ?? ev.studentId,
+        sortable: true,
+        rowHeader: true,
+        cell: (ev) => nameById.get(ev.studentId) ?? `${ev.studentId.slice(0, 8)}…`,
+      },
+      {
+        id: 'event',
+        header: t('presence.event'),
+        value: (ev) => ev.eventType,
+        sortable: true,
+        cell: (ev) => (
+          <Badge tone={TYPE_TONE[ev.eventType]}>{ev.eventType.replace(/_/g, ' ')}</Badge>
+        ),
+      },
+      {
+        id: 'method',
+        header: t('presence.method'),
+        value: (ev) => ev.method,
+        sortable: true,
+        cell: (ev) => <span className="text-xs text-muted-foreground">{ev.method}</span>,
+      },
+      {
+        id: 'time',
+        header: t('presence.time'),
+        value: (ev) => ev.occurredAt,
+        sortable: true,
+        cell: (ev) => (
+          <span className="font-mono text-xs">{ev.occurredAt.slice(0, 16).replace('T', ' ')}</span>
+        ),
+      },
+    ],
+    [t, nameById],
+  );
 
   if (loading) {
     return (
@@ -101,37 +138,15 @@ export default function PresencePage() {
 
         <section className="space-y-2">
           <h2 className="font-display text-lg font-medium">{t('presence.recentEvents')}</h2>
-          <Table>
-            <THead>
-              <TR>
-                <TH>{t('presence.student')}</TH>
-                <TH>{t('presence.event')}</TH>
-                <TH>{t('presence.method')}</TH>
-                <TH>{t('presence.time')}</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {events.map((ev) => (
-                <TR key={ev.id}>
-                  <TD>{nameById.get(ev.studentId) ?? `${ev.studentId.slice(0, 8)}…`}</TD>
-                  <TD>
-                    <Badge tone={TYPE_TONE[ev.eventType]}>{ev.eventType.replace(/_/g, ' ')}</Badge>
-                  </TD>
-                  <TD className="text-xs text-muted-foreground">{ev.method}</TD>
-                  <TD className="font-mono text-xs">
-                    {ev.occurredAt.slice(0, 16).replace('T', ' ')}
-                  </TD>
-                </TR>
-              ))}
-              {events.length === 0 ? (
-                <TR>
-                  <TD colSpan={4}>
-                    <EmptyState title={t('presence.noEvents')} />
-                  </TD>
-                </TR>
-              ) : null}
-            </TBody>
-          </Table>
+          <DataGrid
+            rows={events}
+            columns={eventColumns}
+            getRowId={(ev) => ev.id}
+            getRowLabel={(ev) => nameById.get(ev.studentId) ?? ev.studentId}
+            labels={labels}
+            aria-label={t('presence.recentEvents')}
+            emptyState={<EmptyState title={t('presence.noEvents')} />}
+          />
         </section>
       </div>
     </Shell>

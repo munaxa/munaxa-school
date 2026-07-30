@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import {
   libraryApi,
   type Book,
@@ -16,22 +17,19 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   EmptyState,
   Field,
   Input,
   PageHeader,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
+  type ColumnDef,
 } from '@axa/platform';
 import { LoanStatusBadge } from '@/components/domain';
 
 export default function LibraryPage() {
   const { t } = useI18n();
+  const labels = useGridLabels();
   const [books, setBooks] = useState<Book[]>([]);
   const [loans, setLoans] = useState<BookLoan[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +65,81 @@ export default function LibraryPage() {
       setError(e instanceof Error ? e.message : 'Return failed');
     }
   }
+
+  const bookColumns = useMemo<ColumnDef<Book>[]>(
+    () => [
+      {
+        id: 'title',
+        header: t('library.title'),
+        value: (b) => b.title,
+        sortable: true,
+        rowHeader: true,
+      },
+      {
+        id: 'author',
+        header: t('library.author'),
+        value: (b) => b.author ?? '',
+        sortable: true,
+        cell: (b) => b.author || '—',
+      },
+      {
+        id: 'category',
+        header: t('library.category'),
+        value: (b) => b.category ?? '',
+        sortable: true,
+        cell: (b) => b.category || '—',
+      },
+      {
+        id: 'available',
+        // Sorts by copies on the shelf rather than by the "3/10" string.
+        header: t('library.available'),
+        value: (b) => b.copiesAvailable,
+        sortable: true,
+        align: 'end',
+        cell: (b) => (
+          <span className="font-mono text-xs">
+            {b.copiesAvailable}/{b.copiesTotal}
+          </span>
+        ),
+      },
+    ],
+    [t],
+  );
+
+  const loanColumns = useMemo<ColumnDef<BookLoan>[]>(
+    () => [
+      {
+        id: 'book',
+        header: t('library.book'),
+        value: (l) => titleById.get(l.bookId) ?? '',
+        sortable: true,
+        rowHeader: true,
+        cell: (l) => titleById.get(l.bookId) ?? '—',
+      },
+      {
+        id: 'borrower',
+        header: t('library.borrower'),
+        value: (l) => l.borrowerName || l.studentId || '',
+        sortable: true,
+        cell: (l) => l.borrowerName || l.studentId || '—',
+      },
+      {
+        id: 'due',
+        header: t('library.due'),
+        value: (l) => l.dueDate,
+        sortable: true,
+        cell: (l) => <span className="font-mono text-xs">{l.dueDate.slice(0, 10)}</span>,
+      },
+      {
+        id: 'status',
+        header: t('common.status'),
+        value: (l) => l.status,
+        sortable: true,
+        cell: (l) => <LoanStatusBadge status={l.status} />,
+      },
+    ],
+    [t, titleById],
+  );
 
   if (loading) {
     return (
@@ -107,76 +180,36 @@ export default function LibraryPage() {
 
         <section className="space-y-2">
           <h2 className="font-display text-lg font-medium">{t('library.catalogue')}</h2>
-          <Table>
-            <THead>
-              <TR>
-                <TH>{t('library.title')}</TH>
-                <TH>{t('library.author')}</TH>
-                <TH>{t('library.category')}</TH>
-                <TH className="text-end">{t('library.available')}</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {books.map((b) => (
-                <TR key={b.id}>
-                  <TD>{b.title}</TD>
-                  <TD>{b.author || '—'}</TD>
-                  <TD>{b.category || '—'}</TD>
-                  <TD className="text-end font-mono text-xs">
-                    {b.copiesAvailable}/{b.copiesTotal}
-                  </TD>
-                </TR>
-              ))}
-              {books.length === 0 ? (
-                <TR>
-                  <TD colSpan={4}>
-                    <EmptyState title={t('library.noBooks')} />
-                  </TD>
-                </TR>
-              ) : null}
-            </TBody>
-          </Table>
+          <DataGrid
+            rows={books}
+            columns={bookColumns}
+            getRowId={(b) => b.id}
+            getRowLabel={(b) => b.title}
+            labels={labels}
+            aria-label={t('library.catalogue')}
+            emptyState={<EmptyState title={t('library.noBooks')} />}
+          />
         </section>
 
         <section className="space-y-2">
           <h2 className="font-display text-lg font-medium">{t('library.loans')}</h2>
-          <Table>
-            <THead>
-              <TR>
-                <TH>{t('library.book')}</TH>
-                <TH>{t('library.borrower')}</TH>
-                <TH>{t('library.due')}</TH>
-                <TH>{t('common.status')}</TH>
-                <TH className="text-end">{t('common.actions')}</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {loans.map((l) => (
-                <TR key={l.id}>
-                  <TD>{titleById.get(l.bookId) ?? '—'}</TD>
-                  <TD>{l.borrowerName || l.studentId || '—'}</TD>
-                  <TD className="font-mono text-xs">{l.dueDate.slice(0, 10)}</TD>
-                  <TD>
-                    <LoanStatusBadge status={l.status} />
-                  </TD>
-                  <TD className="text-end">
-                    {l.status !== 'RETURNED' ? (
-                      <Button variant="ghost" size="sm" onClick={() => void returnLoan(l.id)}>
-                        {t('library.return')}
-                      </Button>
-                    ) : null}
-                  </TD>
-                </TR>
-              ))}
-              {loans.length === 0 ? (
-                <TR>
-                  <TD colSpan={5}>
-                    <EmptyState title={t('library.noLoans')} />
-                  </TD>
-                </TR>
-              ) : null}
-            </TBody>
-          </Table>
+          <DataGrid
+            rows={loans}
+            columns={loanColumns}
+            getRowId={(l) => l.id}
+            getRowLabel={(l) => titleById.get(l.bookId) ?? l.bookId}
+            labels={labels}
+            rowActionsWidth={96}
+            aria-label={t('library.loans')}
+            emptyState={<EmptyState title={t('library.noLoans')} />}
+            rowActions={(l) =>
+              l.status !== 'RETURNED' ? (
+                <Button variant="ghost" size="sm" onClick={() => void returnLoan(l.id)}>
+                  {t('library.return')}
+                </Button>
+              ) : null
+            }
+          />
         </section>
       </div>
     </Shell>

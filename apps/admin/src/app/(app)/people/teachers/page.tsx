@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import { useConfirm } from '@/components/confirm';
 import { StatusBadge } from '@/components/status-badge';
 import {
@@ -17,17 +18,13 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   EmptyState,
   Field,
   Input,
   PageHeader,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
+  type ColumnDef,
 } from '@axa/platform';
 
 const EMPTY: CreateTeacherInput = {
@@ -43,6 +40,7 @@ const EMPTY: CreateTeacherInput = {
 export default function TeachersPage() {
   const { t } = useI18n();
   const confirm = useConfirm();
+  const labels = useGridLabels();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +69,55 @@ export default function TeachersPage() {
     }
   }
 
+  const columns = useMemo<ColumnDef<Teacher>[]>(
+    () => [
+      {
+        id: 'name',
+        header: t('common.name'),
+        value: (tch) => `${tch.firstNameEn} ${tch.lastNameEn}`,
+        sortable: true,
+        rowHeader: true,
+      },
+      {
+        id: 'nameAr',
+        header: t('common.arabicName'),
+        value: (tch) => `${tch.firstNameAr} ${tch.lastNameAr}`,
+        sortable: true,
+        cell: (tch) => (
+          <span dir="rtl">
+            {tch.firstNameAr} {tch.lastNameAr}
+          </span>
+        ),
+      },
+      {
+        id: 'employeeNumber',
+        header: t('people.employeeNumber'),
+        value: (tch) => tch.employeeNumber ?? '',
+        sortable: true,
+        cell: (tch) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {tch.employeeNumber || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'specialization',
+        header: t('people.specialization'),
+        value: (tch) => tch.specialization ?? '',
+        sortable: true,
+        cell: (tch) => tch.specialization || '—',
+      },
+      {
+        id: 'status',
+        header: t('common.status'),
+        value: (tch) => tch.status,
+        sortable: true,
+        cell: (tch) => <StatusBadge status={tch.status} />,
+      },
+    ],
+    [t],
+  );
+
   if (loading) {
     return (
       <Shell>
@@ -98,49 +145,20 @@ export default function TeachersPage() {
           </CardContent>
         </Card>
 
-        <Table>
-          <THead>
-            <TR>
-              <TH>{t('common.name')}</TH>
-              <TH>{t('common.arabicName')}</TH>
-              <TH>{t('people.employeeNumber')}</TH>
-              <TH>{t('people.specialization')}</TH>
-              <TH>{t('common.status')}</TH>
-              <TH className="text-end">{t('common.actions')}</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {teachers.map((tch) => (
-              <TR key={tch.id}>
-                <TD>
-                  {tch.firstNameEn} {tch.lastNameEn}
-                </TD>
-                <TD dir="rtl">
-                  {tch.firstNameAr} {tch.lastNameAr}
-                </TD>
-                <TD className="font-mono text-xs text-muted-foreground">
-                  {tch.employeeNumber || '—'}
-                </TD>
-                <TD>{tch.specialization || '—'}</TD>
-                <TD>
-                  <StatusBadge status={tch.status} />
-                </TD>
-                <TD className="text-end">
-                  <Button variant="ghost" size="sm" onClick={() => void remove(tch.id)}>
-                    {t('common.delete')}
-                  </Button>
-                </TD>
-              </TR>
-            ))}
-            {teachers.length === 0 ? (
-              <TR>
-                <TD colSpan={6}>
-                  <EmptyState title={t('people.noTeachers')} />
-                </TD>
-              </TR>
-            ) : null}
-          </TBody>
-        </Table>
+        <DataGrid
+          rows={teachers}
+          columns={columns}
+          getRowId={(tch) => tch.id}
+          getRowLabel={(tch) => `${tch.firstNameEn} ${tch.lastNameEn}`}
+          labels={labels}
+          aria-label={t('nav.teachers')}
+          emptyState={<EmptyState title={t('people.noTeachers')} />}
+          rowActions={(tch) => (
+            <Button variant="ghost" size="sm" onClick={() => void remove(tch.id)}>
+              {t('common.delete')}
+            </Button>
+          )}
+        />
       </div>
     </Shell>
   );

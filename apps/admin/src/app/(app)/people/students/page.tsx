@@ -5,25 +5,22 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import {
   Badge,
   Button,
   Card,
   CardContent,
+  DataGrid,
   Dialog,
   EmptyState,
   Field,
   Input,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
   Textarea,
   cn,
   useToast,
+  type ColumnDef,
 } from '@axa/platform';
 import { useConfirm } from '@/components/confirm';
 import { studentsApi, type ImportResult, type Student } from '@/lib/people';
@@ -42,6 +39,7 @@ export default function StudentsPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const router = useRouter();
+  const labels = useGridLabels();
   const [students, setStudents] = useState<Student[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -96,6 +94,85 @@ export default function StudentsPage() {
   const sectionName = useCallback(
     (sectionId?: string | null): string => sections.find((s) => s.id === sectionId)?.name ?? '—',
     [sections],
+  );
+
+  const columns = useMemo<ColumnDef<Student>[]>(
+    () => [
+      {
+        id: 'studentNo',
+        header: t('people.studentNo'),
+        value: (s) => s.moeStudentNumber ?? '',
+        sortable: true,
+        width: 120,
+        cell: (s) => (
+          <span className="font-mono text-xs text-muted-foreground">
+            {s.moeStudentNumber || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'name',
+        header: t('common.name'),
+        value: (s) => `${s.firstNameEn} ${s.lastNameEn}`,
+        sortable: true,
+        rowHeader: true,
+        // An avatar beside a name over its Arabic form — a block, not a line of text.
+        multiline: true,
+        cell: (s) => (
+          <span className="flex items-center gap-3">
+            <span
+              aria-hidden="true"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary-strong"
+            >
+              {(s.firstNameEn.trim()[0] ?? '?').toUpperCase()}
+            </span>
+            <span className="min-w-0">
+              <button
+                type="button"
+                className="block truncate text-start font-medium text-foreground hover:text-primary-strong hover:underline"
+                onClick={() => openProfile(s)}
+              >
+                {s.firstNameEn} {s.lastNameEn}
+              </button>
+              <span className="block truncate text-xs text-muted-foreground" dir="rtl">
+                {s.firstNameAr} {s.lastNameAr}
+              </span>
+            </span>
+          </span>
+        ),
+      },
+      {
+        id: 'grade',
+        header: t('structure.grade'),
+        value: (s) => gradeName(s.sectionId),
+        sortable: true,
+      },
+      {
+        id: 'section',
+        header: t('structure.section'),
+        value: (s) => sectionName(s.sectionId),
+        sortable: true,
+      },
+      {
+        id: 'admitted',
+        header: t('people.admitted'),
+        value: (s) => s.enrollmentDate ?? '',
+        sortable: true,
+        cell: (s) => (
+          <span className="font-mono text-xs">
+            {s.enrollmentDate ? s.enrollmentDate.slice(0, 10) : '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: t('common.status'),
+        value: (s) => s.status,
+        sortable: true,
+        cell: (s) => <Badge tone={STATUS_TONE[s.status] ?? 'muted'}>{s.status}</Badge>,
+      },
+    ],
+    [t, gradeName, sectionName, openProfile],
   );
 
   // Grades + sections for the filter dropdowns (derived from the sections master list).
@@ -321,93 +398,41 @@ export default function StudentsPage() {
           </CardContent>
         </Card>
 
-        {/* Directory table */}
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>{t('people.studentNo')}</TH>
-                  <TH>{t('common.name')}</TH>
-                  <TH>{t('structure.grade')}</TH>
-                  <TH>{t('structure.section')}</TH>
-                  <TH>{t('people.admitted')}</TH>
-                  <TH>{t('common.status')}</TH>
-                  <TH className="text-end">{t('common.actions')}</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {filtered.map((s) => (
-                  <TR key={s.id}>
-                    <TD className="font-mono text-xs text-muted-foreground">
-                      {s.moeStudentNumber || '—'}
-                    </TD>
-                    <TD>
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden="true"
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary-strong"
-                        >
-                          {(s.firstNameEn.trim()[0] ?? '?').toUpperCase()}
-                        </span>
-                        <span className="min-w-0">
-                          <button
-                            type="button"
-                            className="block truncate text-start font-medium text-foreground hover:text-primary-strong hover:underline"
-                            onClick={() => openProfile(s)}
-                          >
-                            {s.firstNameEn} {s.lastNameEn}
-                          </button>
-                          <span className="block truncate text-xs text-muted-foreground" dir="rtl">
-                            {s.firstNameAr} {s.lastNameAr}
-                          </span>
-                        </span>
-                      </div>
-                    </TD>
-                    <TD>{gradeName(s.sectionId)}</TD>
-                    <TD>{sectionName(s.sectionId)}</TD>
-                    <TD className="font-mono text-xs">
-                      {s.enrollmentDate ? s.enrollmentDate.slice(0, 10) : '—'}
-                    </TD>
-                    <TD>
-                      <Badge tone={STATUS_TONE[s.status] ?? 'muted'}>{s.status}</Badge>
-                    </TD>
-                    <TD>
-                      <div className="flex items-center justify-end gap-1">
-                        <IconButton label={t('people.view')} onClick={() => openProfile(s)}>
-                          <EyeIcon />
-                        </IconButton>
-                        <IconButton label={t('people.edit')} onClick={() => setEditing(s)}>
-                          <PencilIcon />
-                        </IconButton>
-                        <IconButton
-                          label={t('common.delete')}
-                          onClick={() => void remove(s)}
-                          danger
-                        >
-                          <TrashIcon />
-                        </IconButton>
-                      </div>
-                    </TD>
-                  </TR>
-                ))}
-                {filtered.length === 0 ? (
-                  <TR>
-                    <TD colSpan={7}>
-                      <EmptyState
-                        title={
-                          students.length === 0
-                            ? t('people.noStudents')
-                            : t('people.noStudentsMatch')
-                        }
-                      />
-                    </TD>
-                  </TR>
-                ) : null}
-              </TBody>
-            </Table>
-          </CardContent>
-        </Card>
+        {/*
+          The directory is a DataGrid rather than a Card-wrapped table: the grid supplies its own
+          bordered surface, so nesting it in a Card would draw two. Search stays where it is —
+          School's is a debounced *server* query, which the grid's client-side toolbar search is
+          not, so `searchable` is off and the grid is handed already-filtered rows.
+        */}
+        <DataGrid
+          rows={filtered}
+          columns={columns}
+          getRowId={(s) => s.id}
+          getRowLabel={(s) => `${s.firstNameEn} ${s.lastNameEn}`}
+          labels={labels}
+          searchable={false}
+          rowHeight={56}
+          rowActionsWidth={132}
+          aria-label={t('nav.students')}
+          emptyState={
+            <EmptyState
+              title={students.length === 0 ? t('people.noStudents') : t('people.noStudentsMatch')}
+            />
+          }
+          rowActions={(s) => (
+            <div className="flex items-center justify-end gap-1">
+              <IconButton label={t('people.view')} onClick={() => openProfile(s)}>
+                <EyeIcon />
+              </IconButton>
+              <IconButton label={t('people.edit')} onClick={() => setEditing(s)}>
+                <PencilIcon />
+              </IconButton>
+              <IconButton label={t('common.delete')} onClick={() => void remove(s)} danger>
+                <TrashIcon />
+              </IconButton>
+            </div>
+          )}
+        />
 
         {/* Separation-of-concerns banner: registration happens in Admissions. */}
         <Card className="border-primary/20 bg-primary/5">

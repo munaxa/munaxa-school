@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import { useConfirm } from '@/components/confirm';
 import { parentsApi, type CreateParentInput, type Parent } from '@/lib/people';
 import { ParentProfileDialog, ParentEditDialog } from '@/components/domain';
@@ -12,16 +13,12 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   EmptyState,
   Field,
   Input,
   PageHeader,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
+  type ColumnDef,
 } from '@axa/platform';
 
 const EMPTY: CreateParentInput = {
@@ -39,6 +36,7 @@ const EMPTY: CreateParentInput = {
 export default function ParentsPage() {
   const { t } = useI18n();
   const confirm = useConfirm();
+  const labels = useGridLabels();
   const [parents, setParents] = useState<Parent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +67,88 @@ export default function ParentsPage() {
     }
   }
 
+  const columns = useMemo<ColumnDef<Parent>[]>(
+    () => [
+      {
+        id: 'name',
+        header: t('common.name'),
+        value: (p) => `${p.firstNameEn} ${p.lastNameEn}`,
+        sortable: true,
+        rowHeader: true,
+        cell: (p) => (
+          <button
+            type="button"
+            className="text-start font-medium text-foreground hover:text-primary-strong hover:underline"
+            onClick={() => setViewing(p)}
+          >
+            {p.firstNameEn} {p.lastNameEn}
+          </button>
+        ),
+      },
+      {
+        id: 'nameAr',
+        header: t('common.arabicName'),
+        value: (p) => `${p.firstNameAr} ${p.lastNameAr}`,
+        sortable: true,
+        cell: (p) => (
+          <span dir="rtl">
+            {p.firstNameAr} {p.lastNameAr}
+          </span>
+        ),
+      },
+      {
+        id: 'phone',
+        header: t('common.phone'),
+        value: (p) => p.phone ?? '',
+        sortable: true,
+        cell: (p) => (
+          <span className="font-mono text-xs" dir="ltr">
+            {p.phone || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'phoneAlt',
+        header: t('common.phoneAlt'),
+        value: (p) => p.phoneAlt ?? '',
+        sortable: true,
+        cell: (p) => (
+          <span className="font-mono text-xs" dir="ltr">
+            {p.phoneAlt || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'email',
+        header: t('common.email'),
+        value: (p) => p.email ?? '',
+        sortable: true,
+        cell: (p) => (
+          <span className="font-mono text-xs" dir="ltr">
+            {p.email || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'nationalId',
+        header: t('people.nationalId'),
+        value: (p) => p.nationalId ?? '',
+        sortable: true,
+        cell: (p) => (
+          <span className="font-mono text-xs text-muted-foreground">{p.nationalId || '—'}</span>
+        ),
+      },
+      {
+        id: 'occupation',
+        header: t('people.occupation'),
+        value: (p) => p.occupation ?? '',
+        sortable: true,
+        cell: (p) => p.occupation || '—',
+      },
+    ],
+    [t],
+  );
+
   if (loading) {
     return (
       <Shell>
@@ -96,66 +176,25 @@ export default function ParentsPage() {
           </CardContent>
         </Card>
 
-        <Table>
-          <THead>
-            <TR>
-              <TH>{t('common.name')}</TH>
-              <TH>{t('common.arabicName')}</TH>
-              <TH>{t('common.phone')}</TH>
-              <TH>{t('common.phoneAlt')}</TH>
-              <TH>{t('common.email')}</TH>
-              <TH>{t('people.nationalId')}</TH>
-              <TH>{t('people.occupation')}</TH>
-              <TH className="text-end">{t('common.actions')}</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {parents.map((p) => (
-              <TR key={p.id}>
-                <TD>
-                  <button
-                    type="button"
-                    className="text-start font-medium text-foreground hover:text-primary-strong hover:underline"
-                    onClick={() => setViewing(p)}
-                  >
-                    {p.firstNameEn} {p.lastNameEn}
-                  </button>
-                </TD>
-                <TD dir="rtl">
-                  {p.firstNameAr} {p.lastNameAr}
-                </TD>
-                <TD className="font-mono text-xs" dir="ltr">
-                  {p.phone || '—'}
-                </TD>
-                <TD className="font-mono text-xs" dir="ltr">
-                  {p.phoneAlt || '—'}
-                </TD>
-                <TD className="font-mono text-xs" dir="ltr">
-                  {p.email || '—'}
-                </TD>
-                <TD className="font-mono text-xs text-muted-foreground">{p.nationalId || '—'}</TD>
-                <TD>{p.occupation || '—'}</TD>
-                <TD className="text-end">
-                  <span className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>
-                      {t('people.edit')}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => void remove(p.id)}>
-                      {t('common.delete')}
-                    </Button>
-                  </span>
-                </TD>
-              </TR>
-            ))}
-            {parents.length === 0 ? (
-              <TR>
-                <TD colSpan={8}>
-                  <EmptyState title={t('people.noParents')} />
-                </TD>
-              </TR>
-            ) : null}
-          </TBody>
-        </Table>
+        <DataGrid
+          rows={parents}
+          columns={columns}
+          getRowId={(p) => p.id}
+          getRowLabel={(p) => `${p.firstNameEn} ${p.lastNameEn}`}
+          labels={labels}
+          aria-label={t('nav.parents')}
+          emptyState={<EmptyState title={t('people.noParents')} />}
+          rowActions={(p) => (
+            <span className="flex justify-end gap-1">
+              <Button variant="ghost" size="sm" onClick={() => setEditing(p)}>
+                {t('people.edit')}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => void remove(p.id)}>
+                {t('common.delete')}
+              </Button>
+            </span>
+          )}
+        />
       </div>
       {viewing ? (
         <ParentProfileDialog

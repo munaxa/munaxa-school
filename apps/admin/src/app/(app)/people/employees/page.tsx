@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import { useConfirm } from '@/components/confirm';
 import { usePrincipal } from '@/components/shell';
 import { StatusBadge } from '@/components/status-badge';
@@ -20,17 +21,13 @@ import {
 } from '@/lib/people';
 import {
   Button,
+  DataGrid,
   EmptyState,
   Field,
   Input,
   PageHeader,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
+  type ColumnDef,
 } from '@axa/platform';
 import { EmployeeEditor } from './employee-editor';
 import { TeacherProfileDialog } from '../teachers/teacher-profile-dialog';
@@ -39,9 +36,16 @@ type StaffRow =
   | { kind: 'employee'; id: string; employee: Employee }
   | { kind: 'teacher'; id: string; teacher: Teacher };
 
+/** The row's Latin name — what it sorts by, and what its selection checkbox is called. */
+function personName(row: StaffRow): string {
+  const person = row.kind === 'teacher' ? row.teacher : row.employee;
+  return `${person.firstNameEn} ${person.lastNameEn}`;
+}
+
 export default function EmployeesPage() {
   const { t } = useI18n();
   const confirm = useConfirm();
+  const labels = useGridLabels();
   const principal = usePrincipal();
   const canManage = principal.permissions.includes('employee:manage') || principal.isPlatform;
 
@@ -112,6 +116,86 @@ export default function EmployeesPage() {
       );
     });
   }, [teachers, employees, query, typeFilter, statusFilter]);
+
+  const columns = useMemo<ColumnDef<StaffRow>[]>(
+    () => [
+      {
+        id: 'name',
+        header: t('common.name'),
+        value: personName,
+        sortable: true,
+        rowHeader: true,
+        cell: (r) =>
+          r.kind === 'teacher' ? (
+            <button
+              type="button"
+              className="text-start font-medium text-foreground hover:text-primary-strong hover:underline"
+              onClick={() => setViewingTeacher(r.teacher)}
+            >
+              {r.teacher.firstNameEn} {r.teacher.lastNameEn}
+            </button>
+          ) : (
+            <Link
+              href={`/people/employees/${r.employee.id}`}
+              className="font-medium text-foreground hover:text-primary-strong hover:underline"
+            >
+              {r.employee.firstNameEn} {r.employee.lastNameEn}
+            </Link>
+          ),
+      },
+      {
+        id: 'nameAr',
+        header: t('common.arabicName'),
+        value: (r) => {
+          const p = r.kind === 'teacher' ? r.teacher : r.employee;
+          return `${p.firstNameAr} ${p.lastNameAr}`;
+        },
+        sortable: true,
+        cell: (r) => {
+          const p = r.kind === 'teacher' ? r.teacher : r.employee;
+          return (
+            <span dir="rtl">
+              {p.firstNameAr} {p.lastNameAr}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'type',
+        header: t('people.type'),
+        value: (r) => (r.kind === 'teacher' ? t('people.typeTeacher') : t('people.typeStaff')),
+        sortable: true,
+      },
+      {
+        id: 'role',
+        header: t('people.role'),
+        value: (r) =>
+          r.kind === 'teacher' ? r.teacher.specialization || '—' : r.employee.jobTitle,
+        sortable: true,
+        cell: (r) =>
+          r.kind === 'teacher' ? (
+            r.teacher.specialization || '—'
+          ) : (
+            <>
+              {r.employee.jobTitle}
+              {r.employee.department ? (
+                <span className="text-muted-foreground"> · {r.employee.department.name}</span>
+              ) : null}
+            </>
+          ),
+      },
+      {
+        id: 'status',
+        header: t('common.status'),
+        value: (r) => (r.kind === 'teacher' ? r.teacher.status : r.employee.status),
+        sortable: true,
+        cell: (r) => (
+          <StatusBadge status={r.kind === 'teacher' ? r.teacher.status : r.employee.status} />
+        ),
+      },
+    ],
+    [t],
+  );
 
   const activeCount =
     employees.filter((e) => e.status === 'ACTIVE').length +
@@ -190,95 +274,46 @@ export default function EmployeesPage() {
           </Field>
         </div>
 
-        <Table>
-          <THead>
-            <TR>
-              <TH>{t('common.name')}</TH>
-              <TH>{t('common.arabicName')}</TH>
-              <TH>{t('people.type')}</TH>
-              <TH>{t('people.role')}</TH>
-              <TH>{t('common.status')}</TH>
-              <TH className="text-end">{t('common.actions')}</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {rows.map((r) =>
-              r.kind === 'teacher' ? (
-                <TR key={`t-${r.id}`}>
-                  <TD>
-                    <button
-                      type="button"
-                      className="text-start font-medium text-foreground hover:text-primary-strong hover:underline"
-                      onClick={() => setViewingTeacher(r.teacher)}
-                    >
-                      {r.teacher.firstNameEn} {r.teacher.lastNameEn}
-                    </button>
-                  </TD>
-                  <TD dir="rtl">
-                    {r.teacher.firstNameAr} {r.teacher.lastNameAr}
-                  </TD>
-                  <TD>{t('people.typeTeacher')}</TD>
-                  <TD>{r.teacher.specialization || '—'}</TD>
-                  <TD>
-                    <StatusBadge status={r.teacher.status} />
-                  </TD>
-                  <TD className="text-end text-xs text-muted-foreground">
-                    {t('people.teachersTab')}
-                  </TD>
-                </TR>
-              ) : (
-                <TR key={`e-${r.id}`}>
-                  <TD>
-                    <Link
-                      href={`/people/employees/${r.employee.id}`}
-                      className="font-medium text-foreground hover:text-primary-strong hover:underline"
-                    >
-                      {r.employee.firstNameEn} {r.employee.lastNameEn}
-                    </Link>
-                  </TD>
-                  <TD dir="rtl">
-                    {r.employee.firstNameAr} {r.employee.lastNameAr}
-                  </TD>
-                  <TD>{t('people.typeStaff')}</TD>
-                  <TD>
-                    {r.employee.jobTitle}
-                    {r.employee.department ? (
-                      <span className="text-muted-foreground"> · {r.employee.department.name}</span>
-                    ) : null}
-                  </TD>
-                  <TD>
-                    <StatusBadge status={r.employee.status} />
-                  </TD>
-                  <TD className="text-end">
-                    <Link
-                      href={`/people/employees/${r.employee.id}`}
-                      className="text-sm text-primary-strong hover:underline"
-                    >
-                      {t('people.view')}
-                    </Link>
-                    {canManage ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive"
-                        onClick={() => void remove(r.employee.id)}
-                      >
-                        {t('common.delete')}
-                      </Button>
-                    ) : null}
-                  </TD>
-                </TR>
-              ),
-            )}
-            {rows.length === 0 ? (
-              <TR>
-                <TD colSpan={6}>
-                  <EmptyState title={t('people.noStaff')} />
-                </TD>
-              </TR>
-            ) : null}
-          </TBody>
-        </Table>
+        {/*
+          The three filter controls above stay School's: type and status are domain vocabulary, and
+          the free-text box searches the Arabic name without folding accents, which the grid's own
+          search does. So `searchable` is off and the grid renders the rows School selected.
+        */}
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          getRowId={(r) => `${r.kind}-${r.id}`}
+          getRowLabel={(r) => personName(r)}
+          labels={labels}
+          searchable={false}
+          rowActionsWidth={canManage ? 132 : 88}
+          aria-label={t('nav.hr')}
+          emptyState={<EmptyState title={t('people.noStaff')} />}
+          rowActions={(r) =>
+            r.kind === 'teacher' ? (
+              <span className="text-xs text-muted-foreground">{t('people.teachersTab')}</span>
+            ) : (
+              <span className="flex items-center justify-end gap-1">
+                <Link
+                  href={`/people/employees/${r.employee.id}`}
+                  className="text-sm text-primary-strong hover:underline"
+                >
+                  {t('people.view')}
+                </Link>
+                {canManage ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() => void remove(r.employee.id)}
+                  >
+                    {t('common.delete')}
+                  </Button>
+                ) : null}
+              </span>
+            )
+          }
+        />
         <p className="text-xs text-muted-foreground">{t('people.addTeacherHint')}</p>
       </div>
 

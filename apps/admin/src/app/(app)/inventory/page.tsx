@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import {
   INVENTORY_TXN_TYPES,
   inventoryApi,
@@ -19,21 +20,18 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   EmptyState,
   Field,
   Input,
   PageHeader,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
+  type ColumnDef,
 } from '@axa/platform';
 
 export default function InventoryPage() {
   const { t } = useI18n();
+  const labels = useGridLabels();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [txns, setTxns] = useState<InventoryTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +58,108 @@ export default function InventoryPage() {
     for (const i of items) map.set(i.id, i.name);
     return map;
   }, [items]);
+
+  const itemColumns = useMemo<ColumnDef<InventoryItem>[]>(
+    () => [
+      {
+        id: 'name',
+        header: t('inventory.name'),
+        value: (i) => i.name,
+        sortable: true,
+        rowHeader: true,
+      },
+      {
+        id: 'sku',
+        header: t('inventory.sku'),
+        value: (i) => i.sku ?? '',
+        sortable: true,
+        cell: (i) => (
+          <span className="font-mono text-xs text-muted-foreground">{i.sku || '—'}</span>
+        ),
+      },
+      {
+        id: 'category',
+        header: t('inventory.category'),
+        value: (i) => i.category ?? '',
+        sortable: true,
+        cell: (i) => i.category || '—',
+      },
+      {
+        id: 'location',
+        header: t('inventory.location'),
+        value: (i) => i.location ?? '',
+        sortable: true,
+        cell: (i) => i.location || '—',
+      },
+      {
+        id: 'onHand',
+        header: t('inventory.onHand'),
+        // Sorts by the number, not by the rendered "12 boxes · Low" — quantity is the fact.
+        value: (i) => i.quantity,
+        sortable: true,
+        align: 'end',
+        cell: (i) => (
+          <>
+            <span className="font-mono text-xs">
+              {i.quantity}
+              {i.unit ? ` ${i.unit}` : ''}
+            </span>{' '}
+            {i.reorderLevel != null && i.quantity <= i.reorderLevel ? (
+              <Badge tone="warning">{t('inventory.low')}</Badge>
+            ) : null}
+          </>
+        ),
+      },
+    ],
+    [t],
+  );
+
+  const txnColumns = useMemo<ColumnDef<InventoryTransaction>[]>(
+    () => [
+      {
+        id: 'item',
+        header: t('inventory.item'),
+        value: (tx) => nameById.get(tx.itemId) ?? '',
+        sortable: true,
+        rowHeader: true,
+        cell: (tx) => nameById.get(tx.itemId) ?? '—',
+      },
+      {
+        id: 'type',
+        header: t('inventory.type'),
+        value: (tx) => tx.type,
+        sortable: true,
+        cell: (tx) => (
+          <Badge tone={tx.type === 'IN' ? 'success' : tx.type === 'OUT' ? 'danger' : 'muted'}>
+            {tx.type}
+          </Badge>
+        ),
+      },
+      {
+        id: 'reason',
+        header: t('inventory.reason'),
+        value: (tx) => tx.reason ?? '',
+        sortable: true,
+        cell: (tx) => tx.reason || '—',
+      },
+      {
+        id: 'date',
+        header: t('inventory.date'),
+        value: (tx) => tx.createdAt,
+        sortable: true,
+        cell: (tx) => <span className="font-mono text-xs">{tx.createdAt.slice(0, 10)}</span>,
+      },
+      {
+        id: 'qty',
+        header: t('inventory.qty'),
+        value: (tx) => tx.quantity,
+        sortable: true,
+        align: 'end',
+        cell: (tx) => <span className="font-mono text-xs">{tx.quantity}</span>,
+      },
+    ],
+    [t, nameById],
+  );
 
   if (loading) {
     return (
@@ -100,83 +200,28 @@ export default function InventoryPage() {
 
         <section className="space-y-2">
           <h2 className="font-display text-lg font-medium">{t('inventory.items')}</h2>
-          <Table>
-            <THead>
-              <TR>
-                <TH>{t('inventory.name')}</TH>
-                <TH>{t('inventory.sku')}</TH>
-                <TH>{t('inventory.category')}</TH>
-                <TH>{t('inventory.location')}</TH>
-                <TH className="text-end">{t('inventory.onHand')}</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {items.map((i) => {
-                const low = i.reorderLevel != null && i.quantity <= i.reorderLevel;
-                return (
-                  <TR key={i.id}>
-                    <TD>{i.name}</TD>
-                    <TD className="font-mono text-xs text-muted-foreground">{i.sku || '—'}</TD>
-                    <TD>{i.category || '—'}</TD>
-                    <TD>{i.location || '—'}</TD>
-                    <TD className="text-end">
-                      <span className="font-mono text-xs">
-                        {i.quantity}
-                        {i.unit ? ` ${i.unit}` : ''}
-                      </span>{' '}
-                      {low ? <Badge tone="warning">{t('inventory.low')}</Badge> : null}
-                    </TD>
-                  </TR>
-                );
-              })}
-              {items.length === 0 ? (
-                <TR>
-                  <TD colSpan={5}>
-                    <EmptyState title={t('inventory.noItems')} />
-                  </TD>
-                </TR>
-              ) : null}
-            </TBody>
-          </Table>
+          <DataGrid
+            rows={items}
+            columns={itemColumns}
+            getRowId={(i) => i.id}
+            getRowLabel={(i) => i.name}
+            labels={labels}
+            aria-label={t('inventory.items')}
+            emptyState={<EmptyState title={t('inventory.noItems')} />}
+          />
         </section>
 
         <section className="space-y-2">
           <h2 className="font-display text-lg font-medium">{t('inventory.recentMovements')}</h2>
-          <Table>
-            <THead>
-              <TR>
-                <TH>{t('inventory.item')}</TH>
-                <TH>{t('inventory.type')}</TH>
-                <TH>{t('inventory.reason')}</TH>
-                <TH>{t('inventory.date')}</TH>
-                <TH className="text-end">{t('inventory.qty')}</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {txns.map((tx) => (
-                <TR key={tx.id}>
-                  <TD>{nameById.get(tx.itemId) ?? '—'}</TD>
-                  <TD>
-                    <Badge
-                      tone={tx.type === 'IN' ? 'success' : tx.type === 'OUT' ? 'danger' : 'muted'}
-                    >
-                      {tx.type}
-                    </Badge>
-                  </TD>
-                  <TD>{tx.reason || '—'}</TD>
-                  <TD className="font-mono text-xs">{tx.createdAt.slice(0, 10)}</TD>
-                  <TD className="text-end font-mono text-xs">{tx.quantity}</TD>
-                </TR>
-              ))}
-              {txns.length === 0 ? (
-                <TR>
-                  <TD colSpan={5}>
-                    <EmptyState title={t('inventory.noMovements')} />
-                  </TD>
-                </TR>
-              ) : null}
-            </TBody>
-          </Table>
+          <DataGrid
+            rows={txns}
+            columns={txnColumns}
+            getRowId={(tx) => tx.id}
+            getRowLabel={(tx) => nameById.get(tx.itemId) ?? tx.itemId}
+            labels={labels}
+            aria-label={t('inventory.recentMovements')}
+            emptyState={<EmptyState title={t('inventory.noMovements')} />}
+          />
         </section>
       </div>
     </Shell>

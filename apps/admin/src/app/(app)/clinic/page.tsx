@@ -3,24 +3,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
+import { useGridLabels } from '@/components/grid-labels';
 import {
   Button,
   Card,
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   EmptyState,
   EntityPicker,
   Field,
   Input,
   PageHeader,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
+  type ColumnDef,
   type PickerOption,
 } from '@axa/platform';
 import { loadStudentOptions } from '@/lib/pickers';
@@ -36,6 +33,7 @@ import { ClinicOutcomeBadge } from '@/components/domain';
 
 export default function ClinicPage() {
   const { t } = useI18n();
+  const labels = useGridLabels();
   const [visits, setVisits] = useState<ClinicVisit[]>([]);
   const [students, setStudents] = useState<PickerOption[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +62,46 @@ export default function ClinicPage() {
     for (const s of students) map.set(s.id, s.label);
     return map;
   }, [students]);
+
+  const visitColumns = useMemo<ColumnDef<ClinicVisit>[]>(
+    () => [
+      {
+        id: 'student',
+        header: t('clinic.student'),
+        value: (v) => nameById.get(v.studentId) ?? v.studentId,
+        sortable: true,
+        rowHeader: true,
+        cell: (v) => nameById.get(v.studentId) ?? `${v.studentId.slice(0, 8)}…`,
+      },
+      { id: 'reason', header: t('clinic.reason'), value: (v) => v.reason, sortable: true },
+      {
+        id: 'temp',
+        header: t('clinic.temp'),
+        value: (v) => v.temperature ?? null,
+        sortable: true,
+        cell: (v) => (
+          <span className="font-mono text-xs">
+            {v.temperature != null ? `${String(v.temperature)}°` : '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'outcome',
+        header: t('clinic.outcome'),
+        value: (v) => v.outcome,
+        sortable: true,
+        cell: (v) => <ClinicOutcomeBadge outcome={v.outcome} />,
+      },
+      {
+        id: 'date',
+        header: t('clinic.date'),
+        value: (v) => v.visitedAt,
+        sortable: true,
+        cell: (v) => <span className="font-mono text-xs">{v.visitedAt.slice(0, 10)}</span>,
+      },
+    ],
+    [t, nameById],
+  );
 
   if (loading) {
     return (
@@ -104,39 +142,15 @@ export default function ClinicPage() {
 
         <section className="space-y-2">
           <h2 className="font-display text-lg font-medium">{t('clinic.recentVisits')}</h2>
-          <Table>
-            <THead>
-              <TR>
-                <TH>{t('clinic.student')}</TH>
-                <TH>{t('clinic.reason')}</TH>
-                <TH>{t('clinic.temp')}</TH>
-                <TH>{t('clinic.outcome')}</TH>
-                <TH>{t('clinic.date')}</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {visits.map((v) => (
-                <TR key={v.id}>
-                  <TD>{nameById.get(v.studentId) ?? `${v.studentId.slice(0, 8)}…`}</TD>
-                  <TD>{v.reason}</TD>
-                  <TD className="font-mono text-xs">
-                    {v.temperature != null ? `${String(v.temperature)}°` : '—'}
-                  </TD>
-                  <TD>
-                    <ClinicOutcomeBadge outcome={v.outcome} />
-                  </TD>
-                  <TD className="font-mono text-xs">{v.visitedAt.slice(0, 10)}</TD>
-                </TR>
-              ))}
-              {visits.length === 0 ? (
-                <TR>
-                  <TD colSpan={5}>
-                    <EmptyState title={t('clinic.noVisits')} />
-                  </TD>
-                </TR>
-              ) : null}
-            </TBody>
-          </Table>
+          <DataGrid
+            rows={visits}
+            columns={visitColumns}
+            getRowId={(v) => v.id}
+            getRowLabel={(v) => nameById.get(v.studentId) ?? v.studentId}
+            labels={labels}
+            aria-label={t('clinic.recentVisits')}
+            emptyState={<EmptyState title={t('clinic.noVisits')} />}
+          />
         </section>
       </div>
     </Shell>

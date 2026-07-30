@@ -66,6 +66,21 @@
     "approve": "Approve",
     "reject": "Reject"
   },
+  "grid": {
+    "search": "Search",
+    "searchPlaceholder": "Search…",
+    "columns": "Columns",
+    "selectAll": "Select all rows",
+    "selectRow": "Select {name}",
+    "sortedAscending": "sorted ascending",
+    "sortedDescending": "sorted descending",
+    "notSorted": "not sorted",
+    "resizeColumn": "Resize {name}",
+    "rowCount": "{n} rows",
+    "loading": "Loading rows…",
+    "empty": "Nothing to show",
+    "actions": "Actions"
+  },
   "auth": {
     "signIn": "Sign in",
     "signOut": "Sign out",

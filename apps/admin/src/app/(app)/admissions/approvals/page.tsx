@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Button,
@@ -8,17 +8,20 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DataGrid,
   EmptyState,
   Select,
-  TBody,
-  TD,
-  TH,
-  THead,
-  TR,
-  Table,
   useToast,
+  type ColumnDef,
 } from '@axa/platform';
 import { admissionsApi, type FeeModificationRow } from '@/lib/admissions';
+
+/** The student the modification belongs to — what the row sorts by and is announced as. */
+function studentName(row: FeeModificationRow): string {
+  return row.enrollment
+    ? `${row.enrollment.student.firstNameEn} ${row.enrollment.student.lastNameEn}`
+    : '—';
+}
 
 const STATUS_TONE: Record<string, 'success' | 'warning' | 'danger' | 'muted'> = {
   PENDING: 'warning',
@@ -66,6 +69,70 @@ export default function ApprovalsPage() {
     }
   }
 
+  const columns = useMemo<ColumnDef<FeeModificationRow>[]>(
+    () => [
+      {
+        id: 'student',
+        header: 'Student',
+        value: studentName,
+        sortable: true,
+        rowHeader: true,
+      },
+      {
+        id: 'fee',
+        header: 'Fee',
+        value: (m) => m.field,
+        sortable: true,
+        cell: (m) => <span className="text-xs uppercase">{m.field}</span>,
+      },
+      {
+        id: 'original',
+        header: 'Original',
+        value: (m) => m.originalValue,
+        sortable: true,
+        align: 'end',
+        cell: (m) => <span className="font-mono">{m.originalValue}</span>,
+      },
+      {
+        id: 'new',
+        header: 'New',
+        value: (m) => m.newValue,
+        sortable: true,
+        align: 'end',
+        cell: (m) => <span className="font-mono">{m.newValue}</span>,
+      },
+      {
+        id: 'difference',
+        header: 'Difference',
+        value: (m) => m.difference,
+        sortable: true,
+        align: 'end',
+        cell: (m) => <span className="font-mono">{m.difference}</span>,
+      },
+      {
+        id: 'reason',
+        header: 'Reason',
+        value: (m) => m.reason,
+        sortable: true,
+        // The full reason was only reachable through a title attribute; the grid clamps the cell
+        // and keeps it, so hovering still tells you the rest.
+        cell: (m) => <span title={m.reason}>{m.reason}</span>,
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        value: (m) => m.approval?.status ?? 'PENDING',
+        sortable: true,
+        cell: (m) => (
+          <Badge tone={STATUS_TONE[m.approval?.status ?? 'PENDING'] ?? 'muted'}>
+            {(m.approval?.status ?? 'PENDING').toLowerCase()}
+          </Badge>
+        ),
+      },
+    ],
+    [],
+  );
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="flex items-end justify-between gap-3">
@@ -92,64 +159,35 @@ export default function ApprovalsPage() {
           ) : rows.length === 0 ? (
             <EmptyState title="Nothing here" description="No fee modifications for this status." />
           ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Student</TH>
-                  <TH>Fee</TH>
-                  <TH className="text-end">Original</TH>
-                  <TH className="text-end">New</TH>
-                  <TH className="text-end">Difference</TH>
-                  <TH>Reason</TH>
-                  <TH>Status</TH>
-                  <TH />
-                </TR>
-              </THead>
-              <TBody>
-                {rows.map((m) => (
-                  <TR key={m.id}>
-                    <TD>
-                      {m.enrollment
-                        ? `${m.enrollment.student.firstNameEn} ${m.enrollment.student.lastNameEn}`
-                        : '—'}
-                    </TD>
-                    <TD className="text-xs uppercase">{m.field}</TD>
-                    <TD className="text-end font-mono">{m.originalValue}</TD>
-                    <TD className="text-end font-mono">{m.newValue}</TD>
-                    <TD className="text-end font-mono">{m.difference}</TD>
-                    <TD className="max-w-[14rem] truncate" title={m.reason}>
-                      {m.reason}
-                    </TD>
-                    <TD>
-                      <Badge tone={STATUS_TONE[m.approval?.status ?? 'PENDING'] ?? 'muted'}>
-                        {(m.approval?.status ?? 'PENDING').toLowerCase()}
-                      </Badge>
-                    </TD>
-                    <TD>
-                      {m.approval?.status === 'PENDING' ? (
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => void decide(m.id, true)}
-                            disabled={busyId === m.id}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void decide(m.id, false)}
-                            disabled={busyId === m.id}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      ) : null}
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
+            <DataGrid
+              rows={rows}
+              columns={columns}
+              getRowId={(m) => m.id}
+              getRowLabel={(m) => studentName(m)}
+              rowActionsWidth={168}
+              aria-label="Fee modifications"
+              rowActions={(m) =>
+                m.approval?.status === 'PENDING' ? (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => void decide(m.id, true)}
+                      disabled={busyId === m.id}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void decide(m.id, false)}
+                      disabled={busyId === m.id}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                ) : null
+              }
+            />
           )}
         </CardContent>
       </Card>
