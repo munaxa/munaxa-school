@@ -14,6 +14,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -137,15 +138,18 @@ export default function AssetsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">{t('hr.assetRegister')}</h1>
-          <Link
-            href="/people/employees"
-            className="text-sm text-muted-foreground hover:text-primary-strong"
-          >
-            ← {t('nav.hr')}
-          </Link>
-        </div>
+        <PageHeader
+          title={t('hr.assetRegister')}
+          align="center"
+          actions={
+            <Link
+              href="/people/employees"
+              className="text-sm text-muted-foreground hover:text-primary-strong"
+            >
+              ← {t('nav.hr')}
+            </Link>
+          }
+        />
 
         {canManage ? (
           <Card>

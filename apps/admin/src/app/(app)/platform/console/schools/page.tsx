@@ -8,6 +8,7 @@ import {
   Card,
   CardContent,
   Input,
+  PageHeader,
   Spinner,
   TBody,
   TD,
@@ -62,10 +63,7 @@ export default function PlatformSchoolsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Schools</h1>
-          <PlatformNav active="schools" />
-        </header>
+        <PageHeader title="Schools" align="center" actions={<PlatformNav active="schools" />} />
 
         <div className="max-w-sm">
           <Input placeholder="Search schools…" value={q} onChange={(e) => setQ(e.target.value)} />

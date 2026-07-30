@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
   Field,
+  PageHeader,
   Select,
   Spinner,
   StatCard,
@@ -111,16 +112,22 @@ export default function OrganizationDetailPage() {
           >
             ← Organizations
           </Link>
-          <div className="mt-1 flex items-center justify-between">
-            <h1 className="font-display text-2xl font-semibold">
-              {org.name} {org.isArchived ? <Badge tone="muted">Archived</Badge> : null}
-            </h1>
-            {!org.isArchived ? (
-              <Button variant="outline" onClick={() => void archive()}>
-                Archive
-              </Button>
-            ) : null}
-          </div>
+          <PageHeader
+            title={
+              <>
+                {org.name} {org.isArchived ? <Badge tone="muted">Archived</Badge> : null}
+              </>
+            }
+            align="center"
+            actions={
+              !org.isArchived ? (
+                <Button variant="outline" onClick={() => void archive()}>
+                  Archive
+                </Button>
+              ) : null
+            }
+            className="mt-1"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

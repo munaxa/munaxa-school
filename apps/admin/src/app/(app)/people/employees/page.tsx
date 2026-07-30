@@ -23,13 +23,14 @@ import {
   EmptyState,
   Field,
   Input,
+  PageHeader,
   Select,
-  Table,
   TBody,
   TD,
   TH,
   THead,
   TR,
+  Table,
 } from '@axa/platform';
 import { EmployeeEditor } from './employee-editor';
 import { TeacherProfileDialog } from '../teachers/teacher-profile-dialog';
@@ -127,20 +128,23 @@ export default function EmployeesPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="font-display text-2xl font-semibold">{t('nav.hr')}</h1>
-          <div className="flex gap-2">
-            <Link
-              href="/people/org"
-              className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm hover:bg-secondary/60"
-            >
-              {t('hr.organization')}
-            </Link>
-            {canManage ? (
-              <Button onClick={() => setCreating(true)}>{t('people.addEmployee')}</Button>
-            ) : null}
-          </div>
-        </div>
+        <PageHeader
+          title={t('nav.hr')}
+          align="center"
+          actions={
+            <div className="flex gap-2">
+              <Link
+                href="/people/org"
+                className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm hover:bg-secondary/60"
+              >
+                {t('hr.organization')}
+              </Link>
+              {canManage ? (
+                <Button onClick={() => setCreating(true)}>{t('people.addEmployee')}</Button>
+              ) : null}
+            </div>
+          }
+        />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

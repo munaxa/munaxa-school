@@ -14,6 +14,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -63,15 +64,18 @@ export default function OrganizationPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">{t('hr.organization')}</h1>
-          <Link
-            href="/people/employees"
-            className="text-sm text-muted-foreground hover:text-primary-strong"
-          >
-            ← {t('nav.hr')}
-          </Link>
-        </div>
+        <PageHeader
+          title={t('hr.organization')}
+          align="center"
+          actions={
+            <Link
+              href="/people/employees"
+              className="text-sm text-muted-foreground hover:text-primary-strong"
+            >
+              ← {t('nav.hr')}
+            </Link>
+          }
+        />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}

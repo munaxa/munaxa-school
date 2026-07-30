@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  PageHeader,
   Select,
   Spinner,
   TBody,
@@ -84,10 +85,7 @@ export default function PlanVersionsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Plan Versions</h1>
-          <PlatformNav active="" />
-        </header>
+        <PageHeader title="Plan Versions" align="center" actions={<PlatformNav active="" />} />
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground">

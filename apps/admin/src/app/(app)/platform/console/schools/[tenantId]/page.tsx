@@ -13,6 +13,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Select,
   Spinner,
   StatCard,
@@ -82,24 +83,28 @@ export default function PlatformSchoolDetailPage() {
           >
             ← All schools
           </Link>
-          <div className="mt-1 flex items-center justify-between">
-            <h1 className="font-display text-2xl font-semibold">{detail.name}</h1>
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/platform/console/schools/${tenantId}/billing`}
-                className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary/60"
-              >
-                Billing →
-              </Link>
-              <Link
-                href={`/platform/console/schools/${tenantId}/timeline`}
-                className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary/60"
-              >
-                Timeline →
-              </Link>
-              <Badge tone="muted">{detail.slug}</Badge>
-            </div>
-          </div>
+          <PageHeader
+            title={detail.name}
+            align="center"
+            actions={
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/platform/console/schools/${tenantId}/billing`}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary/60"
+                >
+                  Billing →
+                </Link>
+                <Link
+                  href={`/platform/console/schools/${tenantId}/timeline`}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-secondary/60"
+                >
+                  Timeline →
+                </Link>
+                <Badge tone="muted">{detail.slug}</Badge>
+              </div>
+            }
+            className="mt-1"
+          />
         </div>
 
         <SubscriptionStateActions

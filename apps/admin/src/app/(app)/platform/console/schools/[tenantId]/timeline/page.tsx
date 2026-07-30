@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Shell } from '@/components/shell';
-import { Badge, Card, CardContent, Input, Spinner, useToast } from '@axa/platform';
+import { Badge, Card, CardContent, Input, PageHeader, Spinner, useToast } from '@axa/platform';
 import { platformConsoleApi, type TimelineItem } from '@/lib/platform-console';
 
 /** Per-school chronological activity feed, derived from the Audit Log. */
@@ -44,7 +44,7 @@ export default function SchoolTimelinePage() {
           >
             ← School detail
           </Link>
-          <h1 className="mt-1 font-display text-2xl font-semibold">Activity timeline</h1>
+          <PageHeader title="Activity timeline" className="mt-1" />
         </div>
 
         <div className="max-w-sm">

@@ -7,6 +7,7 @@ import {
   Badge,
   Card,
   CardContent,
+  PageHeader,
   Spinner,
   TBody,
   TD,
@@ -52,10 +53,11 @@ export default function PlatformSubscriptionsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Subscriptions</h1>
-          <PlatformNav active="subscriptions" />
-        </header>
+        <PageHeader
+          title="Subscriptions"
+          align="center"
+          actions={<PlatformNav active="subscriptions" />}
+        />
 
         <Card>
           <CardContent className="pt-6">

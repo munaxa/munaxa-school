@@ -4,7 +4,16 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@axa/platform';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  PageHeader,
+  useToast,
+} from '@axa/platform';
 import { hrDashboardApi, type HrAlert, type HrDashboard } from '@/lib/people';
 
 export default function HrDashboardPage() {
@@ -57,23 +66,26 @@ export default function HrDashboardPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">{t('hr.dashboard')}</h1>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => void download('csv')}>
-              CSV
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => void download('xlsx')}>
-              Excel
-            </Button>
-            <Link
-              href="/people/employees"
-              className="text-sm text-muted-foreground hover:text-primary-strong"
-            >
-              ← {t('nav.hr')}
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          title={t('hr.dashboard')}
+          align="center"
+          actions={
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => void download('csv')}>
+                CSV
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => void download('xlsx')}>
+                Excel
+              </Button>
+              <Link
+                href="/people/employees"
+                className="text-sm text-muted-foreground hover:text-primary-strong"
+              >
+                ← {t('nav.hr')}
+              </Link>
+            </div>
+          }
+        />
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label={t('hr.headcount')} value={data.headcount.total} />

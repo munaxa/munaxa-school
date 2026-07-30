@@ -14,6 +14,7 @@ import {
   EntityPicker,
   Field,
   Input,
+  PageHeader,
   Select,
   TBody,
   TD,
@@ -365,21 +366,18 @@ export default function AdmissionPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h1 className="font-display text-2xl font-semibold">Admission</h1>
-            <p className="text-sm text-muted-foreground">
-              One guardian/customer, one payment plan, one or more students — a single package and
-              one agreement.
-            </p>
-          </div>
-          {/* Identity-first entry (A/B/C): check the student by National ID before admitting. */}
-          <Link href="/admissions/identity">
-            <Button variant="outline" size="sm">
-              Identity Check
-            </Button>
-          </Link>
-        </header>
+        <PageHeader
+          title="Admission"
+          description="One guardian/customer, one payment plan, one or more students — a single package and one agreement."
+          actions={
+            /* Identity-first entry (A/B/C): check the student by National ID before admitting. */
+            <Link href="/admissions/identity">
+              <Button variant="outline" size="sm">
+                Identity Check
+              </Button>
+            </Link>
+          }
+        />
 
         <div className="flex flex-wrap gap-2">
           {STEPS.map((label, i) => (

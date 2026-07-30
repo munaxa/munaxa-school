@@ -14,6 +14,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   useToast,
 } from '@axa/platform';
 import { useConfirm } from '@/components/confirm';
@@ -99,15 +100,18 @@ export default function TrainingCatalogPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">{t('hr.training')}</h1>
-          <Link
-            href="/people/employees"
-            className="text-sm text-muted-foreground hover:text-primary-strong"
-          >
-            ← {t('nav.hr')}
-          </Link>
-        </div>
+        <PageHeader
+          title={t('hr.training')}
+          align="center"
+          actions={
+            <Link
+              href="/people/employees"
+              className="text-sm text-muted-foreground hover:text-primary-strong"
+            >
+              ← {t('nav.hr')}
+            </Link>
+          }
+        />
 
         {expiring.length > 0 ? (
           <Card>

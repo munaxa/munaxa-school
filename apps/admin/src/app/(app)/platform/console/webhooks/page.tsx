@@ -11,6 +11,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Spinner,
   TBody,
   TD,
@@ -125,10 +126,7 @@ export default function WebhooksPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Webhooks</h1>
-          <PlatformNav active="webhooks" />
-        </header>
+        <PageHeader title="Webhooks" align="center" actions={<PlatformNav active="webhooks" />} />
 
         <Card>
           <CardHeader>

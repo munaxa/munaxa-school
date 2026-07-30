@@ -14,6 +14,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Select,
   useToast,
 } from '@axa/platform';
@@ -109,15 +110,18 @@ export default function PerformanceCyclesPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">{t('hr.performanceCycles')}</h1>
-          <Link
-            href="/people/employees"
-            className="text-sm text-muted-foreground hover:text-primary-strong"
-          >
-            ← {t('nav.hr')}
-          </Link>
-        </div>
+        <PageHeader
+          title={t('hr.performanceCycles')}
+          align="center"
+          actions={
+            <Link
+              href="/people/employees"
+              className="text-sm text-muted-foreground hover:text-primary-strong"
+            >
+              ← {t('nav.hr')}
+            </Link>
+          }
+        />
 
         <Card>
           <CardHeader>

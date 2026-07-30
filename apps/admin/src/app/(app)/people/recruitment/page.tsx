@@ -14,6 +14,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Select,
   useToast,
 } from '@axa/platform';
@@ -100,15 +101,18 @@ export default function RecruitmentPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">{t('hr.recruitment')}</h1>
-          <Link
-            href="/people/employees"
-            className="text-sm text-muted-foreground hover:text-primary-strong"
-          >
-            ← {t('nav.hr')}
-          </Link>
-        </div>
+        <PageHeader
+          title={t('hr.recruitment')}
+          align="center"
+          actions={
+            <Link
+              href="/people/employees"
+              className="text-sm text-muted-foreground hover:text-primary-strong"
+            >
+              ← {t('nav.hr')}
+            </Link>
+          }
+        />
 
         {canManage ? (
           <Card>

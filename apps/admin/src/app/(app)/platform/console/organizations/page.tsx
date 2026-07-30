@@ -12,6 +12,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Spinner,
   TBody,
   TD,
@@ -75,10 +76,11 @@ export default function OrganizationsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Organizations</h1>
-          <PlatformNav active="organizations" />
-        </header>
+        <PageHeader
+          title="Organizations"
+          align="center"
+          actions={<PlatformNav active="organizations" />}
+        />
 
         <Card>
           <CardHeader>

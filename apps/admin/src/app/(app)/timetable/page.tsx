@@ -10,6 +10,7 @@ import {
   Dialog,
   Field,
   Input,
+  PageHeader,
   Select,
   useToast,
   type Tone,
@@ -303,10 +304,11 @@ export default function TimetableWorkspace() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-5">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Scheduling Workspace</h1>
-          {plan ? <Badge tone={STATUS_TONE[plan.status]}>{plan.status}</Badge> : null}
-        </div>
+        <PageHeader
+          title="Scheduling Workspace"
+          align="center"
+          actions={plan ? <Badge tone={STATUS_TONE[plan.status]}>{plan.status}</Badge> : null}
+        />
 
         {/* Selectors */}
         <Card>

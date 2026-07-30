@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Shell } from '@/components/shell';
-import { Badge, Button, Card, CardContent, Input, Select, Spinner, useToast } from '@axa/platform';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  PageHeader,
+  Select,
+  Spinner,
+  useToast,
+} from '@axa/platform';
 import { platformConsoleApi, type PlatformUpgradeRequest } from '@/lib/platform-console';
 import { PlatformNav } from '../platform-nav';
 
@@ -51,10 +61,11 @@ export default function UpgradeRequestsPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-5xl space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Upgrade Requests</h1>
-          <PlatformNav active="upgrades" />
-        </header>
+        <PageHeader
+          title="Upgrade Requests"
+          align="center"
+          actions={<PlatformNav active="upgrades" />}
+        />
 
         <div className="max-w-xs">
           <Select value={filter} onChange={(e) => setFilter(e.target.value)}>

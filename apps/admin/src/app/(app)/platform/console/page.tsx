@@ -10,6 +10,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  PageHeader,
   Spinner,
   StatCard,
   useToast,
@@ -41,15 +42,12 @@ export default function PlatformConsoleDashboard() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="font-display text-2xl font-semibold">Platform Console</h1>
-            <p className="text-sm text-muted-foreground">
-              Munaxa operations — subscriptions, billing and platform health across all schools.
-            </p>
-          </div>
-          <PlatformNav active="dashboard" />
-        </header>
+        <PageHeader
+          title="Platform Console"
+          description="Munaxa operations — subscriptions, billing and platform health across all schools."
+          align="center"
+          actions={<PlatformNav active="dashboard" />}
+        />
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground">

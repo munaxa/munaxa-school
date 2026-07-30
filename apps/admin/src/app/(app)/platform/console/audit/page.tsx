@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Input,
+  PageHeader,
   Spinner,
   TBody,
   TD,
@@ -42,10 +43,7 @@ export default function PlatformAuditPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">Audit Log</h1>
-          <PlatformNav active="audit" />
-        </header>
+        <PageHeader title="Audit Log" align="center" actions={<PlatformNav active="audit" />} />
 
         <div className="max-w-sm">
           <Input

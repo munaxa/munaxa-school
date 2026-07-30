@@ -13,6 +13,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   Select,
   Spinner,
   TBody,
@@ -128,7 +129,7 @@ export default function SchoolBillingPage() {
           >
             ← School detail
           </Link>
-          <h1 className="mt-1 font-display text-2xl font-semibold">Billing</h1>
+          <PageHeader title="Billing" className="mt-1" />
         </div>
 
         {loading ? (

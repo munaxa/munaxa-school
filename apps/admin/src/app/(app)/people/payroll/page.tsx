@@ -12,6 +12,7 @@ import {
   CardTitle,
   Field,
   Input,
+  PageHeader,
   TBody,
   TD,
   TH,
@@ -60,15 +61,18 @@ export default function PayrollPrepPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-semibold">{t('hr.payrollPrep')}</h1>
-          <Link
-            href="/people/employees"
-            className="text-sm text-muted-foreground hover:text-primary-strong"
-          >
-            ← {t('nav.hr')}
-          </Link>
-        </div>
+        <PageHeader
+          title={t('hr.payrollPrep')}
+          align="center"
+          actions={
+            <Link
+              href="/people/employees"
+              className="text-sm text-muted-foreground hover:text-primary-strong"
+            >
+              ← {t('nav.hr')}
+            </Link>
+          }
+        />
 
         <Card>
           <CardHeader>
