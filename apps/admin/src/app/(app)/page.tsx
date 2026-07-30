@@ -8,7 +8,7 @@ import { dashboardApi, type DashboardOverview } from '@/lib/dashboard';
 import { financeApi, type FinanceDashboard } from '@/lib/finance';
 import { NavIcon, type NavIconKey } from '@/components/nav-icons';
 import type { Locale } from '@/lib/i18n';
-import { Button, Card, CardContent, EmptyState, cn } from '@axa/platform';
+import { Button, Card, CardContent, EmptyState, Skeleton, cn } from '@axa/platform';
 
 type Translate = (k: string) => string;
 type Tone = 'primary' | 'cool' | 'warm';
@@ -401,9 +401,9 @@ function KpiSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <Card key={i} className="h-full">
           <CardContent className="flex h-full flex-col gap-3 p-5">
-            <div className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
-            <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-            <div className="h-6 w-16 animate-pulse rounded bg-muted" />
+            <Skeleton className="h-10 w-10 rounded-xl" />
+            <Skeleton className="h-3 w-20 rounded" />
+            <Skeleton className="h-6 w-16 rounded" />
           </CardContent>
         </Card>
       ))}
