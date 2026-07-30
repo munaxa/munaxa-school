@@ -4,8 +4,7 @@ A standalone showcase of the **Orbix Studio** design system: the shadcn/ui theme
 distributed as preset `b7BFbeatk`, rendered with real components in light + dark.
 
 It is intentionally self-contained and **not** part of the Munaxa pnpm workspace
-(it has its own `pnpm-workspace.yaml`), so it can't affect the main apps or the
-existing `munaxadesignsystem`.
+(it has its own `pnpm-workspace.yaml`), so it can't affect the main apps.
 
 ## Stack
 

@@ -1,4 +1,0 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AttendanceCard, StudentAvatar } from "../../components";
-export function StudentProfileExample() { return <section className="space-y-6"><header className="flex items-center gap-4"><StudentAvatar name="Lina Haddad" className="size-14" /><div><h2 className="text-2xl font-semibold">Lina Haddad</h2><p className="text-muted-foreground">Grade 8 · MUN-2048</p></div></header><Tabs defaultValue="overview"><TabsList><TabsTrigger value="overview">Overview</TabsTrigger><TabsTrigger value="attendance">Attendance</TabsTrigger><TabsTrigger value="finance">Finance</TabsTrigger></TabsList><TabsContent value="overview" className="grid gap-4 pt-4 sm:grid-cols-2"><AttendanceCard label="Attendance rate" value="96.4%" status="present" detail="Current academic term" /></TabsContent></Tabs></section>; }
-export default StudentProfileExample;

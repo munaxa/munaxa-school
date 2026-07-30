@@ -9,10 +9,9 @@ These documents describe **product** behaviour. The visual layer beneath them â€
 components, accessibility floor â€” belongs to the shared platform and is documented at
 [`platform/README.md`](../../../platform/README.md).
 
-> These documents are published by the design-system reference site under
-> [`munaxadesignsystem/`](../../munaxadesignsystem), which indexes them in
-> `client/src/enterprise-standards/registry.ts`. Moving or renaming one means updating that
-> registry in the same commit.
+> These are reference documents kept in the repository. The standalone design-system site that
+> once indexed and published them has been retired; the Platform's live documentation is now its
+> Storybook.
 
 ---
 

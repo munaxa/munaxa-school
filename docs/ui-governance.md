@@ -5,8 +5,8 @@
 
 The shared platform at the repository root is the **single, formal source of truth** for
 tokens, themes, components and patterns. This document codifies how Munaxa consumes and enforces
-it. The narrative design references under [`munaxadesignsystem/`](../munaxadesignsystem) remain
-useful as pattern documentation, but they are **not** the source of any value — code is.
+it. The narrative design references under [`docs/ux/`](./ux/README.md) remain useful as pattern
+documentation, but they are **not** the source of any value — code is.
 
 ---
 

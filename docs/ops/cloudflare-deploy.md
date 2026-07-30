@@ -6,7 +6,7 @@ Three apps deploy to Cloudflare from this repository:
 | --- | --- | --- | --- | --- |
 | Demo | `school/munaxademo` | `munaxademo` | Workers | OpenNext (`@opennextjs/cloudflare`) |
 | Landing | `school/landing` | `landing` | Workers | OpenNext (`@opennextjs/cloudflare`) |
-| Design-system site | `school/munaxadesignsystem` | `designsystem` | Pages | Vite static build |
+| Platform docs (Storybook) | `platform` | `platform-storybook` | Workers (static assets) | Storybook static build |
 
 All three are part of (or build against) the pnpm workspace, so **builds must run from the
 repository root** — that is the single thing that makes or breaks the deploy.
@@ -74,12 +74,24 @@ Set each with `wrangler secret put <NAME>` (or the dashboard → Settings → Va
 
 ---
 
-## Design-system site (Pages — already green)
+## Platform docs — Storybook (Workers static assets)
 
-`munaxadesignsystem` deploys via **Cloudflare Pages** and is already passing. It consumes
-`@school/design-tokens` by a `file:` dependency and imports `theme.oklch.css` directly, so as long
-as the Pages build runs from the repo root (build command `pnpm --filter munaxadesignsystem run
-cf:build`, output `dist/public`) the shared palette is included. No change needed.
+The Platform's own documentation site is its Storybook, deployed as a **static-assets Worker**
+named `platform-storybook`. `platform/wrangler.jsonc` points `assets.directory` at the
+`storybook-static/` bundle `build-storybook` emits. Because the build runs from the repo root
+(workspace install), the deploy and version commands invoke self-contained pnpm scripts that build
+Storybook and then run wrangler with `platform/` as the working directory, so wrangler finds the
+config with no `--config` flag:
+
+| Dashboard field | Value |
+| --- | --- |
+| Build command | `echo skip` (the scripts build Storybook) |
+| Deploy command (production) | `pnpm --filter platform run cf:deploy` |
+| Version command (non-production) | `pnpm --filter platform run cf:versions` |
+| Root directory | `/` |
+
+The first production `cf:deploy` on `main` creates the Worker; non-production `cf:versions`
+uploads preview versions of it thereafter.
 
 ---
 

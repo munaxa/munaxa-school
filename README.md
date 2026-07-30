@@ -26,7 +26,6 @@ school/
 │   └── i18n/       # en/ar message catalogs
 ├── landing/            # Marketing site (Next.js, Cloudflare Workers)
 ├── munaxademo/         # Hermetic public demo (Next.js, Cloudflare Workers)
-├── munaxadesignsystem/ # Design-system reference website (standalone pnpm root)
 ├── orbix-studio/       # Design exploration app (standalone pnpm root)
 ├── prisma/         # Prisma schema & migrations (shared PostgreSQL)
 ├── infra/          # Postgres roles, load tests

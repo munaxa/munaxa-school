@@ -39,10 +39,9 @@ export default [
     linterOptions: { reportUnusedDisableDirectives: 'off' },
   },
   {
-    // Munaxa Design System governance guardrails (mechanical enforcement of GOVERNANCE.md):
-    // app source must use design-system token classes — never hardcoded hex colors nor raw
-    // Tailwind palette colors. Tokens: @axa/platform/tokens (css/theme.oklch.css) + globals.css,
-    // sourced from munaxadesignsystem/. See /GOVERNANCE.md.
+    // Platform governance guardrails: app source must use Platform token classes — never
+    // hardcoded hex colors nor raw Tailwind palette colors. Tokens come from
+    // @axa/platform/tokens + globals.css.
     files: ['src/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [

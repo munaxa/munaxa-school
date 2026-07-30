@@ -66,10 +66,3 @@ write(pad(TILE, 180, 0.98, bg=TEAL), *[f"{d}/apple-icon.png" for d in web])
 # Mobile launcher: opaque tile + a transparent M-symbol adaptive foreground.
 write(pad(TILE, 1024, 0.98, bg=TEAL), "apps/mobile/assets/icon/ic_launcher.png")
 write(pad(SYMBOL, 1024, 0.60), "apps/mobile/assets/icon/ic_launcher_foreground.png")
-
-# Design-system client (Vite): favicons live in public/ and use apple-touch-icon naming.
-_c = "munaxadesignsystem/client/public"
-write(pad(SYMBOL, 512, 0.86), f"{_c}/icon.png")
-write(pad(SYMBOL, 256, 0.90), f"{_c}/favicon.ico",
-      sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
-write(pad(TILE, 180, 0.98, bg=TEAL), f"{_c}/apple-touch-icon.png")
