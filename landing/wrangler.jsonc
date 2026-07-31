@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "landing",
+  // MUST match the Cloudflare Worker this app deploys to. The landing site is served by the
+  // Worker named `munaxa` (the one munaxa.com is attached to) — NOT `landing`. A mismatch here
+  // does not fail loudly: wrangler happily creates a brand-new Worker with no custom domain,
+  // and munaxa.com keeps serving the previous bundle forever.
+  "name": "munaxa",
   "main": ".open-next/worker.js",
   // Keep in sync with the date this config was last reviewed.
   "compatibility_date": "2026-06-11",
