@@ -443,6 +443,7 @@ export function AppShell({
   // The platform imports no router. Next's typed routes cannot see hrefs coming from the static
   // nav table, so the cast is required by `next build` exactly as it was before.
   const renderLink: RenderNavigationLink = ({ href, children, ...rest }) => (
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     <Link href={href as never} {...rest}>
       {children}
     </Link>

@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@munaxa/platform": "^1.0.0",
+    "@munaxa/theme": "^1.0.0",
+    "@munaxa/tokens": "^1.0.0",
     "@munaxa/ui": "^1.0.0",
     "@school/brand": "workspace:*",
     "@school/contracts": "workspace:*",
