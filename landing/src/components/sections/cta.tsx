@@ -1,5 +1,5 @@
-import { ArrowRight } from '@axa/platform/icons';
-import { Reveal, buttonVariants, cn } from '@axa/platform';
+import { ArrowRight } from '@munaxa/icons';
+import { Reveal, buttonVariants, cn } from '@munaxa/ui';
 import { DEMO_URL } from '@/lib/site';
 
 /** Closing call to action — quiet confidence, one clear ask. */

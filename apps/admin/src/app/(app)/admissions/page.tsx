@@ -24,7 +24,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { loadParentOptions, loadStudentOptions } from '@/lib/pickers';
 import {
   admissionsApi,

@@ -26,7 +26,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import {
   feeConfigApi,

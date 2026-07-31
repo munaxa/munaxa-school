@@ -60,7 +60,7 @@ by the platform extraction; the structures it describes have since moved.
 
 | Document | Subject |
 | --- | --- |
-| [design-system-monorepo-refactor.md](./design-system-monorepo-refactor.md) | The refactor that produced `@school/design-tokens`, `@school/icons` and `@school/ui` — later extracted into `@axa/platform` |
+| [design-system-monorepo-refactor.md](./design-system-monorepo-refactor.md) | The refactor that produced `@school/design-tokens`, `@school/icons` and `@school/ui` — later extracted into `@munaxa/ui` |
 | [design-system-audit-site.md](./design-system-audit-site.md) | Audit from the design-system reference website |
 | [design-system-roadmap.md](./design-system-roadmap.md) | The roadmap that programme worked to |
 | [design-system-ideas.md](./design-system-ideas.md) | Exploration notes |

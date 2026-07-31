@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Badge, Button, Dialog, Field, Select } from '@axa/platform';
+import { Badge, Button, Dialog, Field, Select } from '@munaxa/ui';
 import { TRIP_OPTIONS, type Capacity, type RouteVM, type TripValue } from './lib';
 
 // ---------------------------------------------------------------------------

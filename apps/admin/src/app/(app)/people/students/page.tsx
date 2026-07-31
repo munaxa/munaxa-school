@@ -21,7 +21,7 @@ import {
   cn,
   useToast,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import { studentsApi, type ImportResult, type Student } from '@/lib/people';
 import { sectionsApi, type Section } from '@/lib/structure';

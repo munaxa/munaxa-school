@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState } from '@axa/platform';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, EmptyState } from '@munaxa/ui';
 import { CapacityMeter, RouteStatusBadge, SuggestAssignmentsDialog } from './components';
 import { UNZONED, exportRowsCsv, type AreaVM, type RouteVM, type TransportData } from './lib';
 

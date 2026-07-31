@@ -15,7 +15,7 @@ import {
   Select,
   Textarea,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import {
   contractsApi,

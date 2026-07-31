@@ -1,6 +1,6 @@
 'use client';
 
-import { useTheme, Button } from '@axa/platform';
+import { useTheme, Button } from '@munaxa/ui';
 import { useI18n } from './i18n-provider';
 
 const THEME_KEY = 'munaxa.theme';

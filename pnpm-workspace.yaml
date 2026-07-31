@@ -1,0 +1,12 @@
+# Munaxa School — an independent product workspace.
+#
+# Everything here is School's own: its API, admin, mobile, marketing landing, demo,
+# domain packages, Prisma schema and infrastructure. The shared design system is NOT a
+# workspace member — it is resolved from the registry as @munaxa/*, exactly as it is in
+# every other product repository. Nothing in this repo may depend on Work or Docs.
+packages:
+  - 'apps/api'
+  - 'apps/admin'
+  - 'landing'
+  - 'munaxademo'
+  - 'packages/*'

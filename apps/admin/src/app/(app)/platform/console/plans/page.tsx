@@ -19,7 +19,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { platformConsoleApi, type PlanVersion } from '@/lib/platform-console';
 import { type PlanView } from '@/lib/subscription';
 import { PlatformNav } from '../platform-nav';

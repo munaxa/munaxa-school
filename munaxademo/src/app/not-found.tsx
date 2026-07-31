@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { buttonVariants } from '@axa/platform';
-import { Logo } from '@/components/logo';
+import { buttonVariants } from '@munaxa/ui';
+import { Logo } from '@school/brand';
 import { DEFAULT_LOCALE, getMessages, resolveMessage } from '@/lib/i18n';
 
 /**

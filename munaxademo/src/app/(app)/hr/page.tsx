@@ -17,7 +17,7 @@ import {
   TH,
   THead,
   TR,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 export default function HrPage() {
   return (

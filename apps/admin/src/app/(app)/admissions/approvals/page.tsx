@@ -13,7 +13,7 @@ import {
   Select,
   useToast,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { admissionsApi, type FeeModificationRow } from '@/lib/admissions';
 
 /** The student the modification belongs to — what the row sorts by and is announced as. */

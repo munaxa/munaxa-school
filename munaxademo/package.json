@@ -2,7 +2,7 @@
   "name": "munaxademo",
   "version": "1.0.0",
   "private": true,
-  "description": "Munaxa Demo — a database-free live demonstration of the Munaxa School OS. Workspace member consuming the shared @axa/platform.",
+  "description": "Munaxa Demo — a database-free live demonstration of the Munaxa School OS. Workspace member consuming the shared @munaxa/ui.",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20.0.0"
@@ -13,21 +13,23 @@
     "start": "next start -p 4100",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "cf:deps": "pnpm turbo run build --filter=@axa/platform",
+    "cf:deps": "pnpm turbo run build --filter=@munaxa/ui",
     "cf:build": "pnpm run cf:deps && opennextjs-cloudflare build && node ../scripts/cf-emit-root-wrangler.mjs",
     "cf:preview": "pnpm run cf:build && wrangler dev",
     "cf:deploy": "pnpm run cf:build && wrangler deploy",
     "cf:typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
   },
   "dependencies": {
-    "@axa/platform": "workspace:*",
+    "@munaxa/platform": "^1.0.0",
+    "@munaxa/ui": "^1.0.0",
+    "@school/brand": "workspace:*",
     "next": "15.5.19",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
-    "@axa/config-typescript": "workspace:*",
+    "@munaxa/config-typescript": "^1.0.0",
     "@next/eslint-plugin-next": "^15.1.0",
     "@opennextjs/cloudflare": "^1.19.11",
     "@tailwindcss/postcss": "^4.0.0",

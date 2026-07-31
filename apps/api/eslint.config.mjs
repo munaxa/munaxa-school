@@ -1,4 +1,4 @@
-import nest from '@axa/config-eslint/nest.js';
+import nest from '@munaxa/config-eslint/nest.js';
 
 export default [
   ...nest,

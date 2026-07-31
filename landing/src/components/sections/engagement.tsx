@@ -1,4 +1,4 @@
-import { Reveal } from '@axa/platform';
+import { Reveal } from '@munaxa/ui';
 import { CommsComposer } from '@/components/product/comms-composer';
 import { ParentApp } from '@/components/product/parent-app';
 import { PhoneFrame } from '@/components/product/app-frame';

@@ -23,7 +23,7 @@ import {
   TR,
   Table,
   Textarea,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 const AUDIENCES = ['ALL', 'PARENTS', 'TEACHERS', 'STUDENTS'];
 

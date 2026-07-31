@@ -10,7 +10,7 @@ import {
 } from '@/lib/demo-store/selectors';
 import { jod, pct, num } from '@/lib/format';
 import { PageHeader, Gate, Kpi } from '@/components/page';
-import { Card, CardContent, CardHeader, CardTitle, cn } from '@axa/platform';
+import { Card, CardContent, CardHeader, CardTitle, cn } from '@munaxa/ui';
 
 export default function AnalyticsPage() {
   return (

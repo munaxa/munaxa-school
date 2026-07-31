@@ -1,5 +1,5 @@
-import { Lock } from '@axa/platform/icons';
-import { cn } from '@axa/platform';
+import { Lock } from '@munaxa/icons';
+import { cn } from '@munaxa/ui';
 
 /**
  * Browser/app window chrome that frames in-product UI so it reads as a real screenshot of the

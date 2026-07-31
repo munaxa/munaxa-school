@@ -1,4 +1,4 @@
-import { Badge } from '@axa/platform';
+import { Badge } from '@munaxa/ui';
 
 /** Library domain component: renders a book-loan status as a toned Badge. */
 const LOAN_TONE: Record<string, 'default' | 'danger' | 'muted'> = {

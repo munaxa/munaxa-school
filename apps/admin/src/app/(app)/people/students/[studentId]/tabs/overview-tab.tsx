@@ -14,7 +14,7 @@ import {
   Input,
   Select,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { studentsApi, type Student, type EnrollmentHistoryRow } from '@/lib/people';
 import { financeApi, type Statement } from '@/lib/finance';
 import { busApi, type StudentTransport } from '@/lib/bus';

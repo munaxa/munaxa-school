@@ -1,0 +1,91 @@
+name: Deploy Cloudflare
+
+# The landing site, the demo and the Platform's Storybook all run on Cloudflare Workers.
+#
+# They used to deploy via Cloudflare's dashboard "Workers Builds", whose settings (build watch
+# paths, build/deploy commands, root directory) live outside this repository. That is how the
+# live sites went stale without anything going red: a merge that only touched the design system did
+# not match a project's watch paths, so no build ran and the Worker kept serving its previous
+# bundle — green `main`, nothing in the dashboard, stale site.
+#
+# Deployment now lives here instead. Every merge to `main` redeploys all three, unconditionally
+# and with no path filtering: the apps render their UI from `@munaxa/ui`, so "nothing they
+# consume changed" is not a judgement a path filter can make correctly. A redundant deploy costs
+# one short build; a skipped one costs a silently stale production site.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never let two deploys of the same app race. Do not cancel in progress: a half-finished
+# `wrangler deploy` that loses to a newer run is worse than waiting.
+concurrency:
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.33.0'
+
+jobs:
+  deploy:
+    name: Deploy ${{ matrix.app }} → ${{ matrix.worker }}
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      # One app failing must not stop the others from reaching production.
+      fail-fast: false
+      matrix:
+        include:
+          # `worker` is the Cloudflare Worker each app deploys to, asserted against the app's
+          # own wrangler config below. The landing site's Worker is `munaxa`, not `landing` —
+          # that is the Worker munaxa.com is attached to.
+          - app: landing
+            filter: '@school/landing'
+            config: landing/wrangler.jsonc
+            worker: munaxa
+          - app: demo
+            filter: munaxademo
+            config: munaxademo/wrangler.jsonc
+            worker: munaxademo
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # A `name` that does not match the real Worker does not fail the deploy — wrangler just
+      # creates a new Worker that no custom domain points at, and the live site never changes.
+      # Catch that here, before it becomes another silent stale deploy.
+      - name: Assert the config targets the expected Worker
+        run: |
+          actual=$(grep -oP '^\s*"name":\s*"\K[^"]+' '${{ matrix.config }}' | head -1)
+          if [ "$actual" != '${{ matrix.worker }}' ]; then
+            echo "::error file=${{ matrix.config }}::Worker name is \"$actual\" but this app deploys to \"${{ matrix.worker }}\". Deploying would create a Worker with no custom domain and leave the live site stale."
+            exit 1
+          fi
+          echo "$actual ✓"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Each app's `cf:deploy` builds its shared dependencies, runs its adapter, then invokes
+      # wrangler from the app folder — the same scripts used locally, so CI and a developer's
+      # machine cannot drift apart.
+      - name: Build & deploy
+        run: pnpm --filter ${{ matrix.filter }} run cf:deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

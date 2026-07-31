@@ -13,7 +13,7 @@ import {
   CardTitle,
   PageHeader,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { hrDashboardApi, type HrAlert, type HrDashboard } from '@/lib/people';
 
 export default function HrDashboardPage() {

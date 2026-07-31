@@ -14,7 +14,7 @@ import {
   CardTitle,
   Input,
   PageHeader,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 export default function SchoolsPage() {
   const { t } = useI18n();

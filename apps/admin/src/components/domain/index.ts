@@ -1,7 +1,7 @@
 /**
- * Domain components: small, app-specific compositions over the @axa/platform primitives
+ * Domain components: small, app-specific compositions over the @munaxa/ui primitives
  * (e.g. status → toned Badge). They depend on app data types / enums, so they live in
- * the app rather than the generic @axa/platform package. Each owns the single source of
+ * the app rather than the generic @munaxa/ui package. Each owns the single source of
  * truth for its domain's status colours.
  */
 export { ChargeStatusBadge } from './charge-status-badge';

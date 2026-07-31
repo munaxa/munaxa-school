@@ -15,11 +15,11 @@ import {
   useAppShell,
   type NavigationGroup,
   type RenderNavigationLink,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useSession } from '@/lib/session-context';
 import { useDemo } from '@/lib/demo-store/context';
 import type { PersonaId } from '@/lib/rbac';
-import { Logo } from './logo';
+import { Logo } from '@school/brand';
 import { ThemeLocaleToggle } from './theme-locale-toggle';
 import { RoleSwitcher } from './role-switcher';
 import { useOnboarding } from './onboarding-tour';

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shell } from '@/components/shell';
-import { Badge, DataGrid, EmptyState, PageHeader, useToast, type ColumnDef } from '@axa/platform';
+import { Badge, DataGrid, EmptyState, PageHeader, useToast, type ColumnDef } from '@munaxa/ui';
 import { platformConsoleApi, type SubscriptionRow } from '@/lib/platform-console';
 import { useGridLabels } from '@/components/grid-labels';
 import { PlatformNav } from '../platform-nav';

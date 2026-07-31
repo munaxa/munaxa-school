@@ -1,7 +1,11 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build for the Munaxa Admin Portal (Next.js standalone).
-# Build context MUST be the repository root (the AXA workspace root):
-#   docker build -f school/apps/admin/Dockerfile -t munaxa-admin .
+# Build context MUST be this repository's root:
+#   docker build -f apps/admin/Dockerfile -t munaxa-school-admin .
+#
+# The shared design system is a registry dependency (@munaxa/*), not a workspace member,
+# so the build needs a token with `read:packages`:
+#   docker build --secret id=github_token,env=GITHUB_TOKEN -f apps/admin/Dockerfile .
 
 ARG NODE_VERSION=22-alpine
 
@@ -11,11 +15,10 @@ WORKDIR /repo
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
-COPY tooling/ tooling/
-COPY platform/ platform/
-COPY school/apps/admin/package.json school/apps/admin/
-COPY school/packages/ school/packages/
+COPY apps/admin/package.json apps/admin/
+COPY packages/ packages/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
     pnpm install --frozen-lockfile
 
 FROM deps AS build
@@ -46,13 +49,13 @@ RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
 
 # Next.js standalone output (output: 'standalone'): a self-contained server with only the
 # runtime node_modules it needs — no full workspace node_modules in the image. In a pnpm
-# monorepo the server lands at <standalone>/school/apps/admin/server.js.
-COPY --from=build --chown=nextjs:nodejs /repo/school/apps/admin/.next/standalone ./
-COPY --from=build --chown=nextjs:nodejs /repo/school/apps/admin/.next/static ./school/apps/admin/.next/static
-COPY --from=build --chown=nextjs:nodejs /repo/school/apps/admin/public ./school/apps/admin/public
+# workspace the server lands at <standalone>/apps/admin/server.js.
+COPY --from=build --chown=nextjs:nodejs /repo/apps/admin/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /repo/apps/admin/.next/static ./apps/admin/.next/static
+COPY --from=build --chown=nextjs:nodejs /repo/apps/admin/public ./apps/admin/public
 
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://localhost:'+(process.env.PORT||3000)+'/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "school/apps/admin/server.js"]
+CMD ["node", "apps/admin/server.js"]

@@ -19,7 +19,7 @@ import {
   Input,
   PageHeader,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 const EMPTY: CreateParentInput = {
   firstNameEn: '',

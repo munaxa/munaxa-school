@@ -20,7 +20,7 @@ import {
   TR,
   Table,
   type Tone,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import type { AttendanceStatus, InvoiceStatus } from '@/seed/types';
 
 const CHARGE_TONE: Record<InvoiceStatus, Tone> = {

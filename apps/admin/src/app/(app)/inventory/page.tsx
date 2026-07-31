@@ -27,7 +27,7 @@ import {
   PageHeader,
   Select,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 export default function InventoryPage() {
   const { t } = useI18n();

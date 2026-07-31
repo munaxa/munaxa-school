@@ -33,7 +33,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useI18n } from '@/components/i18n-provider';
 import { useConfirm } from '@/components/confirm';
 import { loadSectionOptions, loadStudentOptions } from '@/lib/pickers';

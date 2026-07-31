@@ -11,7 +11,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { organizationApi, type OrganizationSettings } from '@/lib/organization';
 import {
   AcademicSection,

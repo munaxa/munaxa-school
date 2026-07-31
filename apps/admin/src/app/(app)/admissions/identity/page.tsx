@@ -13,7 +13,7 @@ import {
   Field,
   Input,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   admissionsApi,
   type IdentityLookupResult,

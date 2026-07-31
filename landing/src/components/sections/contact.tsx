@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Mail, Clock, MapPin, Loader2, CheckCircle2, AlertCircle, Send } from '@axa/platform/icons';
-import { Button, Input, Label, Reveal, Textarea, cn } from '@axa/platform';
+import { Mail, Clock, MapPin, Loader2, CheckCircle2, AlertCircle, Send } from '@munaxa/icons';
+import { Button, Input, Label, Reveal, Textarea, cn } from '@munaxa/ui';
 import { CONTACT_EMAIL } from '@/lib/site';
 
 type Status = 'idle' | 'submitting' | 'success' | 'error';

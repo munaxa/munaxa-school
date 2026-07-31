@@ -15,7 +15,7 @@ import {
   Select,
   cn,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { usersApi, type UserStatus, type UserSummary } from '@/lib/users';

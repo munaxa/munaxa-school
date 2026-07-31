@@ -16,12 +16,12 @@ import {
   cn,
   type NavigationGroup,
   type RenderNavigationLink,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { logout, type Principal } from '@/lib/auth';
 import { clearPrincipalCache } from '@/lib/session';
 import { advancedApi } from '@/lib/advanced';
 import { academicYearsApi, type AcademicYear } from '@/lib/structure';
-import { Logo } from './logo';
+import { Logo } from '@school/brand';
 import { ThemeLocaleToggle } from './theme-locale-toggle';
 import { GlobalSearch } from './global-search';
 import { useI18n } from './i18n-provider';

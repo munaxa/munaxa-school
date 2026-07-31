@@ -12,8 +12,8 @@ import {
   Bus,
   MessageSquare,
   type Icon,
-} from '@axa/platform/icons';
-import { cn } from '@axa/platform';
+} from '@munaxa/icons';
+import { cn } from '@munaxa/ui';
 
 /**
  * The connective diagram — one core with every department orbiting it, each wired back to the

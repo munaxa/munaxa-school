@@ -9,7 +9,7 @@ import {
   Wallet,
   Smartphone,
   type Icon,
-} from '@axa/platform/icons';
+} from '@munaxa/icons';
 
 /**
  * "A single day, connected" — one tap on the attendance register, traced as a single chain of

@@ -11,10 +11,12 @@
     "test": "echo \"no tests yet\" && exit 0"
   },
   "dependencies": {
+    "@munaxa/platform": "^1.0.0",
+    "@munaxa/ui": "^1.0.0",
+    "@school/brand": "workspace:*",
     "@school/contracts": "workspace:*",
     "@school/domain": "workspace:*",
     "@school/i18n": "workspace:*",
-    "@axa/platform": "workspace:*",
     "@sentry/nextjs": "^9.0.0",
     "next": "15.1.4",
     "posthog-js": "^1.205.0",
@@ -22,8 +24,8 @@
     "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@axa/config-eslint": "workspace:*",
-    "@axa/config-typescript": "workspace:*",
+    "@munaxa/config-eslint": "^1.0.0",
+    "@munaxa/config-typescript": "^1.0.0",
     "@next/eslint-plugin-next": "15.1.4",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",

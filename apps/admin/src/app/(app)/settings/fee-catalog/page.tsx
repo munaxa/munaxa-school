@@ -21,7 +21,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { admissionsApi, type FeeItem, type FeeItemKind, type GradeFeeItem } from '@/lib/admissions';
 import { schoolsApi, campusesApi, gradesApi, academicYearsApi } from '@/lib/structure';
 import type { AcademicYear, Campus, Grade } from '@/lib/structure';

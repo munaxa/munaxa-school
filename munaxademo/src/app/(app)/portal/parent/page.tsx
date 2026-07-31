@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useDemo } from '@/lib/demo-store/context';
 import { studentName } from '@/lib/demo-store/selectors';
 import { jod, pct, fmtDate } from '@/lib/format';
-import { Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@axa/platform';
+import { Button, Card, CardContent, CardHeader, CardTitle, useToast } from '@munaxa/ui';
 import { PageHeader } from '@/components/page';
 import type { Student } from '@/seed/types';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { CountUp, cn } from '@axa/platform';
+import { CountUp, cn } from '@munaxa/ui';
 
 /**
  * School intelligence — a leadership view that reads across modules: attendance trend, collection

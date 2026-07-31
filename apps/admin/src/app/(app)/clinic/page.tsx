@@ -19,7 +19,7 @@ import {
   Select,
   type ColumnDef,
   type PickerOption,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { loadStudentOptions } from '@/lib/pickers';
 import {
   CLINIC_OUTCOMES,

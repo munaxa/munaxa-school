@@ -24,7 +24,7 @@ import {
   Stepper,
   useToast,
   type Tone,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   academicYearsApi,
   campusesApi,

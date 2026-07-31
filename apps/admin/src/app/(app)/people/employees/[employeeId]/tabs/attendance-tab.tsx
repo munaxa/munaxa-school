@@ -20,7 +20,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   attendanceApi,
   STAFF_ATTENDANCE_STATUSES,

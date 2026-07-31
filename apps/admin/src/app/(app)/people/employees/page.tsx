@@ -28,7 +28,7 @@ import {
   PageHeader,
   Select,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { EmployeeEditor } from './employee-editor';
 import { TeacherProfileDialog } from '../teachers/teacher-profile-dialog';
 

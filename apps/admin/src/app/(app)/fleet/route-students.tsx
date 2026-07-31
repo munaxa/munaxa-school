@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Button, Drawer, Field, Input, Select, useToast } from '@axa/platform';
+import { Button, Drawer, Field, Input, Select, useToast } from '@munaxa/ui';
 import { busApi } from '@/lib/bus';
 import {
   AssignDialog,

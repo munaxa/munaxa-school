@@ -14,7 +14,7 @@ import {
   CardTitle,
   EmptyState,
   Spinner,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 /**
  * Transport tab — read-only view of the student's route assignment (from the Fleet module).

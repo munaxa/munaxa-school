@@ -21,7 +21,7 @@ import {
   TabsList,
   TabsTrigger,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { RecordHeader } from '@/components/domain';
 import { employmentStatusLabel } from '@/components/status-badge';
 import {

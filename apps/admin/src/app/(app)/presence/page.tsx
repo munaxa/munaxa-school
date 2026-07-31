@@ -20,7 +20,7 @@ import {
   Select,
   type ColumnDef,
   type PickerOption,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { loadStudentOptions } from '@/lib/pickers';
 import {
   PRESENCE_EVENT_TYPES,

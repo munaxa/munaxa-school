@@ -1,12 +1,20 @@
 @import 'tailwindcss';
-/* Munaxa theme: the shared AXA theme contract + the Munaxa palette. */
-@import '@axa/platform/css/themes/school';
+/* Munaxa theme: the shared theme contract + the School palette, both from the platform. */
+@import '@munaxa/theme/css/school';
 @import 'tw-animate-css';
-@source '../../../../../platform/ui';
+/* Tailwind v4 must scan the design system's shipped sources to emit the classes its
+ * components use. Points at the installed package, never a path into another repository. */
+@source '../../node_modules/@munaxa/platform/dist';
 
-/* Brand gradients (the old preset's backgroundImage). */
+/* Brand gradients. Derived from the theme's own `--primary` rather than hardcoded hex, so
+ * they track the palette instead of drifting from it the next time the brand is retuned. */
 @utility bg-grad-primary {
-  background-image: linear-gradient(135deg, #00b8db 0%, #007595 55%, #005066 120%);
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--primary) 100%, white 0%) 0%,
+    color-mix(in oklch, var(--primary) 78%, black) 55%,
+    color-mix(in oklch, var(--primary) 58%, black) 120%
+  );
 }
 @utility bg-grad-hero {
   background-image: radial-gradient(

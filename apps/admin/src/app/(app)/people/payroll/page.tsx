@@ -20,7 +20,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { attendanceApi, type PayrollPrepResult } from '@/lib/people';
 
 /** First and last day of the current month, ISO date. */

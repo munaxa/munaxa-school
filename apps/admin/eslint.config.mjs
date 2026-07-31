@@ -1,4 +1,4 @@
-import next from '@axa/config-eslint/next.js';
+import next from '@munaxa/config-eslint/next.js';
 import nextPlugin from '@next/eslint-plugin-next';
 import reactHooks from 'eslint-plugin-react-hooks';
 
@@ -41,7 +41,7 @@ export default [
   {
     // Platform governance guardrails: app source must use Platform token classes — never
     // hardcoded hex colors nor raw Tailwind palette colors. Tokens come from
-    // @axa/platform/tokens + globals.css.
+    // @munaxa/tokens + globals.css.
     files: ['src/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
@@ -50,25 +50,25 @@ export default [
           selector:
             'Literal[value=/#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/]',
           message:
-            'No hardcoded hex colors — use design-system token classes (e.g. text-coral, bg-card, border-border). Tokens: @axa/platform/tokens (css/theme.oklch.css) + globals.css.',
+            'No hardcoded hex colors — use design-system token classes (e.g. text-coral, bg-card, border-border). Tokens: @munaxa/tokens (css/theme.oklch.css) + globals.css.',
         },
         {
           selector:
             'TemplateElement[value.raw=/#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/]',
           message:
-            'No hardcoded hex colors — use design-system token classes (e.g. text-coral, bg-card, border-border). Tokens: @axa/platform/tokens (css/theme.oklch.css) + globals.css.',
+            'No hardcoded hex colors — use design-system token classes (e.g. text-coral, bg-card, border-border). Tokens: @munaxa/tokens (css/theme.oklch.css) + globals.css.',
         },
         {
           selector:
             'Literal[value=/\\b(?:bg|text|border|ring|divide|from|via|to|fill|stroke|outline|accent|caret|decoration)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]',
           message:
-            'No raw Tailwind palette colors — use design-system token/semantic classes (bg-primary, text-muted-foreground, bg-success, text-warning, …). Tokens: @axa/platform/tokens (css/theme.oklch.css) + globals.css.',
+            'No raw Tailwind palette colors — use design-system token/semantic classes (bg-primary, text-muted-foreground, bg-success, text-warning, …). Tokens: @munaxa/tokens (css/theme.oklch.css) + globals.css.',
         },
         {
           selector:
             'TemplateElement[value.raw=/\\b(?:bg|text|border|ring|divide|from|via|to|fill|stroke|outline|accent|caret|decoration)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|purple|fuchsia|pink|rose)-(?:50|100|200|300|400|500|600|700|800|900|950)\\b/]',
           message:
-            'No raw Tailwind palette colors — use design-system token/semantic classes (bg-primary, text-muted-foreground, bg-success, text-warning, …). Tokens: @axa/platform/tokens (css/theme.oklch.css) + globals.css.',
+            'No raw Tailwind palette colors — use design-system token/semantic classes (bg-primary, text-muted-foreground, bg-success, text-warning, …). Tokens: @munaxa/tokens (css/theme.oklch.css) + globals.css.',
         },
       ],
     },

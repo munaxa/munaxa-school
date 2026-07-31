@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge } from '@axa/platform';
+import { Badge } from '@munaxa/ui';
 
 /**
  * Permanent financial flag shown wherever a student's finances surface (profile, finance card,

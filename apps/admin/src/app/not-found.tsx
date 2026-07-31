@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { buttonVariants } from '@axa/platform';
+import { buttonVariants } from '@munaxa/ui';
 import { useI18n } from '@/components/i18n-provider';
-import { Logo } from '@/components/logo';
+import { Logo } from '@school/brand';
 
 /**
  * 404 / not-found screen. Standalone (outside the authed app shell) so it renders for any

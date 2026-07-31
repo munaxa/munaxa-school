@@ -1,11 +1,15 @@
 import Image from 'next/image';
-import { cn } from '@axa/platform';
+import { cn } from '@munaxa/ui';
 
 /**
- * The Munaxa logo, per the brand system. `variant` selects the lockup: horizontal (headers/nav,
- * default), stacked (login/hero), wordmark (footers), symbol (icon-only). `size` is the rendered
- * height in px; width follows the variant's intrinsic ratio. Theme-aware; the symbol is a single
- * teal mark for both themes. Served as static assets (unoptimized).
+ * The Munaxa logo, per the brand system. `variant` selects the lockup:
+ *   - horizontal — headers, nav, dashboards (default)
+ *   - stacked    — login / hero / vertical spaces
+ *   - wordmark   — text-only (footers)
+ *   - symbol     — icon-only (collapsed rail, loading, watermark)
+ * `size` is the rendered height in px; width follows the variant's intrinsic ratio. Theme-aware
+ * (black-text light logo on the light theme, white-text dark logo on the dark theme); the symbol
+ * is a single teal mark that reads on both. Served as static assets (unoptimized).
  */
 type Variant = 'horizontal' | 'stacked' | 'wordmark' | 'symbol';
 
@@ -38,6 +42,7 @@ export function Logo({
   const base = SRC[variant];
   const common = { alt: 'Munaxa', width, height: size, priority, unoptimized: true } as const;
 
+  // The symbol is a single teal mark — one file for both themes.
   if (variant === 'symbol') {
     return <Image src={`/${base}.png`} {...common} className={cn('object-contain', className)} />;
   }

@@ -19,7 +19,7 @@ import {
   Table,
   useToast,
   type Tone,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { PageHeader, Gate, Kpi } from '@/components/page';
 
 const LOAN_TONE: Record<string, Tone> = {

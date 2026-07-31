@@ -4,8 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { requestPasswordReset } from '@/lib/auth';
 import { useI18n } from '@/components/i18n-provider';
-import { Logo } from '@/components/logo';
-import { Button, Field, Input } from '@axa/platform';
+import { Logo } from '@school/brand';
+import { Button, Field, Input } from '@munaxa/ui';
 
 /**
  * Password-reset request. Posts to the anti-enumeration endpoint (always 202) and shows a neutral

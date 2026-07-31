@@ -14,7 +14,7 @@ import {
   Spinner,
   StatCard,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { platformConsoleApi, type DashboardMetrics } from '@/lib/platform-console';
 import { formatPrice } from '@/lib/subscription';
 import { PlatformNav } from './platform-nav';

@@ -16,7 +16,7 @@ import {
   Input,
   PageHeader,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import { trainingApi, type TrainingCourse, type TrainingRecord } from '@/lib/people';
 

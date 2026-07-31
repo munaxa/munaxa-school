@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
-import { DataGrid, Input, PageHeader, useToast, type ColumnDef } from '@axa/platform';
+import { DataGrid, Input, PageHeader, useToast, type ColumnDef } from '@munaxa/ui';
 import { platformConsoleApi, type AuditRow } from '@/lib/platform-console';
 import { PlatformNav } from '../platform-nav';
 

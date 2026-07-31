@@ -24,7 +24,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { FinanceTab } from '@/app/(app)/people/students/[studentId]/tabs/finance-tab';
 import {
   familiesApi,

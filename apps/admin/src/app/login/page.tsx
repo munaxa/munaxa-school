@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/auth';
 import { useI18n } from '@/components/i18n-provider';
-import { Logo } from '@/components/logo';
-import { Wordmark } from '@/components/wordmark';
+import { Logo } from '@school/brand';
+import { Wordmark } from '@school/brand';
 import {
   sanitizeIdentifier,
   sanitizePassword,

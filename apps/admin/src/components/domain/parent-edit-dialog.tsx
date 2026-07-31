@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Button, Field, Input, useToast } from '@axa/platform';
+import { Button, Field, Input, useToast } from '@munaxa/ui';
 import { parentsApi, type Parent, type UpdateParentInput } from '@/lib/people';
 
 /**

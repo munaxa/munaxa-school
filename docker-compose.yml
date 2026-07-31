@@ -1,0 +1,60 @@
+# Local development stack for Munaxa. Copy .env.example -> .env first.
+# Usage: pnpm docker:up  (or: docker compose up -d)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: munaxa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-munaxa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-munaxa_local_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-munaxa}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Provisions the restricted, NOBYPASSRLS application role on first init.
+      - ./infra/postgres/app-role.sql:/docker-entrypoint-initdb.d/01-app-role.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-munaxa} -d ${POSTGRES_DB:-munaxa}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: munaxa-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # S3-compatible storage for local dev (receipts, documents, attachments).
+  localstack:
+    image: localstack/localstack:3
+    container_name: munaxa-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: s3
+    ports:
+      - '${LOCALSTACK_PORT:-4566}:4566'
+    volumes:
+      - localstack_data:/var/lib/localstack
+
+  # Email capture for local dev (Resend stand-in).
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: munaxa-mailhog
+    restart: unless-stopped
+    ports:
+      - '${MAILHOG_SMTP_PORT:-1025}:1025'
+      - '${MAILHOG_UI_PORT:-8025}:8025'
+
+volumes:
+  postgres_data:
+  localstack_data:

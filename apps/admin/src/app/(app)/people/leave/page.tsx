@@ -16,7 +16,7 @@ import {
   Input,
   PageHeader,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import { leaveApi, type LeaveRequest, type LeaveType } from '@/lib/people';
 

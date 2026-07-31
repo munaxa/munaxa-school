@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Button, DatePicker, Field, Input, Select, useToast } from '@axa/platform';
+import { Button, DatePicker, Field, Input, Select, useToast } from '@munaxa/ui';
 import {
   employeesApi,
   EMPLOYEE_ENTRY_STATUSES,

@@ -1,6 +1,6 @@
 'use client';
 
-import type { PickerOption } from '@axa/platform';
+import type { PickerOption } from '@munaxa/ui';
 import { fullNameAr, fullNameEn, parentsApi, studentsApi } from './people';
 import { sectionsApi } from './structure';
 

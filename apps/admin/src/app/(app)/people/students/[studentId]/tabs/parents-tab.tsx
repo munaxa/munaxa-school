@@ -14,7 +14,7 @@ import {
   Input,
   Select,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import { loadParentOptions } from '@/lib/pickers';
 import { studentsApi, type Parent, type Student, type StudentParentLink } from '@/lib/people';

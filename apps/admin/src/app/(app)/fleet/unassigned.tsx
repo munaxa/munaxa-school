@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Button, Card, CardContent, Field, Input, Select, useToast } from '@axa/platform';
+import { Button, Card, CardContent, Field, Input, Select, useToast } from '@munaxa/ui';
 import { busApi } from '@/lib/bus';
 import { AssignDialog, BulkActionBar, SuggestAssignmentsDialog } from './components';
 import { StudentTable } from './student-table';

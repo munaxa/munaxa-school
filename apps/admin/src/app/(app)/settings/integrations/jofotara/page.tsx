@@ -16,7 +16,7 @@ import {
   Spinner,
   useToast,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   einvoicingApi,
   type EInvoiceDashboard,
