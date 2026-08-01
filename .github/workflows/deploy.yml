@@ -58,6 +58,8 @@ jobs:
         with:
           context: .
           file: apps/api/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-api:${{ github.sha }}
@@ -70,6 +72,8 @@ jobs:
         with:
           context: .
           file: apps/admin/Dockerfile
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-admin:${{ github.sha }}
