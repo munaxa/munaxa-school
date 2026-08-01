@@ -6,12 +6,7 @@
  */
 
 export type RequestStatus =
-  | 'NEW'
-  | 'CONTACTED'
-  | 'SCHEDULED'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'CONVERTED';
+  'NEW' | 'CONTACTED' | 'SCHEDULED' | 'APPROVED' | 'REJECTED' | 'CONVERTED';
 
 export const REQUEST_STATUSES: RequestStatus[] = [
   'NEW',

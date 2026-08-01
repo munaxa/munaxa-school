@@ -70,13 +70,11 @@ export class EnrollmentLifecycleRepository extends TenantRepository {
       // Recompute + write the Student.status shim (read-through cache; never authoritative).
       const rows = await this.statusViews(tx, studentId);
       const derived = deriveStudentStatus(
-        rows.map(
-          (r): EnrollmentStatusView => ({
-            status: r.status,
-            academicYearStatus: r.academicYear.status,
-            academicYearStart: r.academicYear.startDate,
-          }),
-        ),
+        rows.map((r): EnrollmentStatusView => ({
+          status: r.status,
+          academicYearStatus: r.academicYear.status,
+          academicYearStart: r.academicYear.startDate,
+        })),
       );
       if (derived !== null) {
         await tx.student.update({ where: { id: studentId }, data: { status: derived } });

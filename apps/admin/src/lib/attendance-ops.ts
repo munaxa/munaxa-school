@@ -11,13 +11,7 @@ import { authFetch } from './auth';
  */
 
 export type StaffAttendanceStatus =
-  | 'PRESENT'
-  | 'ABSENT'
-  | 'LATE'
-  | 'EARLY_DEPARTURE'
-  | 'ON_LEAVE'
-  | 'HOLIDAY'
-  | 'REMOTE';
+  'PRESENT' | 'ABSENT' | 'LATE' | 'EARLY_DEPARTURE' | 'ON_LEAVE' | 'HOLIDAY' | 'REMOTE';
 
 export type LockScope = 'DAY' | 'WEEK' | 'PAYROLL' | 'SEMESTER';
 export type LockStatus = 'ACTIVE' | 'RELEASED';

@@ -77,13 +77,7 @@ export interface EmailDocumentInput {
 }
 
 export type AgreementStatus =
-  | 'DRAFT'
-  | 'COMMITTED'
-  | 'GENERATED'
-  | 'PRINTED'
-  | 'SIGNED'
-  | 'CANCELLED'
-  | 'ARCHIVED';
+  'DRAFT' | 'COMMITTED' | 'GENERATED' | 'PRINTED' | 'SIGNED' | 'CANCELLED' | 'ARCHIVED';
 
 export interface RegistrationAgreementRow {
   id: string;

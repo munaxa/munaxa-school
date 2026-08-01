@@ -167,7 +167,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Dependency audit
         run: pnpm audit --prod || true
+      # The gitleaks-action wrapper requires a paid licence for organisation-owned
+      # repositories, which this became on the move to the munaxa org. The scanner
+      # itself is MIT-licensed, so run the upstream binary directly and keep the check.
       - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        run: |
+          set -euo pipefail
+          VERSION="$(curl -sSfL https://api.github.com/repos/gitleaks/gitleaks/releases/latest | jq -r .tag_name)"
+          VERSION="${VERSION#v}"
+          echo "Using gitleaks ${VERSION}"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks git . --redact --no-banner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -3,15 +3,7 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react';
 import { Shell, usePrincipal } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
-import {
-  Button,
-  ErrorState,
-  Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@munaxa/ui';
+import { Button, ErrorState, Spinner, Tabs, TabsContent, TabsList, TabsTrigger } from '@munaxa/ui';
 import { organizationApi, type OrganizationSettings } from '@/lib/organization';
 import {
   AcademicSection,

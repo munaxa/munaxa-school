@@ -76,7 +76,7 @@ export function layoutRuns(input: string): VisualRun[] {
 
   // Maximal same-level segments, in logical order.
   const runs: Array<{ start: number; end: number; level: number }> = [];
-  for (let i = 0; i < isolated.length; ) {
+  for (let i = 0; i < isolated.length;) {
     const level = levels[i]!;
     let j = i + 1;
     while (j < isolated.length && levels[j] === level) j += 1;
