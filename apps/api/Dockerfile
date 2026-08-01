@@ -38,9 +38,20 @@ RUN pnpm --filter @school/api prisma:generate \
 #
 # `pnpm deploy` does NOT carry over the `prisma generate` output (the generated client
 # under node_modules/.prisma), so regenerate it INTO the bundle afterwards.
-RUN pnpm --filter @school/api --prod --legacy deploy /prod/api \
-    && cp -r prisma /prod/api/prisma \
-    && (cd /prod/api && /repo/node_modules/.bin/prisma generate --schema=/prod/api/prisma/schema.prisma)
+# `pnpm deploy` re-resolves the production closure, so it needs registry credentials
+# just as much as the install above. It resolves from the destination (/prod/api), where
+# the repo's own .npmrc does not apply — hence the user-level file written here, which is
+# honoured regardless of working directory. Written and removed inside a single RUN so the
+# token never reaches a committed layer.
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
+    set -eu; \
+    if [ -n "${GITHUB_TOKEN:-}" ]; then \
+      printf '@munaxa:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "$GITHUB_TOKEN" > /root/.npmrc; \
+    fi; \
+    pnpm --filter @school/api --prod --legacy deploy /prod/api; \
+    cp -r prisma /prod/api/prisma; \
+    (cd /prod/api && /repo/node_modules/.bin/prisma generate --schema=/prod/api/prisma/schema.prisma); \
+    rm -f /root/.npmrc
 
 # ---------- Runtime ----------
 FROM node:${NODE_VERSION} AS runtime
