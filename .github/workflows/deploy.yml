@@ -86,6 +86,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-images
     environment: ${{ github.event.inputs.environment || 'staging' }}
+    # Installing needs to pull @munaxa/* from GitHub Packages. The workflow-level
+    # default is contents:read only, which authenticates but cannot download a
+    # private package — the tarball comes back 403 while every public dependency
+    # resolves fine. build-images escapes this via its packages:write.
+    permissions:
+      contents: read
+      packages: read
     env:
       # Owner (privileged) connection for migrations; configured per GitHub environment.
       DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}

@@ -36,6 +36,11 @@ jobs:
     name: Deploy ${{ matrix.app }} → ${{ matrix.worker }}
     runs-on: ubuntu-latest
     environment: production
+    # Installing needs to pull @munaxa/* from GitHub Packages; the workflow-level
+    # contents:read default cannot download a private package.
+    permissions:
+      contents: read
+      packages: read
     strategy:
       # One app failing must not stop the others from reaching production.
       fail-fast: false
