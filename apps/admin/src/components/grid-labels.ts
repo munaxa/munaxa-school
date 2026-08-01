@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { DataGridLabels } from '@axa/platform';
+import type { DataGridLabels } from '@munaxa/ui';
 import { useI18n } from './i18n-provider';
 
 /**

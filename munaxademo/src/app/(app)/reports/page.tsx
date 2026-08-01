@@ -24,7 +24,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { PageHeader, Gate } from '@/components/page';
 
 type Kind = 'attendance' | 'academic' | 'financial';

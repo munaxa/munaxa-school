@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Logo } from '@/components/logo';
-import { Button, Card, CardContent, Field, Input, Select } from '@axa/platform';
+import { Logo } from '@school/brand';
+import { Button, Card, CardContent, Field, Input, Select } from '@munaxa/ui';
 
 interface Form {
   schoolName: string;

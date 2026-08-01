@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { useI18n } from './i18n-provider';
-import { Button, Dialog } from '@axa/platform';
+import { Button, Dialog } from '@munaxa/ui';
 
 interface ConfirmOptions {
   title?: string;

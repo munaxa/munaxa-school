@@ -14,7 +14,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { CardSkeleton } from './components';
 import { RouteDashboard } from './dashboard';
 import { AreaPlanning } from './areas';

@@ -23,7 +23,7 @@ import {
   TH,
   THead,
   TR,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { Shell } from '@/components/shell';
 import { loadSectionOptions } from '@/lib/pickers';
 import { useI18n } from '@/components/i18n-provider';

@@ -19,7 +19,7 @@ import {
   Spinner,
   StatCard,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { platformConsoleApi, type SchoolDetail } from '@/lib/platform-console';
 import { formatLimit, type PlanView } from '@/lib/subscription';
 import { PLAN_FEATURE_KEYS } from '../../feature-keys';

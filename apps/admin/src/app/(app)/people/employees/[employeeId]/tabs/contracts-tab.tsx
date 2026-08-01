@@ -15,7 +15,7 @@ import {
   Select,
   Textarea,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import {
   contractsApi,
@@ -36,9 +36,7 @@ const STATUS_TONE: Record<ContractStatus, 'default' | 'success' | 'warning' | 'm
   };
 
 type Mode =
-  | { kind: 'create' }
-  | { kind: 'edit'; contract: Contract }
-  | { kind: 'renew'; contract: Contract };
+  { kind: 'create' } | { kind: 'edit'; contract: Contract } | { kind: 'renew'; contract: Contract };
 
 export function ContractsTab({
   employeeId,

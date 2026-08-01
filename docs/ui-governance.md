@@ -19,9 +19,9 @@ success / warning / info / destructive roles, in light and dark.
 
 | Surface                | Theme comes from                                  |
 | ---------------------- | ------------------------------------------------- |
-| `apps/admin` (product) | `@import '@axa/platform/css/themes/munaxa';`  |
-| `landing` (marketing)  | `@import '@axa/platform/css/themes/munaxa';`  |
-| `munaxademo` (sandbox) | `@import '@axa/platform/css/themes/munaxa';`  |
+| `apps/admin` (product) | `@import '@munaxa/ui/css/themes/munaxa';`  |
+| `landing` (marketing)  | `@import '@munaxa/ui/css/themes/munaxa';`  |
+| `munaxademo` (sandbox) | `@import '@munaxa/ui/css/themes/munaxa';`  |
 
 **Rule:** there is exactly one physical palette file. No app inlines colours, forks a theme, or
 maintains its own token copy. When the brand changes, edit the palette — every surface follows.

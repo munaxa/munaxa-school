@@ -24,7 +24,7 @@ import {
   Tooltip,
   cn,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { useConfirm } from '@/components/confirm';

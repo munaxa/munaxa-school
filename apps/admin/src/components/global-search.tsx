@@ -10,7 +10,7 @@ import {
   CommandItem,
   CommandList,
   CommandPalette,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useI18n } from './i18n-provider';
 import {
   fullNameEn,
@@ -45,7 +45,7 @@ const TYPES: Hit['type'][] = ['student', 'teacher', 'employee'];
  * list APIs (no new endpoints). Selecting a hit navigates to that module. Opens via the header
  * button or ⌘K / Ctrl-K.
  *
- * The palette itself is `@axa/platform`'s `CommandPalette` — a `Command` inside the platform
+ * The palette itself is `@munaxa/ui`'s `CommandPalette` — a `Command` inside the platform
  * `Dialog`. What remains here is the part that is genuinely School's: which entities this user may
  * search, how each list API is called, the session cache for the two lists with no server-side
  * search, and where a hit navigates to.

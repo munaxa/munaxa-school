@@ -3,13 +3,7 @@
 import { authFetch } from './auth';
 
 export type SchoolType =
-  | 'PRIVATE'
-  | 'INTERNATIONAL'
-  | 'NATIONAL'
-  | 'IB'
-  | 'BRITISH'
-  | 'AMERICAN'
-  | 'OTHER';
+  'PRIVATE' | 'INTERNATIONAL' | 'NATIONAL' | 'IB' | 'BRITISH' | 'AMERICAN' | 'OTHER';
 export type HAlign = 'LEFT' | 'CENTER' | 'RIGHT';
 export type PaperSize = 'A4' | 'LETTER' | 'LEGAL';
 export type QrContent = 'DOCUMENT_NUMBER' | 'STUDENT_NUMBER' | 'VERIFICATION_URL' | 'CUSTOM_TEXT';

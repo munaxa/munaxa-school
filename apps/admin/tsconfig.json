@@ -1,5 +1,5 @@
 {
-  "extends": "@axa/config-typescript/nextjs.json",
+  "extends": "@munaxa/config-typescript/nextjs.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

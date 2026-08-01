@@ -1,5 +1,5 @@
-import { ArrowRight } from '@axa/platform/icons';
-import { Reveal, cn } from '@axa/platform';
+import { ArrowRight } from '@munaxa/icons';
+import { Reveal, cn } from '@munaxa/ui';
 
 /**
  * Editorial two-column module section: copy on one side, live product surface on the other.

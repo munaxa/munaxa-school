@@ -6,7 +6,7 @@
  * mocked). Fails soft: if no API key is configured, requests are still stored and the
  * admin queue keeps working; we just skip sending.
  */
-import { themes } from '@axa/platform/themes';
+import { themes } from '@munaxa/theme';
 import type { DemoRequest } from '@/lib/requests';
 
 /** Email HTML cannot read CSS custom properties, so it renders the theme's static hexes. */

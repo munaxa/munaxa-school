@@ -12,8 +12,8 @@ import {
 import Link from 'next/link';
 import { useSession } from '@/lib/session-context';
 import type { PersonaId } from '@/lib/rbac';
-import { Button } from '@axa/platform';
-import { Logo } from './logo';
+import { Button } from '@munaxa/ui';
+import { Logo } from '@school/brand';
 
 const SEEN_KEY = 'munaxa.demo.onboarded';
 

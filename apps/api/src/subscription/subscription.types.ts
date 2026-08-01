@@ -11,8 +11,7 @@ import type {
 /** A resolved, in-memory snapshot of everything needed to answer feature/limit questions. */
 export interface SubscriptionSnapshot {
   subscription:
-    | (TenantSubscription & { plan: SubscriptionPlan & { features: SubscriptionFeature[] } })
-    | null;
+    (TenantSubscription & { plan: SubscriptionPlan & { features: SubscriptionFeature[] } }) | null;
   /** Non-expired per-tenant overrides, keyed by feature/limit key. */
   overrides: Map<string, TenantFeatureOverride>;
   /** Current usage counters, keyed by metric. */

@@ -1,5 +1,5 @@
-import { ArrowRight, ShieldCheck } from '@axa/platform/icons';
-import { CountUp, Reveal, buttonVariants, cn } from '@axa/platform';
+import { ArrowRight, ShieldCheck } from '@munaxa/icons';
+import { CountUp, Reveal, buttonVariants, cn } from '@munaxa/ui';
 import { DEMO_URL } from '@/lib/site';
 import { LiveShowcase } from '@/components/product/live-showcase';
 

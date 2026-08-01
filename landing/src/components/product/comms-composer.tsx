@@ -1,5 +1,5 @@
-import { Send, Check, CheckCheck } from '@axa/platform/icons';
-import { cn } from '@axa/platform';
+import { Send, Check, CheckCheck } from '@munaxa/icons';
+import { cn } from '@munaxa/ui';
 
 /**
  * Communication — an announcement composer with live audience targeting and per-channel delivery.

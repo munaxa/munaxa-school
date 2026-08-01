@@ -25,7 +25,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   documentsApi,
   type AgreementStatus,

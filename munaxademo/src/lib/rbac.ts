@@ -208,14 +208,7 @@ export function permissionsForRole(role: RoleKey): Permission[] {
 
 /* ── Demo personas (what the login page offers) ─────────────────────────── */
 export type PersonaId =
-  | 'owner'
-  | 'principal'
-  | 'registrar'
-  | 'finance'
-  | 'teacher'
-  | 'parent'
-  | 'student'
-  | 'bus';
+  'owner' | 'principal' | 'registrar' | 'finance' | 'teacher' | 'parent' | 'student' | 'bus';
 
 export interface Persona {
   id: PersonaId;

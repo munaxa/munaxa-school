@@ -18,7 +18,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   trainingApi,
   TRAINING_RECORD_STATUSES,

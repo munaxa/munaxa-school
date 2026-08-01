@@ -23,7 +23,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   campusesApi,
   classroomsApi,

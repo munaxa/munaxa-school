@@ -22,7 +22,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { PageHeader, Gate, Kpi } from '@/components/page';
 import type { Invoice, InvoiceStatus, PaymentMethod } from '@/seed/types';
 

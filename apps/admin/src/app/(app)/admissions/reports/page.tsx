@@ -19,7 +19,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { FeeModifiedBadge } from '@/components/fee-modified-badge';
 import { admissionsApi, type EnrollmentRow, type FeeModificationRow } from '@/lib/admissions';
 import { schoolsApi, campusesApi, gradesApi, academicYearsApi } from '@/lib/structure';

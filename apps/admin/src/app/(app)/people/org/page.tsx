@@ -23,7 +23,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import { departmentsApi, positionsApi, type Department, type Position } from '@/lib/people';
 

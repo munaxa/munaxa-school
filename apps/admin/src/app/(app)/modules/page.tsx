@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { ADVANCED_MODULES, advancedApi, type FeatureFlag } from '@/lib/advanced';
-import { Button, Card, CardContent, Page, PageHeader, Stack } from '@axa/platform';
+import { Button, Card, CardContent, Page, PageHeader, Stack } from '@munaxa/ui';
 
 export default function ModulesPage() {
   const { t } = useI18n();

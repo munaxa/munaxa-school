@@ -15,7 +15,7 @@ import {
   TabsList,
   TabsTrigger,
   TabsContent,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 /**
  * Read-only teacher profile shown when a teacher name is clicked in the unified Staff directory.

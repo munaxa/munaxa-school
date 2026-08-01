@@ -22,7 +22,7 @@ import {
   Table,
   useToast,
   type Tone,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { PageHeader, Kpi } from '@/components/page';
 
 interface DemoRequest {

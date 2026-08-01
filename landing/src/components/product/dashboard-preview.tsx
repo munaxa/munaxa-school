@@ -9,9 +9,9 @@ import {
   Bus,
   MessageSquare,
   BarChart3,
-} from '@axa/platform/icons';
+} from '@munaxa/icons';
 import Image from 'next/image';
-import { cn } from '@axa/platform';
+import { cn } from '@munaxa/ui';
 
 /**
  * A faithful, static recreation of the Munaxa owner dashboard — the same navigation, KPIs and

@@ -16,7 +16,7 @@ import {
   StatCard,
   Textarea,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   subscriptionApi,
   formatLimit,

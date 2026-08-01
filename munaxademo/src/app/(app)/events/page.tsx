@@ -14,7 +14,7 @@ import {
   Select,
   useToast,
   type Tone,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { PageHeader } from '@/components/page';
 import type { SchoolEvent } from '@/seed/types';
 

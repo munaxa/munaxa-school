@@ -18,7 +18,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { teamApi, type LeaveRequest, type TeamMember } from '@/lib/people';
 
 export default function MyTeamPage() {

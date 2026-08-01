@@ -1,4 +1,4 @@
-import { cn } from '@axa/platform';
+import { cn } from '@munaxa/ui';
 
 /**
  * Admissions pipeline — a stage-based board of applicants moving from inquiry to enrolled.

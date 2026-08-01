@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 // The demo is a pnpm-workspace member, so trace from the workspace root (the repository root,
-// two levels up from school/munaxademo): this both pulls the workspace deps (@axa/platform)
+// two levels up from school/munaxademo): this both pulls the workspace deps (@munaxa/ui)
 // into the standalone bundle and produces the monorepo-nested layout
 // (.next/standalone/school/munaxademo/.next/...) that the OpenNext Cloudflare adapter expects.
 // Pinning this to projectRoot breaks the OpenNext bundling step.

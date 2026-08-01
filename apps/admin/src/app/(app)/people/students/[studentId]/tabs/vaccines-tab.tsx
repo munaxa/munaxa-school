@@ -1,7 +1,7 @@
 'use client';
 
 import { useI18n } from '@/components/i18n-provider';
-import { Card, CardContent, CardHeader, CardTitle } from '@axa/platform';
+import { Card, CardContent, CardHeader, CardTitle } from '@munaxa/ui';
 import { Vaccines } from '../../student-editor';
 
 /** Government vaccines tab — reuses the shared, editable Vaccines manager. */

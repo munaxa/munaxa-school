@@ -1,0 +1,134 @@
+name: Deploy
+
+# Build & publish container images to GHCR on every merge to main, then apply database
+# migrations and deploy — both gated. Staging deploys on merge; production is manual
+# (workflow_dispatch) and protected by the GitHub `production` environment (add required
+# reviewers there for a human gate).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  group: deploy-${{ github.ref }}-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-images:
+    name: Build & push container images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compute image names
+        id: meta
+        run: |
+          # GHCR requires a lowercase repository path.
+          echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-api:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-api:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,scope=api,mode=max
+
+      - name: Build & push Admin image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/admin/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-admin:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-admin:latest
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,scope=admin,mode=max
+
+  migrate:
+    name: Apply database migrations
+    runs-on: ubuntu-latest
+    needs: build-images
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    env:
+      # Owner (privileged) connection for migrations; configured per GitHub environment.
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '10.33.0'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: prisma migrate deploy
+        run: |
+          if [ -z "$DIRECT_DATABASE_URL" ]; then
+            echo "::warning::DIRECT_DATABASE_URL secret is not set for this environment — skipping migrations."
+            exit 0
+          fi
+          pnpm --filter @school/api prisma:deploy
+      - name: Re-apply restricted application role grants
+        run: |
+          if [ -z "$DIRECT_DATABASE_URL" ]; then
+            echo "Skipped (no database secret)."
+            exit 0
+          fi
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+          psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/postgres/app-role.sql
+
+  deploy:
+    name: Deploy services
+    runs-on: ubuntu-latest
+    needs: migrate
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    steps:
+      - name: Roll out images
+        run: |
+          # Environment-specific rollout. The images are published as:
+          #   ghcr.io/<repo>/munaxa-api:${{ github.sha }}
+          #   ghcr.io/<repo>/munaxa-admin:${{ github.sha }}
+          # Wire ONE of the following per the hosting decision (08-deployment-architecture):
+          #  - ECS:  aws ecs update-service --force-new-deployment (task def pinned to the sha tag)
+          #  - K8s:  kubectl set image deploy/munaxa-api api=ghcr.io/...:${{ github.sha }}
+          #  - VM:   ssh + docker compose pull && up -d (compose file pinned to the sha tag)
+          # Health-gate the cutover on /api/v1/health/ready before shifting traffic.
+          echo "No rollout target configured for this environment yet — images are published and ready."

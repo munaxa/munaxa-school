@@ -1,4 +1,4 @@
-import { Reveal, cn } from '@axa/platform';
+import { Reveal, cn } from '@munaxa/ui';
 
 /**
  * The problem, told typographically. Disconnected tools drift apart; the copy names the cost of

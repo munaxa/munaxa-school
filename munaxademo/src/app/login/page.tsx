@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PERSONAS, PERSONA_BY_ID, type PersonaId } from '@/lib/rbac';
-import { Logo } from '@/components/logo';
-import { Button, Card, CardContent, Field, Input } from '@axa/platform';
+import { Logo } from '@school/brand';
+import { Button, Card, CardContent, Field, Input } from '@munaxa/ui';
 
 const PERSONA_KEY = 'munaxa.demo.persona';
 

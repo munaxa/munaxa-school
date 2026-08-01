@@ -1,5 +1,5 @@
-import { CheckCircle2, Clock } from '@axa/platform/icons';
-import { cn } from '@axa/platform';
+import { CheckCircle2, Clock } from '@munaxa/icons';
+import { cn } from '@munaxa/ui';
 
 /**
  * Finance workspace — collections progress, a term summary, and a JoFotara e-invoicing status

@@ -18,7 +18,7 @@ import {
   TR,
   Table,
   type Tone,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 const LETTER_TONE: Record<string, Tone> = {
   A: 'success',

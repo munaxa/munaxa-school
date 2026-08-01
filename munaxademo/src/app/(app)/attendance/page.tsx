@@ -21,7 +21,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { PageHeader, Gate, Bar } from '@/components/page';
 import type { AttendanceStatus } from '@/seed/types';
 

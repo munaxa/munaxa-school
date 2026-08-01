@@ -11,7 +11,7 @@ import {
   Select,
   Spinner,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useI18n } from '@/components/i18n-provider';
 import {
   attendanceSettingsApi,

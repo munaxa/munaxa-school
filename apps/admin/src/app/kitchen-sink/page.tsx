@@ -18,7 +18,7 @@ import {
   TH,
   THead,
   TR,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 /**
  * Design-review surface: every UI primitive in its variants/states. Not linked in the app nav —

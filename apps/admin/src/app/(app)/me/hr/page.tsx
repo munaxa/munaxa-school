@@ -22,7 +22,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   essApi,
   type AssetAssignment,

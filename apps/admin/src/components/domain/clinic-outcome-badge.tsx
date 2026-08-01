@@ -1,4 +1,4 @@
-import { Badge } from '@axa/platform';
+import { Badge } from '@munaxa/ui';
 import type { ClinicOutcome } from '@/lib/advanced';
 
 /** Clinic domain component: renders a visit outcome as a toned Badge. */

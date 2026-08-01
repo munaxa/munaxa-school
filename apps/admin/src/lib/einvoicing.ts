@@ -6,13 +6,7 @@ export type EInvoiceEnvironment = 'SIMULATION' | 'PRODUCTION';
 export type EInvoiceTaxpayerType = 'INCOME' | 'SALES' | 'SPECIAL';
 export type EInvoicePaymentKind = 'CASH' | 'RECEIVABLE';
 export type EInvoiceDocStatus =
-  | 'DRAFT'
-  | 'QUEUED'
-  | 'SUBMITTING'
-  | 'ACCEPTED'
-  | 'REJECTED'
-  | 'DEAD_LETTER'
-  | 'CANCELLED';
+  'DRAFT' | 'QUEUED' | 'SUBMITTING' | 'ACCEPTED' | 'REJECTED' | 'DEAD_LETTER' | 'CANCELLED';
 
 export interface EInvoiceSettings {
   enabled: boolean;

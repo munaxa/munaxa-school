@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { getMessages } from '@school/i18n';
-import { LocaleProvider } from '@axa/platform';
+import { LocaleProvider } from '@munaxa/ui';
 import { DEFAULT_LOCALE, directionForLocale, type Locale } from '@/lib/i18n';
 
 const LOCALE_KEY = 'munaxa.locale';

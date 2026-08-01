@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Sora, Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
-import { ToastProvider } from '@axa/platform';
+import { ToastProvider } from '@munaxa/ui';
 
 // Munaxa Design System type pairing: Sora (display) / Inter (body) / JetBrains Mono.
 const sora = Sora({ subsets: ['latin'], variable: '--font-display', display: 'swap' });

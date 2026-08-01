@@ -6,7 +6,7 @@ import { DashboardPreview } from './dashboard-preview';
 import { AdmissionsBoard } from './admissions-board';
 import { FinanceWorkspace } from './finance-workspace';
 import { IntelligencePanel } from './intelligence-panel';
-import { cn } from '@axa/platform';
+import { cn } from '@munaxa/ui';
 
 type View = { key: string; label: string; url: string; Node: ComponentType };
 

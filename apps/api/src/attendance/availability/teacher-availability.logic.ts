@@ -13,13 +13,7 @@ import type { TeacherAttendanceStatus } from '@prisma/client';
 
 /** Why a teacher is (un)available. Ordered by precedence in {@link resolveTeacherAvailability}. */
 export type TeacherAvailabilityState =
-  | 'CAN_TEACH'
-  | 'SUBSTITUTED'
-  | 'ON_LEAVE'
-  | 'TRAINING'
-  | 'MEETING'
-  | 'EMERGENCY'
-  | 'UNAVAILABLE';
+  'CAN_TEACH' | 'SUBSTITUTED' | 'ON_LEAVE' | 'TRAINING' | 'MEETING' | 'EMERGENCY' | 'UNAVAILABLE';
 
 /** Inputs, each sourced from its canonical owner. All are optional facts about one teacher-day. */
 export interface TeacherAvailabilityInput {

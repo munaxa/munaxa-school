@@ -13,7 +13,7 @@ import {
   Input,
   PageHeader,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useI18n } from '@/components/i18n-provider';
 import { platformApi, type Promotion, type TenantDbStatus } from '@/lib/platform';
 

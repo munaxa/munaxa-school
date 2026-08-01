@@ -4,12 +4,7 @@
 export type Gender = 'M' | 'F';
 export type StudentStatus = 'ACTIVE' | 'GRADUATED' | 'WITHDRAWN';
 export type AdmissionStage =
-  | 'INQUIRY'
-  | 'APPLIED'
-  | 'ASSESSMENT'
-  | 'OFFER'
-  | 'ENROLLED'
-  | 'REJECTED';
+  'INQUIRY' | 'APPLIED' | 'ASSESSMENT' | 'OFFER' | 'ENROLLED' | 'REJECTED';
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
 export type InvoiceStatus = 'PAID' | 'PARTIAL' | 'PENDING' | 'OVERDUE';
 export type PaymentMethod = 'CASH' | 'CLIQ' | 'CARD' | 'BANK_TRANSFER' | 'CHEQUE';

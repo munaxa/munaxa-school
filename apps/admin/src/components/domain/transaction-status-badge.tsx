@@ -1,4 +1,4 @@
-import { Badge } from '@axa/platform';
+import { Badge } from '@munaxa/ui';
 
 /**
  * Finance domain component: renders a payment/transaction status as a toned Badge.

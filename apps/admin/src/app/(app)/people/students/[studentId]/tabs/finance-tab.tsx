@@ -22,7 +22,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { ChargeStatusBadge, TransactionStatusBadge } from '@/components/domain';
 import { FeeModifiedBadge } from '@/components/fee-modified-badge';
 import { DocumentsSection } from './documents-section';

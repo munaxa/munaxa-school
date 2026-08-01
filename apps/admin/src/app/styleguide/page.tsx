@@ -1,6 +1,6 @@
 'use client';
 
-import { TokenReference } from '@axa/platform';
+import { TokenReference } from '@munaxa/ui';
 
 /**
  * Design-token reference. Live values read off the running theme (the Platform theme tokens,
@@ -14,8 +14,8 @@ export default function StyleguidePage() {
       <header className="space-y-1">
         <h1 className="font-display text-3xl font-semibold">Design tokens</h1>
         <p className="text-sm text-muted-foreground">
-          The single source of truth is <code className="font-mono text-xs">@axa/platform</code>.
-          Build pages with the &ldquo;Use as&rdquo; classes below — never hardcode a hex.
+          The single source of truth is <code className="font-mono text-xs">@munaxa/ui</code>. Build
+          pages with the &ldquo;Use as&rdquo; classes below — never hardcode a hex.
         </p>
       </header>
       <TokenReference />

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Shell } from '@/components/shell';
-import { Spinner } from '@axa/platform';
+import { Spinner } from '@munaxa/ui';
 import { EmployeeProfile } from './employee-profile';
 
 /**

@@ -39,7 +39,7 @@ if a human gate is ever wanted.
 ### No path filtering — deliberately
 
 The workflow deploys all three apps on every merge, with no path filters. That is not an
-oversight. Both Next apps render their entire UI from `@axa/platform`, and `cf:deploy` rebuilds
+oversight. Both Next apps render their entire UI from `@munaxa/ui`, and `cf:deploy` rebuilds
 that dependency first, so "this merge changed nothing the app consumes" is not a judgement a
 path filter can make correctly. A redundant deploy costs one short build; a skipped one costs a
 silently stale production site.
@@ -121,7 +121,7 @@ merge, run the workflow from the Actions tab via **Run workflow** — it accepts
 
 1. **`munaxademo` — wrong file-tracing root.** `next.config.mjs` pinned `outputFileTracingRoot`
    to the app directory. Once the demo joined the workspace that (a) stopped tracing the shared
-   `@axa/platform` files into the standalone bundle and (b) produced a flat
+   `@munaxa/ui` files into the standalone bundle and (b) produced a flat
    `.next/standalone/.next/...` layout while the OpenNext adapter expects the monorepo-nested
    `.next/standalone/school/munaxademo/.next/...` layout — failing with
    `ENOENT … pages-manifest.json`. Fixed by tracing from the workspace root.

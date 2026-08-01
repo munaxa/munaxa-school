@@ -19,7 +19,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { PageHeader, Kpi } from '@/components/page';
 
 function letterFor(total: number): string {

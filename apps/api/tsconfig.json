@@ -1,5 +1,5 @@
 {
-  "extends": "@axa/config-typescript/nestjs.json",
+  "extends": "@munaxa/config-typescript/nestjs.json",
   "compilerOptions": {
     "baseUrl": "./",
     "outDir": "./dist",

@@ -1,7 +1,7 @@
 'use client';
 
-import { Moon, Sun } from '@axa/platform/icons';
-import { useTheme } from '@axa/platform';
+import { Moon, Sun } from '@munaxa/icons';
+import { useTheme } from '@munaxa/ui';
 
 /** Minimal light/dark switch. Persists to localStorage; the no-flash script in layout applies it. */
 export function ThemeToggle() {

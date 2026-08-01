@@ -13,7 +13,7 @@ import {
   Select,
   Spinner,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { platformConsoleApi, type PlatformUpgradeRequest } from '@/lib/platform-console';
 import { PlatformNav } from '../platform-nav';
 

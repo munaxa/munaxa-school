@@ -12,7 +12,7 @@
   },
   "aliases": {
     "components": "@/components",
-    "utils": "@axa/platform",
+    "utils": "@munaxa/ui",
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"

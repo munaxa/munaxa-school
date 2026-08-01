@@ -1,7 +1,7 @@
 'use client';
 
 import { useI18n } from '@/components/i18n-provider';
-import { Card, CardContent, EmptyState } from '@axa/platform';
+import { Card, CardContent, EmptyState } from '@munaxa/ui';
 
 /**
  * Graceful placeholder for tabs whose per-student data source isn't wired into the profile yet

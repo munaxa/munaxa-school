@@ -21,7 +21,7 @@ import {
   THead,
   TR,
   Table,
-} from '@axa/platform';
+} from '@munaxa/ui';
 
 type Dimension = 'category' | 'academicYear' | 'grade' | 'campus';
 const DIMENSIONS: { value: Dimension; label: string }[] = [

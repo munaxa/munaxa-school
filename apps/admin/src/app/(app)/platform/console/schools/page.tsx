@@ -11,7 +11,7 @@ import {
   PageHeader,
   useToast,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { platformConsoleApi, type SchoolRow } from '@/lib/platform-console';
 import { useGridLabels } from '@/components/grid-labels';
 import { PlatformNav } from '../platform-nav';

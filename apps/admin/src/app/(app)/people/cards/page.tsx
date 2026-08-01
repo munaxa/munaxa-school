@@ -21,7 +21,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useI18n } from '@/components/i18n-provider';
 import { useConfirm } from '@/components/confirm';
 import { loadStudentOptions } from '@/lib/pickers';

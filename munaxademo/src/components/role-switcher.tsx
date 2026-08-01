@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/session-context';
 import { PERSONAS } from '@/lib/rbac';
-import { Select } from '@axa/platform';
+import { Select } from '@munaxa/ui';
 
 /** In-app persona switcher — explore the demo as any of the eight roles instantly. */
 export function RoleSwitcher() {

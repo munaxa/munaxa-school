@@ -8,7 +8,7 @@ import { dashboardApi, type DashboardOverview } from '@/lib/dashboard';
 import { financeApi, type FinanceDashboard } from '@/lib/finance';
 import { NavIcon, type NavIconKey } from '@/components/nav-icons';
 import type { Locale } from '@/lib/i18n';
-import { Button, Card, CardContent, EmptyState, Skeleton, cn } from '@axa/platform';
+import { Button, Card, CardContent, EmptyState, Skeleton, cn } from '@munaxa/ui';
 
 type Translate = (k: string) => string;
 type Tone = 'primary' | 'cool' | 'warm';

@@ -16,7 +16,7 @@ import {
   TR,
   Table,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { busApi } from '@/lib/bus';
 import { runBulk, type TransportData } from './lib';
 

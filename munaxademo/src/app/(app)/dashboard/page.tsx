@@ -5,7 +5,7 @@ import { useSession } from '@/lib/session-context';
 import { kpis, attendanceToday, topOutstanding, studentName } from '@/lib/demo-store/selectors';
 import { jod, num, pct } from '@/lib/format';
 import { PageHeader, Kpi, Bar } from '@/components/page';
-import { Card, CardContent, CardHeader, CardTitle, Badge } from '@axa/platform';
+import { Card, CardContent, CardHeader, CardTitle, Badge } from '@munaxa/ui';
 
 export default function DashboardPage() {
   const { data } = useDemo();

@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/lib/session-context';
-import { Spinner } from '@axa/platform';
+import { Spinner } from '@munaxa/ui';
 
 /** Index → send each persona to its natural landing page. */
 export default function Index() {

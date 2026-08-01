@@ -1,4 +1,4 @@
-import { Reveal } from '@axa/platform';
+import { Reveal } from '@munaxa/ui';
 import { IntelligencePanel } from '@/components/product/intelligence-panel';
 import { AppFrame } from '@/components/product/app-frame';
 

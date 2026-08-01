@@ -6,7 +6,7 @@ import { changePassword } from '@/lib/auth';
 import { clearPrincipalCache } from '@/lib/session';
 import { isPasswordStrong, PASSWORD_RULES } from '@/lib/password-policy';
 import { useI18n } from '@/components/i18n-provider';
-import { Button, Card, CardContent, Field, Input } from '@axa/platform';
+import { Button, Card, CardContent, Field, Input } from '@munaxa/ui';
 
 /**
  * Mandatory password-change / Force Password Change screen. Reached on first login with a

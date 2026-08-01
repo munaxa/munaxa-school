@@ -8,8 +8,8 @@ import {
   KeyRound,
   Layers,
   type Icon,
-} from '@axa/platform/icons';
-import { Reveal } from '@axa/platform';
+} from '@munaxa/icons';
+import { Reveal } from '@munaxa/ui';
 
 /**
  * Platform architecture — the enterprise substance under the product. Every claim maps to

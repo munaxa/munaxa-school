@@ -20,7 +20,7 @@ import {
   TH,
   THead,
   TR,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { RecordHeader } from './record-header';
 
 /**

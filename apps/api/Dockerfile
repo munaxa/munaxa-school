@@ -1,6 +1,10 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for the Munaxa API. Build context MUST be the repository root
-# (the AXA workspace root). Example: docker build -f school/apps/api/Dockerfile -t munaxa-api .
+# Multi-stage build for the Munaxa School API. Build context MUST be this repository's
+# root. Example: docker build -f apps/api/Dockerfile -t munaxa-school-api .
+#
+# The shared design system is a registry dependency (@munaxa/*), not a workspace member,
+# so the build needs a token with `read:packages`:
+#   docker build --secret id=github_token,env=GITHUB_TOKEN -f apps/api/Dockerfile .
 
 ARG NODE_VERSION=22-alpine
 
@@ -12,12 +16,11 @@ WORKDIR /repo
 # ---------- Dependencies ----------
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
-COPY tooling/ tooling/
-COPY platform/ platform/
-COPY school/apps/api/package.json school/apps/api/
-COPY school/packages/ school/packages/
-COPY school/prisma/ school/prisma/
+COPY apps/api/package.json apps/api/
+COPY packages/ packages/
+COPY prisma/ prisma/
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
     pnpm install --frozen-lockfile
 
 # ---------- Build ----------
@@ -36,7 +39,7 @@ RUN pnpm --filter @school/api prisma:generate \
 # `pnpm deploy` does NOT carry over the `prisma generate` output (the generated client
 # under node_modules/.prisma), so regenerate it INTO the bundle afterwards.
 RUN pnpm --filter @school/api --prod --legacy deploy /prod/api \
-    && cp -r school/prisma /prod/api/prisma \
+    && cp -r prisma /prod/api/prisma \
     && (cd /prod/api && /repo/node_modules/.bin/prisma generate --schema=/prod/api/prisma/schema.prisma)
 
 # ---------- Runtime ----------
@@ -48,9 +51,9 @@ RUN addgroup -S nodejs && adduser -S nestjs -G nodejs
 
 # Complete prod node_modules from the deploy bundle; dist from the build output.
 COPY --from=build /prod/api/node_modules ./node_modules
-COPY --from=build /repo/school/apps/api/dist ./dist
-COPY --from=build /repo/school/apps/api/package.json ./package.json
-COPY --from=build /repo/school/prisma ./prisma
+COPY --from=build /repo/apps/api/dist ./dist
+COPY --from=build /repo/apps/api/package.json ./package.json
+COPY --from=build /repo/prisma ./prisma
 
 USER nestjs
 EXPOSE 4000

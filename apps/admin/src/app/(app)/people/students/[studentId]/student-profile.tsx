@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useI18n } from '@/components/i18n-provider';
 import { usePrincipal } from '@/components/shell';
-import { Badge, Button, Card, Spinner, Tabs, TabsList, TabsTrigger, useToast } from '@axa/platform';
+import { Badge, Button, Card, Spinner, Tabs, TabsList, TabsTrigger, useToast } from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import { fullNameAr, fullNameEn, studentsApi, type Student } from '@/lib/people';
 import { StudentEditor } from '../student-editor';

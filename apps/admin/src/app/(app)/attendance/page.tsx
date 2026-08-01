@@ -19,7 +19,7 @@ import {
   THead,
   TR,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useI18n } from '@/components/i18n-provider';
 import { loadSectionOptions } from '@/lib/pickers';
 import { attendanceApi } from '@/lib/attendance';

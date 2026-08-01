@@ -1,4 +1,4 @@
-import { CalendarCheck, Wallet, Bus, GraduationCap } from '@axa/platform/icons';
+import { CalendarCheck, Wallet, Bus, GraduationCap } from '@munaxa/icons';
 
 /** Parent app — the "today" view a parent sees: their child, live status, fees, and updates. */
 export function ParentApp() {

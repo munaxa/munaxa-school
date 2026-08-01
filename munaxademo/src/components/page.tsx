@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, cn } from '@axa/platform';
+import { Card, CardContent, cn } from '@munaxa/ui';
 import { useSession } from '@/lib/session-context';
 
 /** Standard page header: title + optional subtitle + right-aligned actions. */

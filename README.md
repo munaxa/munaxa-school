@@ -9,12 +9,17 @@ people management, attendance, scheduling, finance, communication, and reporting
 
 ## Layout
 
-Munaxa is one product inside the [AXA workspace](../README.md). Its UI comes entirely from the
-shared design system at [`/platform`](../platform/README.md) — there are no Munaxa-local
-component or token packages.
+Munaxa School is an **independent repository**. Everything it needs to build, test and ship
+lives here, and it never depends on Munaxa Work, Munaxa Docs or Munaxa Corporate.
+
+Its UI comes entirely from the shared design system published by
+[munaxa-platform](https://github.com/tam2om/munaxa-platform) as `@munaxa/*` — there are no
+School-local component or token packages. `@school/brand` is the one deliberate exception: the
+Munaxa logo lockups are product identity rather than shared design, so they stay here, in a
+single package rather than copied per app.
 
 ```text
-school/
+munaxa-school/
 ├── apps/
 │   ├── api/        # NestJS backend (modular monolith, DDD + Clean Architecture)
 │   ├── admin/      # Next.js 15 Admin Portal (App Router, Tailwind v4)
@@ -23,37 +28,46 @@ school/
 │   ├── domain/     # Framework-free domain enums/constants (roles, permissions, locale)
 │   ├── contracts/  # Shared DTOs / zod schemas (API ⇄ Admin source of truth)
 │   ├── utils/      # Cross-cutting helpers (Jordan validators, money)
-│   └── i18n/       # en/ar message catalogs
-├── landing/            # Marketing site (Next.js, Cloudflare Workers)
-├── munaxademo/         # Hermetic public demo (Next.js, Cloudflare Workers)
+│   ├── i18n/       # en/ar message catalogs
+│   └── brand/      # Munaxa logo lockups (product identity, deduplicated)
+├── landing/        # Marketing site (Next.js, Cloudflare Workers)
+├── munaxademo/     # Hermetic public demo (Next.js, Cloudflare Workers)
 ├── prisma/         # Prisma schema & migrations (shared PostgreSQL)
 ├── infra/          # Postgres roles, load tests
 ├── scripts/        # Build/ops scripts
 └── docs/           # Architecture (Phase 0) & runbooks
 ```
 
-Shared, cross-product concerns live at the workspace root, not here:
+Shared, cross-product concerns are installed, not vendored:
 
-| Concern                          | Location                                        |
-| -------------------------------- | ----------------------------------------------- |
-| Components, tokens, icons, theme | [`/platform`](../platform/README.md)             |
-| ESLint / TypeScript bases        | [`/tooling`](../tooling)                         |
-| Workspace, task graph, CI        | `/pnpm-workspace.yaml`, `/turbo.json`, `/.github` |
+| Concern                          | Comes from                                          |
+| -------------------------------- | --------------------------------------------------- |
+| Components, patterns, layouts    | `@munaxa/ui`                                        |
+| Design tokens                    | `@munaxa/tokens`                                    |
+| Icons                            | `@munaxa/icons`                                     |
+| Themes                           | `@munaxa/theme`                                     |
+| ESLint / TypeScript bases        | `@munaxa/config-eslint`, `@munaxa/config-typescript` |
 
-The Munaxa theme (`@axa/platform/css/themes/munaxa`) is the brand: teal `#007595`, its
-palette authored in [`/platform/themes/munaxa`](../platform/themes/munaxa).
+All of them are published from
+[munaxa-platform](https://github.com/tam2om/munaxa-platform). The School theme
+(`@munaxa/theme/css/school`) is the brand — teal `#007595` — and its palette is authored in the
+platform, not here. Configuring that import is the *only* branding this repository does.
 
 ## Prerequisites
 - Node.js 22+ · pnpm 10+ · Docker · (Flutter 3.24+ for mobile)
+- A GitHub token with `read:packages` on the `tam2om` org, exported as `GITHUB_TOKEN` —
+  that is how `pnpm install` resolves `@munaxa/*` from GitHub Packages.
 
 ## Quick start
 
-All commands run from the **repository root** (the workspace root), not from `school/`.
+All commands run from this repository's root.
 
 ```bash
+export GITHUB_TOKEN=<PAT with read:packages>
+
 cp .env.example .env
-cp school/apps/api/.env.example school/apps/api/.env
-cp school/apps/admin/.env.example school/apps/admin/.env.local
+cp apps/api/.env.example apps/api/.env
+cp apps/admin/.env.example apps/admin/.env.local
 
 pnpm install
 pnpm docker:up            # Postgres (+ app role), Redis, LocalStack(S3), Mailhog

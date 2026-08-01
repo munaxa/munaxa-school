@@ -8,7 +8,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 /**
  * Munaxa Demo ESLint (flat config) — mirrors the Landing app: TypeScript type-checked rules,
  * Next.js core-web-vitals, React hooks, and the Munaxa design-token guardrail (no hardcoded
- * hex colors — use token classes / @axa/platform/tokens).
+ * hex colors — use token classes / @munaxa/tokens).
  */
 export default tseslint.config(
   js.configs.recommended,
@@ -43,7 +43,7 @@ export default tseslint.config(
   },
   {
     // Design-system guardrail: no hardcoded hex colors — use token classes (bg-primary,
-    // text-foreground, …) whose values come from @axa/platform/tokens.
+    // text-foreground, …) whose values come from @munaxa/tokens.
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/seed/**'],
     rules: {
@@ -53,13 +53,13 @@ export default tseslint.config(
           selector:
             'Literal[value=/#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/]',
           message:
-            'No hardcoded hex colors — use token classes (bg-primary, text-foreground, …) or @axa/platform/tokens.',
+            'No hardcoded hex colors — use token classes (bg-primary, text-foreground, …) or @munaxa/tokens.',
         },
         {
           selector:
             'TemplateElement[value.raw=/#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/]',
           message:
-            'No hardcoded hex colors — use token classes (bg-primary, text-foreground, …) or @axa/platform/tokens.',
+            'No hardcoded hex colors — use token classes (bg-primary, text-foreground, …) or @munaxa/tokens.',
         },
       ],
     },

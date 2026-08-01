@@ -8,7 +8,7 @@
  * original seeded state on logout, browser close, session expiry, refresh and restart.
  */
 import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
-import { Spinner } from '@axa/platform';
+import { Spinner } from '@munaxa/ui';
 import { cloneBaseline } from '@/seed';
 import type {
   Baseline,

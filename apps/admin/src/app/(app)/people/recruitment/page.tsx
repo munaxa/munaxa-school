@@ -17,7 +17,7 @@ import {
   PageHeader,
   Select,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { useConfirm } from '@/components/confirm';
 import {
   JOB_POSTING_STATUSES,

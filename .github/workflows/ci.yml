@@ -1,0 +1,183 @@
+name: CI
+
+on:
+  # Run on PRs only. The post-merge commit on `main` is identical to the PR head
+  # that already passed these checks, so re-running on `push: main` only burns
+  # Actions minutes. Branch protection (required status checks) gates merges.
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.33.0'
+
+jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mobile:
+              - 'apps/mobile/**'
+
+  node:
+    name: Lint · Typecheck · Test · Build (JS/TS)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: munaxa
+          POSTGRES_PASSWORD: munaxa_ci
+          POSTGRES_DB: munaxa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U munaxa"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      # Runtime/tests connect as the restricted, NOBYPASSRLS app role so RLS is enforced.
+      DATABASE_URL: postgresql://munaxa_app:munaxa_app_dev@localhost:5432/munaxa?schema=public
+      # Migrations connect as the privileged owner.
+      DIRECT_DATABASE_URL: postgresql://munaxa:munaxa_ci@localhost:5432/munaxa?schema=public
+      # psql rejects the Prisma-specific "schema" query param; use a clean libpq URI.
+      PSQL_DIRECT_URL: postgresql://munaxa:munaxa_ci@localhost:5432/munaxa
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # The shared design system is published from munaxa-platform to GitHub Packages.
+      # GITHUB_TOKEN carries the `packages: read` permission granted at the job level.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prisma generate
+        run: pnpm prisma:generate
+
+      - name: Build internal packages
+        run: pnpm turbo run build --filter=@school/domain --filter=@school/contracts --filter=@school/utils --filter=@school/brand
+
+      - name: Apply database migrations
+        run: pnpm --filter @school/api prisma:deploy
+
+      - name: Provision restricted application role
+        run: psql "$PSQL_DIRECT_URL" -v ON_ERROR_STOP=1 -f infra/postgres/app-role.sql
+
+      - name: Seed database
+        run: pnpm --filter @school/api db:seed
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Integration tests (DB / RLS)
+        run: pnpm --filter @school/api test:e2e
+
+      - name: Build
+        run: pnpm build
+
+  flutter:
+    name: Analyze · Test (Flutter)
+    runs-on: ubuntu-latest
+    # The Flutter SDK download + analyze/test is the most expensive job. Only run it
+    # when mobile code actually changed.
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Prepare platform folders
+        working-directory: apps/mobile
+        run: flutter create --platforms=android,ios .
+      - name: Pub get
+        working-directory: apps/mobile
+        run: flutter pub get
+      - name: Analyze
+        working-directory: apps/mobile
+        run: flutter analyze
+      - name: Test
+        working-directory: apps/mobile
+        run: flutter test
+
+  # NOTE: munaxademo and landing are workspace members, built/typechecked/linted by the `node`
+  # job above via turbo. The design system they render is NOT built here — it is installed from
+  # the registry as @munaxa/*, and munaxa-platform's own CI is what proves it good.
+
+  security:
+    name: Security scans
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Dependency audit
+        run: pnpm audit --prod || true
+      # The gitleaks-action wrapper requires a paid licence for organisation-owned
+      # repositories, which this became on the move to the munaxa org. The scanner
+      # itself is MIT-licensed, so run the upstream binary directly and keep the check.
+      - name: Secret scan (gitleaks)
+        run: |
+          set -euo pipefail
+          VERSION="$(curl -sSfL https://api.github.com/repos/gitleaks/gitleaks/releases/latest | jq -r .tag_name)"
+          VERSION="${VERSION#v}"
+          echo "Using gitleaks ${VERSION}"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks git . --redact --no-banner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

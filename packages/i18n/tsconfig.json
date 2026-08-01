@@ -1,5 +1,5 @@
 {
-  "extends": "@axa/config-typescript/base.json",
+  "extends": "@munaxa/config-typescript/base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src"

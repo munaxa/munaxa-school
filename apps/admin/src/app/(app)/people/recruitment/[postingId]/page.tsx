@@ -19,7 +19,7 @@ import {
   PageHeader,
   Select,
   useToast,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import {
   APPLICANT_STATUSES,
   recruitmentApi,

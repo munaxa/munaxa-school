@@ -1,4 +1,4 @@
-import { Badge } from '@axa/platform';
+import { Badge } from '@munaxa/ui';
 import type { EmploymentStatus } from '@/lib/people';
 
 type Tone = 'default' | 'success' | 'warning' | 'danger' | 'muted';

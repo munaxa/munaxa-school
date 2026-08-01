@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from '@/lib/session-context';
-import { Button } from '@axa/platform';
+import { Button } from '@munaxa/ui';
 
 /** Theme (light/dark) + locale (EN/AR → LTR/RTL) switcher, wired to the session context. */
 export function ThemeLocaleToggle() {

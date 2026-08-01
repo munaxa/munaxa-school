@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowRight, Menu, X } from '@axa/platform/icons';
-import { buttonVariants, cn } from '@axa/platform';
+import { ArrowRight, Menu, X } from '@munaxa/icons';
+import { buttonVariants, cn } from '@munaxa/ui';
 import { NAV, DEMO_URL } from '@/lib/site';
 import { Wordmark } from './wordmark';
 import { ThemeToggle } from './theme-toggle';

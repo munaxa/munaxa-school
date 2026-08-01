@@ -1,0 +1,99 @@
+# Render Blueprint for Munaxa staging (API + Admin).
+# Database is a managed Supabase Postgres (provisioned separately) — not defined here.
+#
+# Deploy: Render Dashboard → New → Blueprint → pick this repo. Then set the
+# `sync: false` secrets (DATABASE_URL, CORS_ORIGINS, NEXT_PUBLIC_API_URL) in the UI.
+#
+# Two ordering gotchas (each URL depends on the other):
+#   1. NEXT_PUBLIC_API_URL is compiled into the admin at BUILD time — it must be set
+#      before the admin image builds, and changing it later requires a redeploy.
+#   2. The API's CORS_ORIGINS must equal the admin's exact public origin.
+# So: deploy the API first, copy its URL into the admin's NEXT_PUBLIC_API_URL, then
+# put the admin's URL into the API's CORS_ORIGINS and redeploy the API.
+
+services:
+  - type: web
+    name: munaxa-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: free
+    healthCheckPath: /api/v1/health/ready
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '4000'
+      - key: API_GLOBAL_PREFIX
+        value: api
+      - key: API_VERSION
+        value: v1
+      # Runtime connection = restricted munaxa_app role (RLS enforced).
+      # postgresql://munaxa_app.<ref>:<APP_PW>@<pooler-host>:5432/postgres?schema=public
+      - key: DATABASE_URL
+        sync: false
+      # Must list the admin service's exact public origin(s), comma-separated. With the two-domain
+      # setup below, list BOTH: https://app.munaxa.com,https://admin.munaxa.com
+      # See docs/PLATFORM_CONSOLE.md for the custom-domain + platform-login setup.
+      - key: CORS_ORIGINS
+        sync: false
+      # Generated per-service and guaranteed distinct (prod requires they differ).
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: '900'
+      - key: JWT_REFRESH_TTL
+        value: '2592000'
+      # --- Transactional email (Resend) ---
+      # Email is a no-op until RESEND_API_KEY is set — that is why "Notify parent"
+      # returns "mail service unavailable". Set the key in the Render dashboard, and point
+      # the sender addresses at a domain VERIFIED in your Resend account (Resend rejects
+      # sends from unverified domains, which also surfaces as "mail service unavailable").
+      - key: RESEND_API_KEY
+        sync: false
+      # Finance/payment sender used by parent settlement notifications.
+      # Value: Munaxa <payments@mail.munaxa.com>  (mail.munaxa.com must be verified in Resend)
+      - key: EMAIL_FROM_FINANCE
+        sync: false
+      # Default sender (invites, general mail). e.g. Munaxa <no-reply@mail.munaxa.com>
+      - key: EMAIL_FROM
+        sync: false
+      # Security/account sender (temporary passwords). e.g. Munaxa <admin@mail.munaxa.com>
+      - key: EMAIL_FROM_ADMIN
+        sync: false
+      # Verified Resend domain — each school's parent-notification sender is auto-derived as
+      # "<School Name> <<tenant-slug>@mail.munaxa.com>" (overridable per school in Notification
+      # Settings). One verified domain covers every school; no per-school DNS.
+      - key: EMAIL_SENDER_DOMAIN
+        value: mail.munaxa.com
+
+  - type: web
+    name: munaxa-admin
+    runtime: docker
+    dockerfilePath: ./apps/admin/Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: free
+    # ONE service, TWO custom domains (Settings → Custom Domains): the school portal and the
+    # Platform Console. Add both `app.<domain>` and `admin.<domain>` here; Render issues a TLS
+    # cert per domain. Different origins ⇒ the browser isolates each host's session cookies.
+    domains:
+      - app.munaxa.com
+      - admin.munaxa.com
+    envVars:
+      # Baked into the client bundle at BUILD time → https://<api-service>.onrender.com/api/v1
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_ENV
+        value: staging
+      # Host-based separation (optional). When both are set, the app host serves ONLY the school
+      # portal and the console host serves ONLY /platform/*; auth pages are shared. Leave unset for
+      # a single shared domain. BUILD-time (inlined) so the client nav matches the middleware —
+      # changing them requires a redeploy. Must match the domains above.
+      - key: NEXT_PUBLIC_APP_HOST
+        value: app.munaxa.com
+      - key: NEXT_PUBLIC_CONSOLE_HOST
+        value: admin.munaxa.com

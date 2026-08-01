@@ -25,7 +25,7 @@ import {
   PageHeader,
   Select,
   type ColumnDef,
-} from '@axa/platform';
+} from '@munaxa/ui';
 import { LoanStatusBadge } from '@/components/domain';
 
 export default function LibraryPage() {

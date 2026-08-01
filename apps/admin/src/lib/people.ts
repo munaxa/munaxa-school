@@ -1097,13 +1097,7 @@ export const leaveApi = {
 
 // --- HR Phase 5: staff attendance & payroll preparation ----------------------
 export type StaffAttendanceStatus =
-  | 'PRESENT'
-  | 'ABSENT'
-  | 'LATE'
-  | 'EARLY_DEPARTURE'
-  | 'ON_LEAVE'
-  | 'HOLIDAY'
-  | 'REMOTE';
+  'PRESENT' | 'ABSENT' | 'LATE' | 'EARLY_DEPARTURE' | 'ON_LEAVE' | 'HOLIDAY' | 'REMOTE';
 export const STAFF_ATTENDANCE_STATUSES: StaffAttendanceStatus[] = [
   'PRESENT',
   'ABSENT',
@@ -1350,11 +1344,7 @@ export const performanceApi = {
 
 // --- HR Phase 6: training ----------------------------------------------------
 export type TrainingRecordStatus =
-  | 'ENROLLED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'FAILED'
-  | 'CANCELLED';
+  'ENROLLED' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 export const TRAINING_RECORD_STATUSES: TrainingRecordStatus[] = [
   'ENROLLED',
   'IN_PROGRESS',
@@ -1570,13 +1560,7 @@ export const assetsApi = {
 export type JobPostingStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'FILLED';
 export const JOB_POSTING_STATUSES: JobPostingStatus[] = ['DRAFT', 'OPEN', 'CLOSED', 'FILLED'];
 export type ApplicantStatus =
-  | 'APPLIED'
-  | 'SCREENING'
-  | 'INTERVIEW'
-  | 'OFFER'
-  | 'HIRED'
-  | 'REJECTED'
-  | 'WITHDRAWN';
+  'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'OFFER' | 'HIRED' | 'REJECTED' | 'WITHDRAWN';
 export const APPLICANT_STATUSES: ApplicantStatus[] = [
   'APPLIED',
   'SCREENING',

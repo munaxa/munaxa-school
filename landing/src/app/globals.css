@@ -1,9 +1,9 @@
 @import 'tailwindcss';
 /* Munaxa theme: the shared AXA theme contract + the Munaxa palette. */
-@import '@axa/platform/css/themes/school';
-@source '../../../../platform/ui';
+@import '@munaxa/theme/css/school';
+@source '../../node_modules/@munaxa/platform/dist';
 /* Scroll-reveal styles for the shared <Reveal> pattern. */
-@import '@axa/platform/css/motion';
+@import '@munaxa/ui/css/motion';
 
 @theme inline {
   /* Landing's editorial radius scale. */
