@@ -23,92 +23,99 @@ async function main(): Promise<void> {
   let featureCount = 0;
   // The Permission/SubscriptionPlan tables are RLS-protected: writes require the platform
   // context (app.is_platform='on'). Run the upserts inside one platform transaction.
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT set_config('app.is_platform', 'on', true)`;
-    for (const key of ALL_PERMISSIONS) {
-      const category = key.split(':')[0] ?? 'general';
-      const description = PERMISSION_DESCRIPTIONS[key] ?? null;
-      await tx.permission.upsert({
-        where: { key },
-        update: { category, description },
-        create: { key, category, description },
-      });
-      count += 1;
-    }
-
-    // Subscription plan catalog (idempotent). Plans keyed by tier; capability rows keyed by
-    // (plan, key). Limits with `null` mean unlimited. Core School OS modules are never seeded
-    // here — they are always available on every plan.
-    for (const def of PLAN_CATALOG_LIST) {
-      const plan = await tx.subscriptionPlan.upsert({
-        where: { tier: def.tier },
-        update: {
-          name: def.name,
-          description: def.description,
-          sortOrder: def.sortOrder,
-          priceMonthly: def.priceMonthly,
-          priceYearly: def.priceYearly,
-          currency: def.currency,
-          maxStudents: def.limits.maxStudents,
-          maxCampuses: def.limits.maxCampuses,
-          maxStaff: def.limits.maxStaff,
-          storageGb: def.limits.storageGb,
-          isActive: true,
-        },
-        create: {
-          tier: def.tier,
-          name: def.name,
-          description: def.description,
-          sortOrder: def.sortOrder,
-          priceMonthly: def.priceMonthly,
-          priceYearly: def.priceYearly,
-          currency: def.currency,
-          maxStudents: def.limits.maxStudents,
-          maxCampuses: def.limits.maxCampuses,
-          maxStaff: def.limits.maxStaff,
-          storageGb: def.limits.storageGb,
-        },
-      });
-      planCount += 1;
-      for (const key of def.features) {
-        await tx.subscriptionFeature.upsert({
-          where: { planId_key: { planId: plan.id, key } },
-          update: { enabled: true },
-          create: { planId: plan.id, key, enabled: true },
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.is_platform', 'on', true)`;
+      for (const key of ALL_PERMISSIONS) {
+        const category = key.split(':')[0] ?? 'general';
+        const description = PERMISSION_DESCRIPTIONS[key] ?? null;
+        await tx.permission.upsert({
+          where: { key },
+          update: { category, description },
+          create: { key, category, description },
         });
-        featureCount += 1;
+        count += 1;
       }
-    }
 
-    // Feature Catalog (v2): the single catalog of capabilities that plans reference. Idempotent
-    // by code. Core School OS modules are seeded as isCore = true (permanently enabled).
-    for (const entry of FEATURE_CATALOG) {
-      await tx.featureCatalog.upsert({
-        where: { code: entry.code },
-        update: {
-          name: entry.name,
-          description: entry.description,
-          category: entry.category,
-          isCore: entry.isCore,
-          defaultEnabled: entry.defaultEnabled,
-          enterpriseOnly: entry.enterpriseOnly,
-          requiresApproval: entry.requiresApproval,
-          sortOrder: entry.sortOrder,
-        },
-        create: {
-          code: entry.code,
-          name: entry.name,
-          description: entry.description,
-          category: entry.category,
-          isCore: entry.isCore,
-          defaultEnabled: entry.defaultEnabled,
-          enterpriseOnly: entry.enterpriseOnly,
-          requiresApproval: entry.requiresApproval,
-          sortOrder: entry.sortOrder,
-        },
-      });
-    }
-  });
+      // Subscription plan catalog (idempotent). Plans keyed by tier; capability rows keyed by
+      // (plan, key). Limits with `null` mean unlimited. Core School OS modules are never seeded
+      // here — they are always available on every plan.
+      for (const def of PLAN_CATALOG_LIST) {
+        const plan = await tx.subscriptionPlan.upsert({
+          where: { tier: def.tier },
+          update: {
+            name: def.name,
+            description: def.description,
+            sortOrder: def.sortOrder,
+            priceMonthly: def.priceMonthly,
+            priceYearly: def.priceYearly,
+            currency: def.currency,
+            maxStudents: def.limits.maxStudents,
+            maxCampuses: def.limits.maxCampuses,
+            maxStaff: def.limits.maxStaff,
+            storageGb: def.limits.storageGb,
+            isActive: true,
+          },
+          create: {
+            tier: def.tier,
+            name: def.name,
+            description: def.description,
+            sortOrder: def.sortOrder,
+            priceMonthly: def.priceMonthly,
+            priceYearly: def.priceYearly,
+            currency: def.currency,
+            maxStudents: def.limits.maxStudents,
+            maxCampuses: def.limits.maxCampuses,
+            maxStaff: def.limits.maxStaff,
+            storageGb: def.limits.storageGb,
+          },
+        });
+        planCount += 1;
+        for (const key of def.features) {
+          await tx.subscriptionFeature.upsert({
+            where: { planId_key: { planId: plan.id, key } },
+            update: { enabled: true },
+            create: { planId: plan.id, key, enabled: true },
+          });
+          featureCount += 1;
+        }
+      }
+
+      // Feature Catalog (v2): the single catalog of capabilities that plans reference. Idempotent
+      // by code. Core School OS modules are seeded as isCore = true (permanently enabled).
+      for (const entry of FEATURE_CATALOG) {
+        await tx.featureCatalog.upsert({
+          where: { code: entry.code },
+          update: {
+            name: entry.name,
+            description: entry.description,
+            category: entry.category,
+            isCore: entry.isCore,
+            defaultEnabled: entry.defaultEnabled,
+            enterpriseOnly: entry.enterpriseOnly,
+            requiresApproval: entry.requiresApproval,
+            sortOrder: entry.sortOrder,
+          },
+          create: {
+            code: entry.code,
+            name: entry.name,
+            description: entry.description,
+            category: entry.category,
+            isCore: entry.isCore,
+            defaultEnabled: entry.defaultEnabled,
+            enterpriseOnly: entry.enterpriseOnly,
+            requiresApproval: entry.requiresApproval,
+            sortOrder: entry.sortOrder,
+          },
+        });
+      }
+    },
+    // Generous timeouts so the seed survives higher round-trip latency against a
+    // remote/pooled database (e.g. a managed Postgres in another region). The default
+    // 5s interactive-transaction budget is ample on localhost but not for ~140 sequential
+    // upserts over a pooler, which fails mid-run with P2028.
+    { maxWait: 60_000, timeout: 60_000 },
+  );
   // eslint-disable-next-line no-console
   console.log(
     `✔ Seeded ${count} permissions, ${planCount} plans, ${featureCount} plan features, ${FEATURE_CATALOG.length} catalog entries.`,
