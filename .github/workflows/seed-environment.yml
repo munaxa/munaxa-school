@@ -70,6 +70,11 @@ jobs:
       - name: Prisma generate
         run: pnpm --filter @school/api prisma:generate
 
+      # The seed scripts import the permission/role baseline from @school/domain, so the
+      # workspace packages have to be compiled first — same step, same filters as CI.
+      - name: Build internal packages
+        run: pnpm turbo run build --filter=@school/domain --filter=@school/contracts --filter=@school/utils
+
       # Global permission catalog — idempotent, safe to re-run.
       - name: Seed permission catalog
         run: pnpm --filter @school/api db:seed
