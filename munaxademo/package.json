@@ -13,7 +13,7 @@
     "start": "next start -p 4100",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "cf:deps": "pnpm turbo run build --filter=@munaxa/ui",
+    "cf:deps": "pnpm turbo run build --filter=munaxademo^...",
     "cf:build": "pnpm run cf:deps && opennextjs-cloudflare build && node ../scripts/cf-emit-root-wrangler.mjs",
     "cf:preview": "pnpm run cf:build && wrangler dev",
     "cf:deploy": "pnpm run cf:build && wrangler deploy",

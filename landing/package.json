@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "echo \"no tests yet\" && exit 0",
-    "cf:deps": "pnpm turbo run build --filter=@munaxa/ui",
+    "cf:deps": "pnpm turbo run build --filter=@school/landing^...",
     "cf:build": "pnpm run cf:deps && opennextjs-cloudflare build && node ../scripts/cf-emit-root-wrangler.mjs",
     "cf:preview": "pnpm run cf:build && wrangler dev",
     "cf:deploy": "pnpm run cf:build && wrangler deploy",
