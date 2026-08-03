@@ -2,12 +2,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
-// The demo is a pnpm-workspace member, so trace from the workspace root (the repository root,
-// two levels up from school/munaxademo): this both pulls the workspace deps (@munaxa/ui)
-// into the standalone bundle and produces the monorepo-nested layout
-// (.next/standalone/school/munaxademo/.next/...) that the OpenNext Cloudflare adapter expects.
-// Pinning this to projectRoot breaks the OpenNext bundling step.
-const monorepoRoot = path.join(projectRoot, '..', '..');
+// The demo is a pnpm-workspace member, so trace from the workspace root (the repository
+// root, one level up from munaxademo/): this both pulls the workspace deps into the
+// standalone bundle and produces the nested layout
+// (.next/standalone/munaxademo/.next/...) that the OpenNext Cloudflare adapter expects.
+// Pinning this to projectRoot breaks the OpenNext bundling step; pointing it above the
+// repository (the pre-split '../..') shifts the whole standalone tree one directory
+// deeper and OpenNext fails with ENOENT on pages-manifest.json.
+const workspaceRoot = path.join(projectRoot, '..');
 
 /** @type {import('next').NextConfig} */
 
@@ -45,8 +47,8 @@ const nextConfig = {
   // Competitor protection: never ship readable source maps to the browser.
   productionBrowserSourceMaps: false,
   // Trace from the monorepo root so workspace deps are bundled and the standalone layout
-  // matches what the OpenNext Cloudflare adapter expects (see monorepoRoot note above).
-  outputFileTracingRoot: monorepoRoot,
+  // matches what the OpenNext Cloudflare adapter expects (see workspaceRoot note above).
+  outputFileTracingRoot: workspaceRoot,
   typedRoutes: true,
   // The Cloudflare adapter is resolved at runtime (only on Workers); don't bundle it
   // into the Node build. On non-Cloudflare hosts the dynamic import simply no-ops.
