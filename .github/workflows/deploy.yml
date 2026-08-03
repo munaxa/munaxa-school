@@ -106,10 +106,12 @@ jobs:
         with:
           node-version: '22'
           cache: pnpm
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@munaxa'
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: prisma migrate deploy
         run: |
           if [ -z "$DIRECT_DATABASE_URL" ]; then

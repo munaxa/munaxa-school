@@ -73,13 +73,15 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@munaxa'
 
       # The shared design system is published from munaxa-platform to GitHub Packages.
       # GITHUB_TOKEN carries the `packages: read` permission granted at the job level.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prisma generate
         run: pnpm prisma:generate
@@ -162,9 +164,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@munaxa'
       - run: pnpm install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Dependency audit
         run: pnpm audit --prod || true
       # The gitleaks-action wrapper requires a paid licence for organisation-owned

@@ -68,6 +68,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@munaxa'
 
       # A `name` that does not match the real Worker does not fail the deploy — wrangler just
       # creates a new Worker that no custom domain points at, and the live site never changes.
@@ -84,7 +86,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Each app's `cf:deploy` builds its shared dependencies, runs its adapter, then invokes
       # wrangler from the app folder — the same scripts used locally, so CI and a developer's

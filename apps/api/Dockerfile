@@ -19,9 +19,17 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/ packages/
 COPY prisma/ prisma/
+# The committed .npmrc holds only the scope mapping — pnpm refuses env-var auth from a
+# project .npmrc. Write the credential to the user-level file from the secret, and remove
+# it in the same RUN so the token never lands in a committed layer.
 RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
     --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
-    pnpm install --frozen-lockfile
+    set -eu; \
+    if [ -n "${GITHUB_TOKEN:-}" ]; then \
+      printf '//npm.pkg.github.com/:_authToken=%s\n' "$GITHUB_TOKEN" > /root/.npmrc; \
+    fi; \
+    pnpm install --frozen-lockfile; \
+    rm -f /root/.npmrc
 
 # ---------- Build ----------
 FROM deps AS build
