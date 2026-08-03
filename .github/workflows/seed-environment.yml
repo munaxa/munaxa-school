@@ -79,10 +79,14 @@ jobs:
       - name: Seed permission catalog
         run: pnpm --filter @school/api db:seed
 
-      # Platform owner. PLATFORM_OWNER_PASSWORD falls back to the script's default when the
-      # secret is unset, which is fine for a throwaway environment and not for a real one.
+      # Platform owner. An unset secret arrives as an empty string, and the script reads its
+      # overrides with `??`, which only falls back on undefined — an empty value would win and
+      # then fail validation. Unset them so the script's own defaults apply.
       - name: Seed platform owner
-        run: pnpm --filter @school/api db:seed:platform-owner
+        run: |
+          [ -n "${PLATFORM_OWNER_EMAIL:-}" ] || unset PLATFORM_OWNER_EMAIL
+          [ -n "${PLATFORM_OWNER_PASSWORD:-}" ] || unset PLATFORM_OWNER_PASSWORD
+          pnpm --filter @school/api db:seed:platform-owner
 
       - name: Seed demo tenant
         if: ${{ github.event.inputs.demo_tenant == 'true' }}
