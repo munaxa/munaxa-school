@@ -867,6 +867,7 @@ model Campus {
 
   @@index([tenantId])
   @@index([tenantId, schoolId])
+  @@index([schoolId])
 }
 
 // Lifecycle of an Academic Year (Student-Lifecycle refactor, Decision 8). Never deleted; only ever
@@ -921,6 +922,8 @@ model AcademicYear {
   @@index([tenantId, campusId])
   @@index([tenantId, schoolId])
   @@index([tenantId, status])
+  @@index([campusId])
+  @@index([schoolId])
 }
 
 model Semester {
@@ -941,6 +944,7 @@ model Semester {
 
   @@unique([tenantId, academicYearId, sequence])
   @@index([tenantId, academicYearId])
+  @@index([academicYearId])
 }
 
 model Grade {
@@ -965,6 +969,7 @@ model Grade {
 
   @@unique([tenantId, campusId, level])
   @@index([tenantId, campusId])
+  @@index([campusId])
 }
 
 model Classroom {
@@ -985,6 +990,7 @@ model Classroom {
 
   @@unique([tenantId, campusId, name])
   @@index([tenantId, campusId])
+  @@index([campusId])
 }
 
 model Section {
@@ -1015,6 +1021,8 @@ model Section {
   @@unique([tenantId, gradeId, name])
   @@index([tenantId, gradeId])
   @@index([tenantId, classroomId])
+  @@index([classroomId])
+  @@index([gradeId])
 }
 
 // ----------------------------------------------------------------------------
@@ -1104,6 +1112,8 @@ model Student {
   @@index([tenantId, status])
   @@index([tenantId, areaId])
   @@index([tenantId, transportRequested])
+  @@index([areaId])
+  @@index([sectionId])
 }
 
 model Parent {
@@ -1262,6 +1272,11 @@ model Employee {
   @@index([tenantId, departmentId])
   @@index([tenantId, campusId])
   @@index([managerId])
+  @@index([campusId])
+  @@index([createdById])
+  @@index([departmentId])
+  @@index([positionId])
+  @@index([updatedById])
 }
 
 // An immutable, timestamped record of one employee lifecycle transition (HR transformation,
@@ -1285,6 +1300,8 @@ model EmployeeStatusHistory {
 
   @@index([tenantId])
   @@index([tenantId, employeeId, createdAt])
+  @@index([actorUserId])
+  @@index([employeeId])
 }
 
 // Organisational unit within a school (HR transformation, Phase 1). Supports a self-referential
@@ -1318,6 +1335,9 @@ model Department {
   @@index([tenantId])
   @@index([tenantId, parentId])
   @@index([tenantId, campusId])
+  @@index([campusId])
+  @@index([headEmployeeId])
+  @@index([parentId])
 }
 
 // A budgeted job position/title definition (HR transformation, Phase 1). Employees optionally
@@ -1345,6 +1365,7 @@ model Position {
   @@unique([tenantId, title])
   @@index([tenantId])
   @@index([tenantId, departmentId])
+  @@index([departmentId])
 }
 
 // ----------------------------------------------------------------------------
@@ -1391,6 +1412,11 @@ model EmploymentContract {
   @@index([tenantId, employeeId])
   @@index([tenantId, status])
   @@index([tenantId, endDate])
+  @@index([createdById])
+  @@index([employeeId])
+  @@index([renewedFromId])
+  @@index([signedDocumentId])
+  @@index([updatedById])
 }
 
 // A stored HR document (contract PDF, ID, passport, certificate, medical, licence…). Versioned via
@@ -1427,6 +1453,9 @@ model EmployeeDocument {
   @@index([tenantId, employeeId])
   @@index([tenantId, type])
   @@index([tenantId, expiryDate])
+  @@index([employeeId])
+  @@index([supersedesId])
+  @@index([uploadedById])
 }
 
 model EmergencyContact {
@@ -1448,6 +1477,7 @@ model EmergencyContact {
 
   @@index([tenantId])
   @@index([tenantId, employeeId])
+  @@index([employeeId])
 }
 
 model Dependent {
@@ -1468,6 +1498,7 @@ model Dependent {
 
   @@index([tenantId])
   @@index([tenantId, employeeId])
+  @@index([employeeId])
 }
 
 model EmployeeEducation {
@@ -1489,6 +1520,7 @@ model EmployeeEducation {
 
   @@index([tenantId])
   @@index([tenantId, employeeId])
+  @@index([employeeId])
 }
 
 model Certificate {
@@ -1511,6 +1543,8 @@ model Certificate {
   @@index([tenantId])
   @@index([tenantId, employeeId])
   @@index([tenantId, expiryDate])
+  @@index([documentId])
+  @@index([employeeId])
 }
 
 // Payroll bank details — sensitive; guarded by hr:sensitive:read on the read path.
@@ -1533,6 +1567,7 @@ model EmployeeBankAccount {
 
   @@index([tenantId])
   @@index([tenantId, employeeId])
+  @@index([employeeId])
 }
 
 // The driving facet of an Employee (HR Phase 3). An employee becomes an assignable bus driver by
@@ -1579,6 +1614,7 @@ model DriverInfraction {
 
   @@index([tenantId])
   @@index([tenantId, driverProfileId])
+  @@index([driverProfileId])
 }
 
 // ----------------------------------------------------------------------------
@@ -1628,6 +1664,7 @@ model StaffLeaveBalance {
   @@unique([employeeId, leaveTypeId, year])
   @@index([tenantId])
   @@index([tenantId, employeeId])
+  @@index([leaveTypeId])
 }
 
 // A staff leave request with a multi-level approval chain (StaffLeaveApproval). `workingDays`
@@ -1658,6 +1695,9 @@ model StaffLeaveRequest {
   @@index([tenantId])
   @@index([tenantId, employeeId])
   @@index([tenantId, status])
+  @@index([employeeId])
+  @@index([leaveTypeId])
+  @@index([requestedById])
 }
 
 model StaffLeaveApproval {
@@ -1676,6 +1716,8 @@ model StaffLeaveApproval {
 
   @@index([tenantId])
   @@index([tenantId, requestId])
+  @@index([approverId])
+  @@index([requestId])
 }
 
 // Per-employee daily attendance for HR/payroll (HR Phase 5). Overtime + late minutes feed payroll
@@ -1708,6 +1750,9 @@ model StaffAttendance {
   @@index([tenantId])
   @@index([tenantId, date])
   @@index([tenantId, employeeId])
+  @@index([correctedById])
+  @@index([employeeId])
+  @@index([markedById])
 }
 
 // HR Phase 6 — a named appraisal period (e.g. "2026 Annual"). Reviews attach to a cycle.
@@ -1757,6 +1802,9 @@ model PerformanceReview {
   @@index([tenantId])
   @@index([tenantId, cycleId])
   @@index([tenantId, employeeId])
+  @@index([cycleId])
+  @@index([employeeId])
+  @@index([reviewerId])
 }
 
 // A SMART goal within a review. `weight` lets ratings be weighted; `progress` is 0–100.
@@ -1782,6 +1830,8 @@ model PerformanceGoal {
   @@index([tenantId])
   @@index([tenantId, reviewId])
   @@index([tenantId, employeeId])
+  @@index([employeeId])
+  @@index([reviewId])
 }
 
 // HR Phase 6 — training catalog. A course an employee can be enrolled in / complete.
@@ -1833,6 +1883,9 @@ model TrainingRecord {
   @@index([tenantId, employeeId])
   @@index([tenantId, status])
   @@index([tenantId, expiresAt])
+  @@index([certificateId])
+  @@index([courseId])
+  @@index([employeeId])
 }
 
 // HR Phase 7 — a discrete, custody-tracked asset (laptop, key, uniform, vehicle…). Distinct from the
@@ -1866,6 +1919,7 @@ model Asset {
   @@index([tenantId, status])
   @@index([tenantId, category])
   @@index([tenantId, currentAssigneeId])
+  @@index([currentAssigneeId])
 }
 
 // One custody record: an asset issued to an employee, later returned. An asset has at most one open
@@ -1893,6 +1947,9 @@ model AssetAssignment {
   @@index([tenantId, assetId])
   @@index([tenantId, employeeId])
   @@index([tenantId, returnedAt])
+  @@index([assetId])
+  @@index([assignedById])
+  @@index([employeeId])
 }
 
 // HR Phase 8 — a job vacancy. Optionally tied to a Department/Position (org engine, Phase 1); a
@@ -1922,6 +1979,8 @@ model JobPosting {
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, departmentId])
+  @@index([departmentId])
+  @@index([positionId])
 }
 
 // A candidate for a posting. On HIRED, `hiredEmployeeId` links the created Employee row (1:1).
@@ -1950,6 +2009,7 @@ model JobApplicant {
   @@index([tenantId])
   @@index([tenantId, postingId])
   @@index([tenantId, status])
+  @@index([postingId])
 }
 
 // A scheduled interview for an applicant, with an interviewer and an outcome.
@@ -1974,6 +2034,8 @@ model Interview {
   @@index([tenantId])
   @@index([tenantId, applicantId])
   @@index([tenantId, scheduledAt])
+  @@index([applicantId])
+  @@index([interviewerId])
 }
 
 model ParentStudent {
@@ -2182,6 +2244,7 @@ model RefreshToken {
   @@index([tenantId, userId])
   @@index([familyId])
   @@index([expiresAt])
+  @@index([userId])
 }
 
 model PasswordResetToken {
@@ -2198,6 +2261,7 @@ model PasswordResetToken {
 
   @@index([tenantId, userId])
   @@index([expiresAt])
+  @@index([userId])
 }
 
 // Dedicated, append-only audit trail for the temporary-password / forgot-password workflow.
@@ -2287,6 +2351,11 @@ model ScheduleException {
 
   @@index([tenantId, date])
   @@index([tenantId, sectionId, date])
+  @@index([locationId])
+  @@index([sectionId])
+  @@index([subjectId])
+  @@index([substituteTeacherId])
+  @@index([teacherId])
 }
 
 // Per-campus timetable settings, notably Ramadan mode and its active window.
@@ -2365,6 +2434,7 @@ model SpecialLocation {
   scheduleExceptions ScheduleException[]
 
   @@index([tenantId, campusId])
+  @@index([campusId])
 }
 
 // A reusable "school class times" definition (bell schedule) for a campus — the class numbers and
@@ -2385,6 +2455,7 @@ model BellSchedule {
   periods BellSchedulePeriod[]
 
   @@index([tenantId, campusId])
+  @@index([campusId])
 }
 
 // A single class-time row within a BellSchedule. `isBreak` rows (assembly / break / lunch) carry no
@@ -2437,6 +2508,8 @@ model SchedulePlan {
 
   @@index([tenantId, semesterId])
   @@index([tenantId, semesterId, status])
+  @@index([academicYearId])
+  @@index([campusId])
 }
 
 // The weekly timetable a plan holds for one section. Exactly one per (plan, section).
@@ -2457,6 +2530,7 @@ model SectionTimetable {
   @@unique([planId, sectionId])
   @@index([tenantId, planId])
   @@index([tenantId, sectionId])
+  @@index([sectionId])
 }
 
 // A single scheduled "Class" (formerly Period) within a section's weekly timetable. Keyed by
@@ -2487,6 +2561,9 @@ model ScheduledClass {
   @@index([tenantId, sectionTimetableId])
   @@index([tenantId, teacherId])
   @@index([tenantId, subjectId])
+  @@index([locationId])
+  @@index([subjectId])
+  @@index([teacherId])
 }
 
 // ----------------------------------------------------------------------------
@@ -2519,6 +2596,9 @@ model StudentAttendance {
   @@unique([tenantId, studentId, date, classNumber])
   @@index([tenantId, sectionId, date])
   @@index([tenantId, studentId, date])
+  @@index([markedById])
+  @@index([sectionId])
+  @@index([studentId])
 }
 
 model TeacherAttendance {
@@ -2539,6 +2619,8 @@ model TeacherAttendance {
 
   @@unique([tenantId, teacherId, date])
   @@index([tenantId, date])
+  @@index([markedById])
+  @@index([teacherId])
 }
 
 // ----------------------------------------------------------------------------
@@ -2564,6 +2646,7 @@ model Homework {
 
   @@index([tenantId, sectionId])
   @@index([tenantId, dueDate])
+  @@index([sectionId])
 }
 
 // Attachment metadata. Files live in S3 and are uploaded directly via pre-signed URLs;
@@ -2583,6 +2666,7 @@ model HomeworkAttachment {
   homework Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, homeworkId])
+  @@index([homeworkId])
 }
 
 model BehaviorLog {
@@ -2602,6 +2686,7 @@ model BehaviorLog {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, studentId, date])
+  @@index([studentId])
 }
 
 // A graded assessment. Unique per (student, subject, assessment, semester) so grade import
@@ -2629,6 +2714,9 @@ model GradeRecord {
   @@unique([tenantId, studentId, subject, assessment, semesterId])
   @@index([tenantId, studentId])
   @@index([tenantId, sectionId])
+  @@index([sectionId])
+  @@index([semesterId])
+  @@index([studentId])
 }
 
 // ----------------------------------------------------------------------------
@@ -2684,6 +2772,7 @@ model Payer {
   @@index([tenantId])
   @@index([tenantId, parentId])
   @@index([tenantId, status])
+  @@index([parentId])
 }
 
 /// The AR ledger owner for one student: currency, status, optional payer. Every
@@ -2714,6 +2803,7 @@ model StudentFinancialAccount {
 
   @@index([tenantId])
   @@index([tenantId, payerId])
+  @@index([payerId])
 }
 
 /// A single financial OBLIGATION owed by one account (e.g. "Annual Tuition 2026/27").
@@ -2754,6 +2844,11 @@ model Charge {
   @@index([tenantId, status])
   @@index([tenantId, academicYearId])
   @@index([tenantId, feeItemId])
+  @@index([academicYearId])
+  @@index([accountId])
+  @@index([feeItemId])
+  @@index([gradeId])
+  @@index([studentId])
 }
 
 /// HOW a charge may be paid over time: cadence, count, terms, status. 0..1 active per
@@ -2783,6 +2878,7 @@ model PaymentPlan {
   @@index([tenantId, chargeId])
   @@index([tenantId, status])
   @@index([tenantId, financialPlanId])
+  @@index([financialPlanId])
 }
 
 /// WHEN a scheduled portion of a charge's net is expected. A schedule line — never a
@@ -2808,6 +2904,8 @@ model Installment {
   @@index([tenantId, planId])
   @@index([tenantId, dueDate])
   @@index([tenantId, status])
+  @@index([chargeId])
+  @@index([planId])
 }
 
 /// Actual money RECEIVED. CliQ/e-wallet payments are uploaded as receipts (receiptKey in S3)
@@ -2853,6 +2951,9 @@ model Payment {
   @@index([tenantId, studentId])
   @@index([tenantId, status])
   @@index([tenantId, payerId])
+  @@index([accountId])
+  @@index([payerId])
+  @@index([studentId])
 }
 
 /// Row-locked, per-tenant counter that hands out gapless receipt numbers for verified payments
@@ -2922,6 +3023,8 @@ model FinancialAccountPlan {
 
   @@index([tenantId, payerId])
   @@index([tenantId, status])
+  @@index([academicYearId])
+  @@index([payerId])
 }
 
 // ----------------------------------------------------------------------------
@@ -2944,6 +3047,7 @@ model Announcement {
   notifications Notification[]
 
   @@index([tenantId, createdAt])
+  @@index([sectionId])
 }
 
 // A per-user item in the in-app notification center. Fanned out from announcements/events.
@@ -2981,6 +3085,8 @@ model Notification {
   @@index([tenantId, userId, createdAt])
   @@index([tenantId, status])
   @@index([tenantId, category, createdAt])
+  @@index([announcementId])
+  @@index([userId])
 }
 
 // Per-user channel/category opt-in matrix. One row per (tenantId, userId); missing rows imply
@@ -3055,6 +3161,7 @@ model NotificationDelivery {
   @@index([tenantId, notificationId])
   @@index([tenantId, status])
   @@index([tenantId, channel, createdAt])
+  @@index([notificationId])
 }
 
 // Append-only audit trail per notification (created/sent/read/resend/...).
@@ -3072,6 +3179,7 @@ model NotificationAudit {
 
   @@index([tenantId, notificationId])
   @@index([tenantId, createdAt])
+  @@index([notificationId])
 }
 
 // Per-tenant sender identity + global channel kill-switches. The sender email is NEVER hardcoded;
@@ -3231,6 +3339,7 @@ model DeviceToken {
 
   @@index([tenantId, userId])
   @@index([tenantId, active])
+  @@index([userId])
 }
 
 // Per-tenant feature flags (e.g. the WhatsApp bridge). Disabled by default.
@@ -3279,6 +3388,9 @@ model LeaveRequest {
   @@index([tenantId])
   @@index([tenantId, studentId])
   @@index([tenantId, status])
+  @@index([requestedById])
+  @@index([reviewedById])
+  @@index([studentId])
 }
 
 // A Parent-Teacher Meeting slot offered by a teacher (optionally for a specific section).
@@ -3306,6 +3418,9 @@ model PtmSlot {
   @@index([tenantId])
   @@index([tenantId, teacherId])
   @@index([tenantId, startsAt])
+  @@index([createdById])
+  @@index([sectionId])
+  @@index([teacherId])
 }
 
 // A parent's booking of a PTM slot for one of their children.
@@ -3329,6 +3444,8 @@ model PtmBooking {
   @@index([tenantId])
   @@index([tenantId, slotId])
   @@index([tenantId, studentId])
+  @@index([bookedById])
+  @@index([studentId])
 }
 
 // Document vault: secure files attached to a student (report cards, certificates, medical, IDs).
@@ -3353,6 +3470,8 @@ model Document {
 
   @@index([tenantId])
   @@index([tenantId, studentId])
+  @@index([studentId])
+  @@index([uploadedById])
 }
 
 // ----------------------------------------------------------------------------
@@ -3388,6 +3507,9 @@ model Resource {
   @@index([tenantId])
   @@index([tenantId, sectionId])
   @@index([tenantId, gradeId])
+  @@index([gradeId])
+  @@index([sectionId])
+  @@index([uploadedById])
 }
 
 // A per-tenant achievement/badge definition. ATTENDANCE_* are auto-awarded when a student's
@@ -3432,6 +3554,8 @@ model StudentAchievement {
   @@unique([studentId, achievementId])
   @@index([tenantId])
   @@index([tenantId, studentId])
+  @@index([achievementId])
+  @@index([awardedById])
 }
 
 // Per-student gamification rollup: points, level, and attendance streaks (recomputed on sync).
@@ -3487,6 +3611,7 @@ model Area {
   @@index([tenantId])
   @@index([tenantId, active])
   @@index([routeId])
+  @@index([academicYearId])
 }
 
 model BusRoute {
@@ -3512,6 +3637,7 @@ model BusRoute {
 
   @@index([tenantId])
   @@index([tenantId, academicYearId])
+  @@index([academicYearId])
 }
 
 model Bus {
@@ -3540,6 +3666,7 @@ model Bus {
   @@unique([tenantId, plateNumber])
   @@index([tenantId])
   @@index([driverId])
+  @@index([routeId])
 }
 
 model BusStop {
@@ -3578,6 +3705,9 @@ model StudentBusAssignment {
   @@unique([tenantId, studentId])
   @@index([tenantId])
   @@index([tenantId, routeId])
+  @@index([routeId])
+  @@index([stopId])
+  @@index([studentId])
 }
 
 // --- Library management ------------------------------------------------------
@@ -3620,6 +3750,8 @@ model BookLoan {
   @@index([tenantId])
   @@index([tenantId, bookId])
   @@index([tenantId, status])
+  @@index([bookId])
+  @@index([studentId])
 }
 
 // --- Inventory management ----------------------------------------------------
@@ -3659,6 +3791,7 @@ model InventoryTransaction {
 
   @@index([tenantId])
   @@index([tenantId, itemId])
+  @@index([itemId])
 }
 
 // --- School clinic -----------------------------------------------------------
@@ -3699,6 +3832,7 @@ model ClinicVisit {
 
   @@index([tenantId])
   @@index([tenantId, studentId])
+  @@index([studentId])
 }
 
 // ----------------------------------------------------------------------------
@@ -3895,6 +4029,10 @@ model EInvoiceDocument {
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([status, nextAttemptAt]) // worker claim scan
+  @@index([chargeId])
+  @@index([originalDocumentId])
+  @@index([paymentId])
+  @@index([studentId])
 }
 
 /// Immutable audit trail of every transition & submission (who/when/what).
@@ -3912,6 +4050,7 @@ model EInvoiceLog {
 
   @@index([tenantId, documentId])
   @@index([tenantId, createdAt])
+  @@index([documentId])
 }
 
 // ----------------------------------------------------------------------------
@@ -3981,6 +4120,9 @@ model FeeAdjustment {
   @@index([tenantId, studentId])
   @@index([tenantId, chargeId])
   @@index([tenantId, status])
+  @@index([accountId])
+  @@index([chargeId])
+  @@index([studentId])
 }
 
 /// Applies (part of) a verified payment to a specific INSTALLMENT. reversedAt null = active
@@ -4001,6 +4143,8 @@ model PaymentAllocation {
 
   @@index([tenantId, paymentId])
   @@index([tenantId, installmentId])
+  @@index([installmentId])
+  @@index([paymentId])
 }
 
 /// An independent asset lot the account holds (over-payment, credit-memo, …), with provenance
@@ -4031,6 +4175,9 @@ model Credit {
 
   @@index([tenantId, accountId])
   @@index([tenantId, payerId])
+  @@index([accountId])
+  @@index([payerId])
+  @@index([paymentId])
 }
 
 /// A refund of available credit back to the payer. Consumes specific Credit lots FIFO. Same
@@ -4062,6 +4209,9 @@ model Refund {
   @@index([tenantId, accountId])
   @@index([tenantId, studentId])
   @@index([tenantId, status])
+  @@index([accountId])
+  @@index([payerId])
+  @@index([studentId])
 }
 
 /// A single Credit lot drawn by a Refund (FIFO). Σ consumptions == refund.amount (BR-34).
@@ -4079,6 +4229,8 @@ model RefundConsumption {
 
   @@index([tenantId, refundId])
   @@index([tenantId, creditId])
+  @@index([creditId])
+  @@index([refundId])
 }
 
 // ----------------------------------------------------------------------------
@@ -4185,6 +4337,7 @@ model PromiseToPay {
   case   CollectionsCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, caseId])
+  @@index([caseId])
 }
 
 /// Append-only log of a dunning action (reminder/note/status change/promise/escalation).
@@ -4213,6 +4366,7 @@ model DunningEvent {
 
   @@index([tenantId, caseId])
   @@index([tenantId, createdAt])
+  @@index([caseId])
 }
 
 /// One per student: cached collections headline + permanent financial flags + reminder cadence
@@ -4314,6 +4468,7 @@ model StudentPresenceEvent {
   @@index([tenantId])
   @@index([tenantId, studentId])
   @@index([tenantId, occurredAt])
+  @@index([studentId])
 }
 
 /// Transportation boarding/arrival events. NOT academic attendance; references the existing Bus.
@@ -4338,6 +4493,8 @@ model BusAttendanceEvent {
   @@index([tenantId, studentId])
   @@index([tenantId, busId])
   @@index([tenantId, occurredAt])
+  @@index([busId])
+  @@index([studentId])
 }
 
 model AttendanceSourceConfig {
@@ -4390,6 +4547,7 @@ model StudentCard {
   @@unique([tenantId, cardUid])
   @@index([tenantId, studentId])
   @@index([tenantId, status])
+  @@index([studentId])
 }
 
 /// Governmental/school vaccination record for a student: which vaccine, the grade at which it
@@ -4410,6 +4568,7 @@ model StudentVaccine {
   student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, studentId])
+  @@index([studentId])
 }
 
 // ============================================================================
@@ -4462,6 +4621,8 @@ model GradeFeeSchedule {
 
   @@index([tenantId, academicYearId, gradeId])
   @@index([tenantId, isActive])
+  @@index([academicYearId])
+  @@index([gradeId])
 }
 
 /// Per-academic-year transportation fares by direction. Independent of tuition.
@@ -4485,6 +4646,7 @@ model TransportFare {
   @@unique([tenantId, academicYearId, routeId])
   @@index([tenantId, academicYearId])
   @@index([routeId])
+  @@index([academicYearId])
 }
 
 /// Configurable discount rules. Applications are recorded as FeeAdjustment rows
@@ -4655,6 +4817,9 @@ model GradeFeeItem {
 
   @@index([tenantId, academicYearId, gradeId])
   @@index([tenantId, isActive])
+  @@index([academicYearId])
+  @@index([feeItemId])
+  @@index([gradeId])
 }
 
 /// A persisted fee quotation. Created BEFORE a student exists (studentId null until commit),
@@ -4688,6 +4853,9 @@ model EnrollmentQuote {
 
   @@index([tenantId, academicYearId])
   @@index([tenantId, studentId])
+  @@index([academicYearId])
+  @@index([gradeId])
+  @@index([studentId])
 }
 
 /// A single fee line of a quote. Captures the discountable flag + any registrar override.
@@ -4710,6 +4878,7 @@ model EnrollmentQuoteItem {
   quote  EnrollmentQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, quoteId])
+  @@index([quoteId])
 }
 
 /// Per-academic-year enrollment record. Distinguishes years and powers re-enrollment;
@@ -4772,6 +4941,13 @@ model Enrollment {
   @@index([tenantId, admissionStatus])
   @@index([tenantId, sectionId])
   @@index([tenantId, campusId])
+  @@index([academicYearId])
+  @@index([areaId])
+  @@index([campusId])
+  @@index([classroomId])
+  @@index([gradeId])
+  @@index([sectionId])
+  @@index([studentId])
 }
 
 /// Mandatory tracking of every deviation from the standard school fee plan. Append-only.
@@ -4794,6 +4970,7 @@ model FeeModification {
 
   @@index([tenantId, enrollmentId])
   @@index([tenantId, studentId])
+  @@index([enrollmentId])
 }
 
 /// Finance approval of a fee modification (when BillingPolicy.requireFinanceApprovalForFeeChanges).
@@ -4830,6 +5007,8 @@ model FinancialArrangement {
   enrollment Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, studentId])
+  @@index([enrollmentId])
+  @@index([studentId])
 }
 
 /// Idempotent record of a completed registration commit (prevents double student creation).
@@ -5075,6 +5254,9 @@ model GeneratedDocument {
   @@index([tenantId, type])
   @@index([tenantId, studentId])
   @@index([tenantId, generatedAt])
+  @@index([academicYearId])
+  @@index([parentId])
+  @@index([studentId])
 }
 
 /// Complete per-action access history for a document (Phase 23b): generation, print, download,
@@ -5099,6 +5281,7 @@ model DocumentAccessLog {
 
   @@index([tenantId, documentId, createdAt])
   @@index([tenantId, action])
+  @@index([documentId])
 }
 
 /// Email-delivery history for a document (Phase 23b) — metadata only; the PDF attachment is never
@@ -5121,6 +5304,7 @@ model DocumentEmailLog {
   document GeneratedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, documentId, sentAt])
+  @@index([documentId])
 }
 
 /// A registration agreement — the legal commitment between the school and the parent, created
@@ -5191,6 +5375,11 @@ model RegistrationAgreement {
   @@unique([tenantId, enrollmentId, version])
   @@index([tenantId, studentId])
   @@index([tenantId, enrollmentId])
+  @@index([academicYearId])
+  @@index([enrollmentId])
+  @@index([parentId])
+  @@index([studentId])
+  @@index([supersedesId])
 }
 
 /// Why a student's billing responsibility (legal payer) was transferred (PR #212 review).
@@ -5387,6 +5576,8 @@ model TenantSubscription {
   @@index([status])
   @@index([planId])
   @@index([currentPeriodEnd])
+  @@index([couponId])
+  @@index([planVersionId])
 }
 
 /// A current usage counter for a tenant against one metered dimension
@@ -5424,6 +5615,8 @@ model PlanChangeHistory {
   toPlan   SubscriptionPlan  @relation("PlanChangeTo", fields: [toPlanId], references: [id])
 
   @@index([tenantId, createdAt])
+  @@index([fromPlanId])
+  @@index([toPlanId])
 }
 
 /// Billing identity + payment routing for a tenant.
@@ -5490,6 +5683,7 @@ model Trial {
   plan   SubscriptionPlan @relation(fields: [planId], references: [id])
 
   @@index([endsAt])
+  @@index([planId])
 }
 
 /// A school-initiated request to change plan/cycle. Schools cannot self-serve plan
@@ -5516,6 +5710,8 @@ model UpgradeRequest {
 
   @@index([tenantId, status])
   @@index([status, createdAt])
+  @@index([fromPlanId])
+  @@index([requestedPlanId])
 }
 
 /// A per-tenant override of a single feature or limit, without minting a custom plan.
@@ -5731,6 +5927,7 @@ model BillingPayment {
 
   @@index([tenantId, status])
   @@index([status])
+  @@index([invoiceId])
 }
 
 /// A refund against a platform payment. Scalar tenant scoping (RLS); no Tenant back-relation.
@@ -5912,6 +6109,7 @@ model AttendancePolicy {
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([tenantId, campusId])
+  @@index([campusId])
 }
 
 /// A configured work window (N1): expected check-in/out, unpaid break and an optional credited-hours
@@ -5940,6 +6138,8 @@ model Shift {
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([tenantId, campusId])
+  @@index([campusId])
+  @@index([policyId])
 }
 
 /// Assignment of a shift to an employee over an effective window. `daysOfWeek` empty ⇒ every day the
@@ -5964,6 +6164,9 @@ model EmployeeShiftAssignment {
   @@index([tenantId])
   @@index([tenantId, employeeId, effectiveFrom])
   @@index([tenantId, shiftId])
+  @@index([createdById])
+  @@index([employeeId])
+  @@index([shiftId])
 }
 
 /// An immutability window over staff attendance (N3). While ACTIVE, writes covering any date in
@@ -5993,6 +6196,9 @@ model AttendanceLock {
   @@index([tenantId])
   @@index([tenantId, status, periodStart, periodEnd])
   @@index([tenantId, campusId, status])
+  @@index([campusId])
+  @@index([lockedById])
+  @@index([releasedById])
 }
 
 /// Enterprise correction workflow (N4): request → review → approval → apply. Nothing is edited
@@ -6027,6 +6233,8 @@ model AttendanceCorrectionRequest {
   @@index([tenantId])
   @@index([tenantId, status])
   @@index([tenantId, employeeId, date])
+  @@index([employeeId])
+  @@index([requestedById])
 }
 
 /// One decision in a correction's approval chain (mirrors the proven staff-leave approval trail).
@@ -6046,6 +6254,7 @@ model AttendanceCorrectionApproval {
 
   @@unique([requestId, level])
   @@index([tenantId])
+  @@index([decidedById])
 }
 
 /// Normalised device punch (N5). Providers write here first (idempotent on the provider's own
@@ -6074,4 +6283,5 @@ model BiometricRawPunch {
   @@index([tenantId, punchAt])
   @@index([tenantId, employeeId, punchAt])
   @@index([tenantId, processedAt])
+  @@index([employeeId])
 }
