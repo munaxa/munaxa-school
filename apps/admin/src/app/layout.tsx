@@ -2,7 +2,13 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import { PostHogProvider } from '@/lib/posthog';
-import { ToastProvider } from '@munaxa/ui';
+import {
+  BrandProvider,
+  ToastProvider,
+  brandIcons,
+  brandOpenGraphImage,
+  productBrands,
+} from '@munaxa/ui';
 import { ConfirmProvider } from '@/components/confirm';
 import { I18nProvider } from '@/components/i18n-provider';
 import { DEFAULT_LOCALE, directionForLocale } from '@/lib/i18n';
@@ -35,9 +41,30 @@ const plexArabic = localFont({
   display: 'swap',
 });
 
+const brand = productBrands.school;
+const DESCRIPTION = 'Munaxa: a multi-tenant School Operating System for K-12 schools.';
+
+/**
+ * What a browser shows for this product.
+ *
+ * The title said "Munaxa"; the product is Munaxa *School*, and a tab that only says the company
+ * is indistinguishable from Work's and Docs' when all three are open. Icon, share image,
+ * application name and chrome colour all come from the brand registry, so the tab icon and the
+ * logo in the rail can never be two different marks.
+ */
 export const metadata: Metadata = {
-  title: 'Munaxa — School Operating System',
-  description: 'Munaxa: a multi-tenant School Operating System for K-12 schools.',
+  title: { default: brand.name, template: `%s · ${brand.name}` },
+  description: DESCRIPTION,
+  applicationName: brand.name,
+  icons: brandIcons(brand),
+  openGraph: {
+    type: 'website',
+    siteName: brand.name,
+    title: brand.name,
+    description: DESCRIPTION,
+    images: [brandOpenGraphImage(brand)],
+  },
+  twitter: { card: 'summary_large_image', images: [brandOpenGraphImage(brand).url] },
   // Authenticated product surface — never indexable. This is the app-wide default;
   // the auth pages add self-canonicals on top (see their per-route layouts).
   robots: {
@@ -72,13 +99,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{if(localStorage.getItem('munaxa.theme')==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`,
           }}
         />
-        <PostHogProvider>
-          <I18nProvider>
-            <ToastProvider>
-              <ConfirmProvider>{children}</ConfirmProvider>
-            </ToastProvider>
-          </I18nProvider>
-        </PostHogProvider>
+        <BrandProvider product="school">
+          <PostHogProvider>
+            <I18nProvider>
+              <ToastProvider>
+                <ConfirmProvider>{children}</ConfirmProvider>
+              </ToastProvider>
+            </I18nProvider>
+          </PostHogProvider>
+        </BrandProvider>
       </body>
     </html>
   );

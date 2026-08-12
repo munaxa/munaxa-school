@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowRight, Menu, X } from '@munaxa/icons';
-import { buttonVariants, cn } from '@munaxa/ui';
+import { ProductLogo, buttonVariants, cn } from '@munaxa/ui';
 import { NAV, DEMO_URL } from '@/lib/site';
-import { Wordmark } from './wordmark';
 import { ThemeToggle } from './theme-toggle';
 
 /** Sticky header. Transparent over the hero, condenses to a frosted bar once the page scrolls. */
@@ -30,8 +29,10 @@ export function Header() {
         )}
       >
         <div className="shell-wide flex h-16 items-center justify-between gap-6">
-          <a href="#top" className="shrink-0" aria-label="Munaxa home">
-            <Wordmark />
+          {/* The logo names the site, so the anchor does not need an `aria-label` repeating it —
+              one would override the name and leave "Munaxa home" where "Munaxa School" belongs. */}
+          <a href="#top" className="shrink-0">
+            <ProductLogo variant="horizontal" height={30} compactBelow="sm" priority />
           </a>
 
           <nav aria-label="Primary" className="hidden items-center gap-1 md:flex">

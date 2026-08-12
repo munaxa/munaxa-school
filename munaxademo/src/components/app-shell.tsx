@@ -15,11 +15,11 @@ import {
   useAppShell,
   type NavigationGroup,
   type RenderNavigationLink,
+  ProductLogo,
 } from '@munaxa/ui';
 import { useSession } from '@/lib/session-context';
 import { useDemo } from '@/lib/demo-store/context';
 import type { PersonaId } from '@/lib/rbac';
-import { Logo } from '@school/brand';
 import { ThemeLocaleToggle } from './theme-locale-toggle';
 import { RoleSwitcher } from './role-switcher';
 import { useOnboarding } from './onboarding-tour';
@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const brand = (
     <Link href="/dashboard" className="flex items-center gap-2">
-      <Logo variant="horizontal" size={24} priority />
+      <ProductLogo variant="horizontal" height={24} priority />
       <span className="truncate font-display text-lg font-semibold">{data.school.nameEn}</span>
     </Link>
   );

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/auth';
 import { useI18n } from '@/components/i18n-provider';
-import { Logo } from '@school/brand';
+import { ProductLogo } from '@munaxa/ui';
 import { Wordmark } from '@school/brand';
 import {
   sanitizeIdentifier,
@@ -153,7 +153,7 @@ export default function LoginPage() {
       <div className="relative mx-auto flex min-h-screen max-w-[1440px] flex-col px-5 py-6 lg:h-full lg:min-h-0 lg:px-10">
         {/* Brand lockup. */}
         <header className="flex items-center gap-3">
-          <Logo variant="stacked" size={56} priority />
+          <ProductLogo variant="stacked" height={56} priority />
         </header>
 
         <div className="grid flex-1 items-center gap-8 py-6 md:grid-cols-[2fr_3fr] md:gap-12 lg:grid-cols-[45fr_55fr] lg:gap-16">

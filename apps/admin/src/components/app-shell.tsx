@@ -16,12 +16,12 @@ import {
   cn,
   type NavigationGroup,
   type RenderNavigationLink,
+  ProductLogo,
 } from '@munaxa/ui';
 import { logout, type Principal } from '@/lib/auth';
 import { clearPrincipalCache } from '@/lib/session';
 import { advancedApi } from '@/lib/advanced';
 import { academicYearsApi, type AcademicYear } from '@/lib/structure';
-import { Logo } from '@school/brand';
 import { ThemeLocaleToggle } from './theme-locale-toggle';
 import { GlobalSearch } from './global-search';
 import { useI18n } from './i18n-provider';
@@ -453,9 +453,9 @@ export function AppShell({
 
   const brand = (collapsed: boolean) =>
     collapsed ? (
-      <Logo variant="symbol" size={30} priority />
+      <ProductLogo variant="symbol" height={30} priority />
     ) : (
-      <Logo variant="horizontal" size={26} priority />
+      <ProductLogo variant="horizontal" height={26} priority />
     );
 
   const sessionFooter = (
@@ -503,7 +503,7 @@ export function AppShell({
         drawer={
           <NavigationDrawer
             label={navLabel}
-            brand={<Logo variant="horizontal" size={26} priority />}
+            brand={<ProductLogo variant="horizontal" height={26} priority />}
             footer={sessionFooter}
             closeLabel={t('shell.closeMenu')}
           >

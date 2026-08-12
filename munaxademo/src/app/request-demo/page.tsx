@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Logo } from '@school/brand';
-import { Button, Card, CardContent, Field, Input, Select } from '@munaxa/ui';
+import { Button, Card, CardContent, Field, Input, ProductLogo, Select } from '@munaxa/ui';
 
 interface Form {
   schoolName: string;
@@ -71,7 +70,7 @@ export default function RequestDemoPage() {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md space-y-6 text-center">
-          <Logo variant="stacked" size={88} priority className="mx-auto" />
+          <ProductLogo variant="stacked" height={88} priority className="mx-auto" />
           <Card>
             <CardContent className="space-y-3 pt-6">
               <h1 className="font-display text-2xl font-semibold">Thank you</h1>
@@ -96,7 +95,7 @@ export default function RequestDemoPage() {
     <main className="flex min-h-screen items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-2xl space-y-6">
         <div className="space-y-2 text-center">
-          <Logo variant="stacked" size={80} priority className="mx-auto" />
+          <ProductLogo variant="stacked" height={80} priority className="mx-auto" />
           <h1 className="font-display text-2xl font-semibold">Book a Munaxa demo</h1>
           <p className="text-sm text-muted-foreground">
             Tell us about your school and our team will set up a private, guided demonstration with

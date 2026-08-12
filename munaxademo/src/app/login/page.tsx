@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PERSONAS, PERSONA_BY_ID, type PersonaId } from '@/lib/rbac';
-import { Logo } from '@school/brand';
-import { Button, Card, CardContent, Field, Input } from '@munaxa/ui';
+import { Button, Card, CardContent, Field, Input, ProductLogo } from '@munaxa/ui';
 
 const PERSONA_KEY = 'munaxa.demo.persona';
 
@@ -66,7 +65,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm space-y-6">
           <div className="space-y-2 text-center">
             <span className="mx-auto inline-flex w-fit">
-              <Logo variant="stacked" size={96} priority />
+              <ProductLogo variant="stacked" height={96} priority />
             </span>
             <h1 className="font-display text-2xl font-semibold">Live Demo</h1>
             <p className="text-sm text-muted-foreground">
@@ -123,7 +122,7 @@ export default function LoginPage() {
         <div className="w-full max-w-3xl space-y-6">
           <div className="space-y-2 text-center">
             <span className="mx-auto inline-flex w-fit">
-              <Logo variant="stacked" size={72} priority />
+              <ProductLogo variant="stacked" height={72} priority />
             </span>
             <h1 className="font-display text-2xl font-semibold">Choose a role to explore</h1>
             <p className="text-sm text-muted-foreground">

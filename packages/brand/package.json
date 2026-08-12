@@ -2,7 +2,7 @@
   "name": "@school/brand",
   "version": "0.1.0",
   "private": true,
-  "description": "Munaxa School's brand lockups. Product identity — the logo files and the wordmark — which is School's to own, not the shared platform's. Everything else about how these render (colour, type, spacing) comes from @munaxa/*.",
+  "description": "Munaxa School's wordmark set as text, for running copy. The logo itself is the approved artwork shipped by @munaxa/platform and rendered by ProductLogo.",
   "type": "module",
   "exports": {
     ".": {
@@ -17,11 +17,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit --tsBuildInfoFile node_modules/.cache/tsc-typecheck.tsbuildinfo",
     "lint": "eslint src"
   },
-  "dependencies": {
-    "@munaxa/ui": "^1.0.0"
-  },
   "peerDependencies": {
-    "next": "^15.0.0",
     "react": "^19.0.0"
   },
   "devDependencies": {

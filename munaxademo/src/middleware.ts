@@ -67,8 +67,16 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Run on everything except Next internals and static asset files.
+  /*
+   * Run on everything except Next internals and static asset files.
+   *
+   * `branding` is the approved product artwork, copied in on prebuild. It belongs with the other
+   * exclusions for the same reason they are there: middleware runs for `public/` too, and a logo
+   * request answered by a redirect renders as a broken image on the sign-in screen — the one
+   * screen whose whole job is to say which product you are signing in to. The named
+   * `munaxa-logo.png` goes with it; that file no longer exists.
+   */
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|munaxa-logo.png|robots.txt).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|branding|robots.txt).*)',
   ],
 };

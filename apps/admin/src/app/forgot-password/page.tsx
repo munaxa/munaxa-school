@@ -4,8 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { requestPasswordReset } from '@/lib/auth';
 import { useI18n } from '@/components/i18n-provider';
-import { Logo } from '@school/brand';
-import { Button, Field, Input } from '@munaxa/ui';
+import { Button, Field, Input, ProductLogo } from '@munaxa/ui';
 
 /**
  * Password-reset request. Posts to the anti-enumeration endpoint (always 202) and shows a neutral
@@ -34,7 +33,7 @@ export default function ForgotPasswordPage() {
     <main className="flex min-h-screen">
       <section className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-grad-primary p-12 text-primary-foreground lg:flex">
         <div className="flex items-center gap-2">
-          <Logo size={36} priority />
+          <ProductLogo height={36} priority />
           <span className="font-display text-xl font-semibold">Munaxa</span>
         </div>
         <div className="max-w-md space-y-4">
@@ -49,7 +48,7 @@ export default function ForgotPasswordPage() {
       <section className="flex flex-1 items-center justify-center bg-background p-6 sm:p-10">
         <div className="w-full max-w-sm space-y-8">
           <div className="flex items-center gap-2 lg:hidden">
-            <Logo size={32} priority />
+            <ProductLogo height={32} priority />
             <span className="font-display text-lg font-semibold">Munaxa</span>
           </div>
 
