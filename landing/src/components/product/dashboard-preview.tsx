@@ -74,8 +74,9 @@ export function DashboardPreview() {
       <aside className="hidden w-48 shrink-0 flex-col border-e border-border bg-card/60 p-3 @2xl:flex @5xl:w-52">
         <div className="flex items-center gap-2 px-2 py-2">
           <Image
-            src="/app-icon.png"
-            alt="Munaxa"
+            src="/branding/school/favicon/app-icon.png"
+            alt=""
+            aria-hidden
             width={28}
             height={28}
             unoptimized

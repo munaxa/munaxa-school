@@ -1,7 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import { Sora, Inter, Cairo, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import {
+  BrandProvider,
+  brandIcons,
+  brandOpenGraphImage,
+  productBrands,
+} from '@munaxa/ui';
+
 import { SITE_NAME, SITE_URL, THEME_COLOR_LIGHT, THEME_COLOR_DARK } from '@/lib/site';
+
+const brand = productBrands.school;
 
 const sora = Sora({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
@@ -35,7 +44,6 @@ export const metadata: Metadata = {
     template: '%s — Munaxa',
   },
   description,
-  applicationName: SITE_NAME,
   keywords: [
     'school operating system',
     'school management software',
@@ -46,6 +54,8 @@ export const metadata: Metadata = {
     'JoFotara e-invoicing',
     'Munaxa',
   ],
+  applicationName: brand.name,
+  icons: brandIcons(brand),
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
@@ -54,12 +64,13 @@ export const metadata: Metadata = {
     description,
     url: SITE_URL,
     locale: 'en_US',
-    images: [{ url: '/logo.png', width: 640, height: 427, alt: 'Munaxa' }],
+    images: [brandOpenGraphImage(brand)],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Munaxa — The School Operating System',
     description,
+    images: [brandOpenGraphImage(brand).url],
   },
   robots: { index: true, follow: true },
 };
@@ -72,7 +83,7 @@ const orgJsonLd = {
   '@type': 'Organization',
   name: SITE_NAME,
   url: SITE_URL,
-  logo: `${SITE_URL}/logo.png`,
+  logo: `${SITE_URL}${brand.assets.stacked.onLight.src}`,
   description,
 };
 const softwareJsonLd = {
@@ -97,7 +108,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
       <body className="min-h-screen bg-background font-body text-foreground antialiased">
-        {children}
+        {/* Which product this site is for, declared once. The marketing site *is* Munaxa School,
+            so every logo below is the School lockup without any caller choosing it. */}
+        <BrandProvider product="school">{children}</BrandProvider>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}

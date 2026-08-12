@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { buttonVariants } from '@munaxa/ui';
-import { Logo } from '@school/brand';
+import { buttonVariants, ProductLogo } from '@munaxa/ui';
 import { DEFAULT_LOCALE, getMessages, resolveMessage } from '@/lib/i18n';
 
 /**
@@ -16,7 +15,7 @@ export default function NotFound() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-16 text-center">
       <Link href="/" className="flex items-center gap-2" aria-label={t('common.appName')}>
-        <Logo size={36} priority />
+        <ProductLogo height={36} priority />
         <span className="font-display text-xl font-semibold">{t('common.appName')}</span>
       </Link>
 

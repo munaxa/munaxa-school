@@ -12,8 +12,7 @@ import {
 import Link from 'next/link';
 import { useSession } from '@/lib/session-context';
 import type { PersonaId } from '@/lib/rbac';
-import { Button } from '@munaxa/ui';
-import { Logo } from '@school/brand';
+import { Button, ProductLogo } from '@munaxa/ui';
 
 const SEEN_KEY = 'munaxa.demo.onboarded';
 
@@ -131,7 +130,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-ink-900/70 p-4 backdrop-blur-xs">
           <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-card">
             <div className="flex items-start gap-4">
-              <Logo size={56} priority />
+              <ProductLogo height={56} priority />
               <div className="min-w-0">
                 <h2 className="font-display text-2xl font-semibold">Welcome to the Munaxa demo</h2>
                 <p className="mt-1 text-sm text-muted-foreground">

@@ -98,8 +98,9 @@ export function SystemMap() {
       >
         <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-white p-1 shadow-xs ring-1 ring-border">
           <Image
-            src="/logo-mark.png"
-            alt="Munaxa"
+            src="/branding/school/logos/symbol.png"
+            alt=""
+            aria-hidden
             width={512}
             height={512}
             unoptimized
