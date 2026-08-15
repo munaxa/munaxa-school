@@ -226,18 +226,34 @@ describe('AcademicYearService — readiness (real-data validation)', () => {
     expect(checkOk(r, 'semestersNoOverlap')).toBe(false);
   });
 
-  it('flags a gap that leaves the year not fully covered', async () => {
+  it('accepts the break between the first and second semester', async () => {
+    // The Jordanian school year breaks around mid-January; those weeks belong to no semester and
+    // must not read as a misconfigured calendar.
     const service = readinessSetup({
       year: REG,
       semesters: [
-        { startDate: new Date('2025-09-01'), endDate: new Date('2025-12-31') },
-        { startDate: new Date('2026-03-01'), endDate: new Date('2026-06-30') },
+        { startDate: new Date('2025-09-01'), endDate: new Date('2026-01-19') },
+        { startDate: new Date('2026-02-07'), endDate: new Date('2026-06-30') },
+      ],
+    });
+    const r = await service.readiness('ay1');
+    expect(checkOk(r, 'semestersCoverYear')).toBe(true);
+    expect(checkOk(r, 'semestersNoOverlap')).toBe(true);
+    expect(r.activation.canActivate).toBe(true);
+  });
+
+  it('flags semesters that leave the start or the end of the year uncovered', async () => {
+    const service = readinessSetup({
+      year: REG,
+      semesters: [
+        { startDate: new Date('2025-10-01'), endDate: new Date('2026-01-31') },
+        { startDate: new Date('2026-02-01'), endDate: new Date('2026-05-31') },
       ],
     });
     const r = await service.readiness('ay1');
     expect(checkOk(r, 'semestersCoverYear')).toBe(false);
-    // The gap does not itself count as an overlap.
-    expect(checkOk(r, 'semestersNoOverlap')).toBe(true);
+    // Both terms still sit inside the year — it is only the year's own edges that are unclaimed.
+    expect(checkOk(r, 'semestersInsideYear')).toBe(true);
   });
 
   it('flags a semester that falls outside the academic year', async () => {

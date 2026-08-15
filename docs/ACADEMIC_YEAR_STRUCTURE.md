@@ -181,7 +181,7 @@ erDiagram
 | Card KPIs (students, enrollments, classes, semesters) | `Enrollment` (by status), distinct `Section`/`Grade`, `Semester` count |
 | Outstanding fees / unverified payments | `Charge` (PENDING/PARTIAL), `Payment` (PENDING) |
 | Attendance / report-card / timetable % | `StudentAttendance`, `GradeRecord` (via Semester), `TimetableSlot` (via Section) |
-| Academic Readiness Score & activation checks | Year dates, registration window, and **`Semester` geometry** (inside-year / no-overlap / full coverage), plus `Grade` & `Section` counts — all real records |
+| Academic Readiness Score & activation checks | Year dates, registration window, and **`Semester` geometry** (inside-year / no-overlap / spans-the-year), plus `Grade` & `Section` counts — all real records |
 | Delete guard | Existence across `Enrollment`, `Charge`, `Semester`, `GradeRecord`, `TimetableSlot`, `AuditLog` |
 | Current-year indicator | `AcademicYear` where `status = ACTIVE` |
 
@@ -189,8 +189,13 @@ erDiagram
 
 1. Start date set · 2. End date set · 3. Registration window set
 4. At least one Semester · 5. Semester dates fall inside the year
-6. Semester dates do not overlap · 7. Semesters cover the whole year
+6. Semester dates do not overlap · 7. Semesters span the year
 8. Grades configured · 9. Sections configured
+
+> **Check 7 allows a break between terms.** The first semester must open the year and the last one
+> must close it, but the weeks between two semesters — the mid-January break a Jordanian school
+> year actually has — belong to no semester and do not block activation. Only uncovered days at
+> the *edges* of the year do.
 
 > There is **no** free-text "academic calendar" field. The instructional calendar is derived
 > entirely from **Semester** records (name / sequence / inclusive `startDate` / `endDate`); the

@@ -188,9 +188,10 @@ export class AcademicYearService {
         resolveRoute: '/structure/academic-year',
       },
       {
+        // Key kept as-is: it is part of the readiness contract the Admin workspace already renders.
         key: 'semestersCoverYear',
-        label: 'Semesters cover the whole academic year',
-        ok: sem.coversYear,
+        label: 'Semesters span the academic year (breaks between them are fine)',
+        ok: sem.spansYear,
         severity: 'blocker',
         resolveRoute: '/structure/academic-year',
       },
@@ -321,15 +322,22 @@ export class AcademicYearService {
    * Derive the instructional-calendar readiness signals purely from Semester records:
    *  - `allInsideYear`  — every semester lies within [year.start, year.end]
    *  - `noOverlap`      — no two semesters overlap (adjacent/touching is allowed)
-   *  - `coversYear`     — the semester ranges together span the entire academic year (no gaps)
+   *  - `spansYear`      — the first semester opens the year and the last one closes it
+   *
+   * `spansYear` deliberately tolerates a gap *between* semesters: a Jordanian school year has a
+   * real break between the first and second semester (typically mid-January to early February),
+   * and those weeks belong to no semester. Requiring the terms to tile the year edge-to-edge would
+   * force schools to bury the break inside a term and misstate their own calendar. What still has
+   * to hold is that no instructional day falls outside a semester at either *end* of the year.
+   *
    * With zero semesters every derived flag is false (nothing to validate against yet).
    */
   private semesterCoverage(
     year: AcademicYear,
     semesters: { startDate: Date; endDate: Date }[],
-  ): { allInsideYear: boolean; noOverlap: boolean; coversYear: boolean } {
+  ): { allInsideYear: boolean; noOverlap: boolean; spansYear: boolean } {
     if (semesters.length === 0) {
-      return { allInsideYear: false, noOverlap: false, coversYear: false };
+      return { allInsideYear: false, noOverlap: false, spansYear: false };
     }
     const yearStart = year.startDate.getTime();
     const yearEnd = year.endDate.getTime();
@@ -341,24 +349,21 @@ export class AcademicYearService {
     const allInsideYear = spans.every((s) => s.start >= yearStart && s.end <= yearEnd);
 
     // Semester end dates are inclusive (`@db.Date`), so a term ending on the 31st and the next
-    // starting on the 1st are adjacent, not overlapping and not a gap. Allow that one-day seam.
-    const DAY = 86_400_000;
+    // starting on the 1st are adjacent rather than overlapping.
     let noOverlap = true;
-    let contiguous = true;
     for (let i = 1; i < spans.length; i++) {
       const prev = spans[i - 1]!;
       const curr = spans[i]!;
-      // Overlap when a semester starts on or before the previous one's (inclusive) end.
+      // Overlap when a semester starts on or before the previous one's (inclusive) end. A later
+      // start is a between-terms break, which is legitimate.
       if (curr.start <= prev.end) noOverlap = false;
-      // Gap when a semester starts more than one day after the previous one ends.
-      if (curr.start - prev.end > DAY) contiguous = false;
     }
 
-    // Coverage: no gaps between consecutive semesters, and the union spans the whole year.
+    // The terms must open and close the year; the space between them is the school's own break.
     const first = spans[0]!;
     const last = spans[spans.length - 1]!;
-    const coversYear = contiguous && first.start <= yearStart && last.end >= yearEnd;
+    const spansYear = first.start <= yearStart && last.end >= yearEnd;
 
-    return { allInsideYear, noOverlap, coversYear };
+    return { allInsideYear, noOverlap, spansYear };
   }
 }
