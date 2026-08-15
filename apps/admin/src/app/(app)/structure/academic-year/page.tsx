@@ -223,7 +223,13 @@ function AcademicYearCard({
   const [showEdit, setShowEdit] = useState(false);
   const [deletable, setDeletable] = useState<boolean | null>(null);
 
-  useEffect(() => {
+  /**
+   * Re-read everything the server derives from this year: the KPIs, the activation checklist and
+   * the delete guard. Every one of them is a function of the year's dates and its Semester rows,
+   * so it has to be re-fetched after any edit to either — an effect keyed on `year.id`/`year.status`
+   * would never fire, since moving a term (or the year's own dates) changes neither.
+   */
+  const loadMetrics = useCallback(() => {
     academicYearsApi
       .overview(year.id)
       .then(setOverview)
@@ -239,6 +245,8 @@ function AcademicYearCard({
         .catch(() => setDeletable(false));
     }
   }, [year.id, year.status]);
+
+  useEffect(() => loadMetrics(), [loadMetrics]);
 
   const statusLabel = t(`academicYear.status.${year.status}`);
 
@@ -361,7 +369,11 @@ function AcademicYearCard({
         ) : null}
 
         {expanded ? (
-          <Semesters academicYearId={year.id} readOnly={year.status === 'CLOSED'} />
+          <Semesters
+            academicYearId={year.id}
+            readOnly={year.status === 'CLOSED'}
+            onChanged={loadMetrics}
+          />
         ) : null}
       </CardContent>
 
@@ -393,6 +405,7 @@ function AcademicYearCard({
         onSaved={() => {
           setShowEdit(false);
           onChanged();
+          loadMetrics();
         }}
       />
       {/* campusId kept for future semester creation scoping */}
@@ -1035,7 +1048,21 @@ function EditYearDialog({
 
 // ─────────────────────────────────────────────────────────────── semesters (inline manage)
 
-function Semesters({ academicYearId, readOnly }: { academicYearId: string; readOnly: boolean }) {
+/**
+ * The year's terms. `onChanged` fires after every mutation so the card above can re-read the
+ * activation checklist: the semester checks ("dates fall inside the year", "semesters span the
+ * year") are derived server-side from these rows, and would otherwise keep showing the state the
+ * page was loaded with until a manual refresh.
+ */
+function Semesters({
+  academicYearId,
+  readOnly,
+  onChanged,
+}: {
+  academicYearId: string;
+  readOnly: boolean;
+  onChanged: () => void;
+}) {
   const { t } = useI18n();
   const toast = useToast();
   const [terms, setTerms] = useState<Semester[]>([]);
@@ -1051,6 +1078,12 @@ function Semesters({ academicYearId, readOnly }: { academicYearId: string; readO
 
   useEffect(() => load(), [load]);
 
+  /** Reload the term list and the derived checklist together. */
+  const reload = useCallback(() => {
+    load();
+    onChanged();
+  }, [load, onChanged]);
+
   async function create(e: React.FormEvent) {
     e.preventDefault();
     try {
@@ -1062,7 +1095,7 @@ function Semesters({ academicYearId, readOnly }: { academicYearId: string; readO
         endDate: form.endDate,
       });
       setForm({ name: '', sequence: '', startDate: '', endDate: '' });
-      load();
+      reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Create failed');
     }
@@ -1083,7 +1116,7 @@ function Semesters({ academicYearId, readOnly }: { academicYearId: string; readO
               onCancel={() => setEditingId(null)}
               onSaved={() => {
                 setEditingId(null);
-                load();
+                reload();
               }}
             />
           ) : (
@@ -1109,7 +1142,7 @@ function Semesters({ academicYearId, readOnly }: { academicYearId: string; readO
                     onClick={() =>
                       void semestersApi
                         .remove(s.id)
-                        .then(load)
+                        .then(reload)
                         .catch((e) => toast.error(e instanceof Error ? e.message : 'Delete failed'))
                     }
                   >

@@ -177,11 +177,22 @@ jobs:
       - name: Secret scan (gitleaks)
         run: |
           set -euo pipefail
-          VERSION="$(curl -sSfL https://api.github.com/repos/gitleaks/gitleaks/releases/latest | jq -r .tag_name)"
+          # Authenticate the release lookup. Unauthenticated api.github.com calls are rate-limited
+          # per runner IP, which Actions runners share, so this 403s at random — and because the
+          # lookup gates the download, a 403 meant the repository was never scanned at all. Fall
+          # back to a known-good version for the same reason: a lookup failure must not silently
+          # turn the secret scan off.
+          VERSION="$(curl -sSfL -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://api.github.com/repos/gitleaks/gitleaks/releases/latest | jq -r .tag_name || true)"
           VERSION="${VERSION#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            VERSION="$GITLEAKS_FALLBACK_VERSION"
+            echo "Release lookup failed; falling back to gitleaks ${VERSION}"
+          fi
           echo "Using gitleaks ${VERSION}"
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
             | tar -xz gitleaks
           ./gitleaks git . --redact --no-banner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_FALLBACK_VERSION: '8.30.0'
