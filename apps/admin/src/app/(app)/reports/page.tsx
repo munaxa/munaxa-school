@@ -154,7 +154,7 @@ export default function ReportsPage() {
                 value={filters.sectionId ?? ''}
                 onChange={(id) => setField('sectionId', id)}
                 load={loadSectionOptions}
-                placeholder="All sections"
+                placeholder="All classrooms"
               />
             </Field>
             <Field label="From">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { classroomLabel } from '@school/domain';
 import { Shell } from '@/components/shell';
 import {
   Badge,
@@ -447,12 +448,14 @@ export default function TimetableWorkspace() {
             <Card>
               <CardContent className="space-y-3 p-4">
                 <div className="flex flex-wrap items-end gap-2">
-                  <Field label="Section" className="min-w-[16rem] flex-1">
+                  {/* A classroom is the grade + section pair — it is the students who stay put and
+                      the teacher who moves, so the weekly grid is built per classroom. */}
+                  <Field label="Classroom" className="min-w-[16rem] flex-1">
                     <Select value={sectionId} onChange={(e) => setSectionId(e.target.value)}>
-                      <option value="">Select a section…</option>
+                      <option value="">Select a classroom…</option>
                       {sections.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.grade ? `${s.grade.nameEn} · ${s.name}` : s.name}
+                          {classroomLabel(s)}
                         </option>
                       ))}
                     </Select>
@@ -471,15 +474,15 @@ export default function TimetableWorkspace() {
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        if (window.confirm('Clear this section in the current schedule?'))
+                        if (window.confirm('Clear this classroom in the current schedule?'))
                           void run(
                             () => plansApi.clearSection(plan.id, sectionId),
-                            'Section cleared',
+                            'Classroom cleared',
                           );
                       }}
                       disabled={busy}
                     >
-                      Clear Section
+                      Clear classroom
                     </Button>
                   ) : null}
                 </div>
@@ -556,7 +559,7 @@ export default function TimetableWorkspace() {
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Select a section to view or edit its timetable.
+                    Select a classroom to view or edit its timetable.
                   </p>
                 )}
               </CardContent>

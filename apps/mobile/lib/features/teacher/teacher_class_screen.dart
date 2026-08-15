@@ -125,8 +125,7 @@ class _TeacherClassTabState extends ConsumerState<TeacherClassTab> {
                     labelText: s.t('class.section'), border: const OutlineInputBorder()),
                 items: [
                   for (final sec in sections)
-                    DropdownMenuItem(
-                        value: sec.id, child: Text('${s.t('class.section')} ${sec.name}')),
+                    DropdownMenuItem(value: sec.id, child: Text(sec.label(s.lang))),
                 ],
                 onChanged: (v) => setState(() {
                   _sectionId = v;

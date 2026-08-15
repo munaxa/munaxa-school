@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { classroomLabel } from '@school/domain';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { useGridLabels } from '@/components/grid-labels';
@@ -35,7 +36,7 @@ const STATUS_TONE: Record<string, 'success' | 'muted' | 'warning' | 'danger'> = 
 };
 
 export default function StudentsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const toast = useToast();
   const confirm = useConfirm();
   const router = useRouter();
@@ -375,12 +376,12 @@ export default function StudentsPage() {
                 ))}
               </Select>
             </Field>
-            <Field label={t('structure.section')}>
+            <Field label={t('structure.classroom')}>
               <Select value={fSection} onChange={(e) => setFSection(e.target.value)}>
                 <option value="">{t('people.allSections')}</option>
                 {sectionsForGrade.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.grade ? `${s.grade.nameEn} · ${s.name}` : s.name}
+                    {classroomLabel(s, locale)}
                   </option>
                 ))}
               </Select>

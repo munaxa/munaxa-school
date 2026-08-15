@@ -972,6 +972,9 @@ model Grade {
   @@index([campusId])
 }
 
+// A physical space on a campus — surfaced in the UI as a **Room**. Students do not move between
+// rooms: a classroom (see `Section`) is assigned one and stays in it, and it is the teacher who
+// comes to them. A lesson with no `SpecialLocation` of its own therefore happens here.
 model Classroom {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @db.Uuid
@@ -993,6 +996,9 @@ model Classroom {
   @@index([campusId])
 }
 
+// A **classroom**: a grade plus a section letter, displayed as "Grade 6 · B" (`classroomLabel()` in
+// @school/domain). Since students stay put and teachers rotate, this — not `Classroom` — is the unit
+// rosters, timetables, attendance and homework hang off. `classroomId` is the room it occupies.
 model Section {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @db.Uuid

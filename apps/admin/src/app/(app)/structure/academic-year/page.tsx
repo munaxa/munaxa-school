@@ -277,9 +277,18 @@ function AcademicYearCard({
               </p>
               <p className="text-xs text-muted-foreground">
                 {t('academicYear.registrationWindow')}:{' '}
-                {year.registrationStartDate && year.registrationEndDate ? (
+                {year.registrationStartDate ? (
                   <span>
-                    {fmtDate(year.registrationStartDate)} → {fmtDate(year.registrationEndDate)}
+                    {fmtDate(year.registrationStartDate)} →{' '}
+                    {/* No end date is a deliberate state, not a missing one: registration stays
+                        open for parents who enrol mid-term. */}
+                    {year.registrationEndDate ? (
+                      fmtDate(year.registrationEndDate)
+                    ) : (
+                      <span className="text-accent-cool">
+                        {t('academicYear.registrationOpenEnded')}
+                      </span>
+                    )}
                   </span>
                 ) : (
                   <span className="text-accent-warm">{t('academicYear.registrationNotSet')}</span>
@@ -902,6 +911,7 @@ function CreateYearDialog({
             />
           </Field>
         </div>
+        <p className="text-xs text-muted-foreground">{t('academicYear.registrationEndHint')}</p>
       </div>
     </Dialog>
   );
@@ -1017,6 +1027,7 @@ function EditYearDialog({
             />
           </Field>
         </div>
+        <p className="text-xs text-muted-foreground">{t('academicYear.registrationEndHint')}</p>
       </div>
     </Dialog>
   );

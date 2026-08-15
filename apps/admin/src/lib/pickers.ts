@@ -1,6 +1,7 @@
 'use client';
 
 import type { PickerOption } from '@munaxa/ui';
+import { Locale, classroomLabel } from '@school/domain';
 import { fullNameAr, fullNameEn, parentsApi, studentsApi } from './people';
 import { sectionsApi } from './structure';
 
@@ -26,13 +27,14 @@ export async function loadParentOptions(): Promise<PickerOption[]> {
   }));
 }
 
+/** Classrooms — a grade plus a section, e.g. "Grade 6 · B" (see `classroomLabel`). */
 export async function loadSectionOptions(): Promise<PickerOption[]> {
   const sections = await sectionsApi.list();
   return sections.map((s) => ({
     id: s.id,
-    // Prefix with the grade so identically-named sections (e.g. "A") stay distinguishable.
-    label: s.grade ? `${s.grade.nameEn} · Section ${s.name}` : `Section ${s.name}`,
-    // Arabic grade name in the sublabel keeps it searchable in Arabic too.
-    sublabel: s.grade ? s.grade.nameAr : s.id,
+    // The grade prefix is what makes the classroom unique: every grade has its own "A", "B", …
+    label: classroomLabel(s, Locale.EN),
+    // The Arabic label in the sublabel keeps it searchable in Arabic too.
+    sublabel: classroomLabel(s, Locale.AR),
   }));
 }
