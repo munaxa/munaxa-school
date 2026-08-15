@@ -12,5 +12,7 @@
     "^@school/contracts$": "<rootDir>/../../../packages/contracts/src/index.ts",
     "^@school/utils$": "<rootDir>/../../../packages/utils/src/index.ts",
     "^(\\.{1,2}/.*)\\.js$": "$1"
-  }
+  },
+  "maxWorkers": 1,
+  "testTimeout": 60000
 }
