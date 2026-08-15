@@ -160,9 +160,12 @@ export class AcademicYearService {
       },
       { key: 'endDate', label: 'End date set', ok: Boolean(year.endDate), severity: 'blocker' },
       {
+        // Only the opening date is required. A missing end date means registration stays open —
+        // parents routinely register mid-term, or a week or two after teaching starts — so
+        // demanding a closing date would force schools to invent one and then keep editing it.
         key: 'registration',
-        label: 'Registration window set',
-        ok: Boolean(year.registrationStartDate && year.registrationEndDate),
+        label: 'Registration opening date set',
+        ok: Boolean(year.registrationStartDate),
         severity: 'blocker',
         resolveRoute: '/structure/academic-year',
       },
@@ -311,7 +314,11 @@ export class AcademicYearService {
     }
   }
 
-  /** When both registration dates are present, start must precede end. Either side may be null. */
+  /**
+   * When both registration dates are present, start must precede end. Either side may be null: a
+   * year with no `registrationEndDate` has open-ended registration, which is the normal case for
+   * schools that keep admitting students after the term has started.
+   */
   private assertRegistrationOrder(start?: string | null, end?: string | null): void {
     if (start && end && new Date(start).getTime() >= new Date(end).getTime()) {
       throw new BadRequestException('registrationStartDate must be before registrationEndDate');

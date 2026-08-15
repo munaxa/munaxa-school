@@ -187,10 +187,15 @@ erDiagram
 
 ### Readiness activation checklist (all derived from real data)
 
-1. Start date set · 2. End date set · 3. Registration window set
+1. Start date set · 2. End date set · 3. Registration opening date set
 4. At least one Semester · 5. Semester dates fall inside the year
 6. Semester dates do not overlap · 7. Semesters span the year
 8. Grades configured · 9. Sections configured
+
+> **Check 3 does not require a closing date.** `registrationEndDate` is optional, and leaving it
+> empty means registration stays open — schools here admit students mid-term, or a week or two
+> after teaching begins. Only the opening date is required; when both are set, start must precede
+> end.
 
 > **Check 7 allows a break between terms.** The first semester must open the year and the last one
 > must close it, but the weeks between two semesters — the mid-January break a Jordanian school

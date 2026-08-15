@@ -30,13 +30,18 @@ export class CreateAcademicYearDto {
   @IsDateString()
   endDate!: string;
 
-  // Admission/registration window (optional). Independent of the instructional boundaries (Semesters).
-  @ApiPropertyOptional({ example: '2025-05-01', description: 'ISO date' })
+  // Admission/registration window. Independent of the instructional boundaries (Semesters).
+  @ApiPropertyOptional({ example: '2025-05-01', description: 'ISO date — the day admissions open' })
   @IsOptional()
   @IsDateString()
   registrationStartDate?: string;
 
-  @ApiPropertyOptional({ example: '2025-08-15', description: 'ISO date' })
+  // Omit (or null) to leave registration open-ended — admissions continue for as long as the year
+  // runs, which is what schools that take students mid-term need.
+  @ApiPropertyOptional({
+    example: '2025-08-15',
+    description: 'ISO date — when admissions close. Omit to keep registration open.',
+  })
   @IsOptional()
   @IsDateString()
   registrationEndDate?: string;

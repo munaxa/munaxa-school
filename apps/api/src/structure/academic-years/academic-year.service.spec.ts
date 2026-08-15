@@ -214,6 +214,17 @@ describe('AcademicYearService — readiness (real-data validation)', () => {
     expect(r.activation.canActivate).toBe(false);
   });
 
+  it('accepts open-ended registration — an opening date with no close', async () => {
+    // Schools take students mid-term, so the closing date is optional and its absence means
+    // "still open", not "unconfigured".
+    const service = readinessSetup({
+      year: { registrationStartDate: new Date('2025-05-01'), registrationEndDate: null },
+    });
+    const r = await service.readiness('ay1');
+    expect(checkOk(r, 'registration')).toBe(true);
+    expect(r.activation.canActivate).toBe(true);
+  });
+
   it('flags overlapping semesters', async () => {
     const service = readinessSetup({
       year: REG,
