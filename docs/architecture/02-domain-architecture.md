@@ -45,7 +45,7 @@ graph TB
 |---------|------|-------|
 | Tenancy & Provisioning | Tenant, School lifecycle, feature flags | 2, 14 |
 | Identity & Access (IAM) | User, Role, Permission, sessions, RBAC | 3 |
-| School Structure | Campus, AcademicYear, Semester, Grade, Section, Classroom | 4 |
+| School Structure | Campus, AcademicYear, Semester, Grade, Section (= a classroom, "Grade 6 · B"), Classroom (= a physical room) | 4 |
 | People Management | Student, Parent, Teacher, Employee, links, QR IDs | 5 |
 | Timetable | MasterTimetable, ScheduleException, substitutes, Ramadan, current-class | 6 |
 | Attendance | Student & teacher attendance, QR, offline queue | 7 |

@@ -4,6 +4,20 @@ CRUD for the school hierarchy — **School → Campus → AcademicYear → Semes
 **Campus → Grade → Section**, plus **Classroom** — all tenant-scoped and permission-guarded.
 The data models were created in Phase 2; this phase adds the backend modules, Admin UI, and tests.
 
+## 0. Terminology — classroom vs. room
+
+Munaxa schools do not move students between rooms; the **teacher comes to them**. So:
+
+| Concept | Table | UI | Example |
+|---------|-------|----|---------|
+| **Classroom** — a fixed group of students | `Section` (a grade + a section letter) | "Classroom" | Grade 6 · B |
+| **Room** — a physical space on a campus | `Classroom` | "Room" | Room 204 |
+
+A classroom optionally occupies one room (`Section.classroomId`), and a `ScheduledClass` with no
+`SpecialLocation` of its own happens in that room. The tables keep their historic names; only the
+labels differ. `classroomLabel()` in `@school/domain` builds the canonical "Grade 6 · B" display
+name (EN and AR) and is the single place that formatting lives.
+
 ## 1. Deliverables
 
 | Area | Where |
@@ -22,8 +36,8 @@ The data models were created in Phase 2; this phase adds the backend modules, Ad
 | AcademicYear | `/academic-years?campusId=` | Campus | `academicyear:manage` |
 | Semester | `/semesters?academicYearId=` | AcademicYear | `academicyear:manage` |
 | Grade | `/grades?campusId=` | Campus | `grade:manage` |
-| Classroom | `/classrooms?campusId=` | Campus | `classroom:manage` |
-| Section | `/sections?gradeId=` | Grade (+ optional Classroom) | `section:manage` |
+| Classroom (room) | `/classrooms?campusId=` | Campus | `classroom:manage` |
+| Section (classroom) | `/sections?gradeId=` | Grade (+ optional room) | `section:manage` |
 
 Each resource supports `POST` (create), `GET` (list, filterable by parent), `GET /:id`,
 `PATCH /:id`, `DELETE /:id`. Schools and Campuses use **soft delete** (`deletedAt`); the others
@@ -58,6 +72,11 @@ structure/<entity>/
 ## 5. Admin Portal
 `/structure/schools` lists/creates/deletes schools and, for a selected school, its campuses
 (bilingual EN/AR inputs). Uses the auth client's refresh-on-401 fetch.
+
+`/structure/academic` manages one campus at a time: **Grades**, each expanding to its
+**Classrooms** (the grade + section pairs, labelled "Grade 6 · B", each with the room it sits in
+and its capacity), and **Rooms** — the campus's physical spaces, which a classroom can be assigned
+to inline from the grade's classroom list.
 
 ## 6. Notes
 - Reads currently require the same `*:manage` permission as writes (the Phase 2 permission catalog

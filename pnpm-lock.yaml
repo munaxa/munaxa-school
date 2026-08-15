@@ -507,6 +507,9 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(lightningcss@1.32.0)(terser@5.49.0)
 
   packages/i18n:
     devDependencies:
@@ -2384,6 +2387,11 @@ packages:
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   '@munaxa/platform@1.3.0':
     resolution: {integrity: sha512-po5ptVJQtbSZeQLb52+1DhKy63GHzwPpwer4n8rh+7zany57LrybhhMzb4xehsYWfUxMhhQ6E+i0PtmQI/PQmQ==, tarball: https://npm.pkg.github.com/download/@munaxa/platform/1.3.0/2a1425ea05ccbb0caaa2dbae1f025e8ff7bea134}
@@ -2397,18 +2405,33 @@ packages:
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   '@munaxa/tokens@1.1.1':
     resolution: {integrity: sha512-J24v4XDz1e2r3fcskUyOznrb1JgD6wdn25UNtwjrUr9KQ76whX8/rojl+hford2nen8cM4xgf6TYrelP2LB3Gg==, tarball: https://npm.pkg.github.com/download/@munaxa/tokens/1.1.1/fab67a85ba841cca4f4b119048a4a731260e75e5}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   '@munaxa/ui@1.1.1':
     resolution: {integrity: sha512-bB4LT/5qXaytd6hvnoJ0GkG9u0FZVhLUwRqjXkAavkvflJ6JvhWNwa05wg5wPFuIbH+kaodncAfz7oN5Cu7TeA==, tarball: https://npm.pkg.github.com/download/@munaxa/ui/1.1.1/f26e5779d4129e734c8238d034251aaefb44e008}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   '@nestjs/cli@11.0.24':
     resolution: {integrity: sha512-aIHxQLSYtXShifA3zwWIeznEsZnNa3Iz2QRykFj+sl9IcbERBHr5nH87FRgywM+He3NxoF5WazHfR8FsmVeWxw==}
@@ -10139,6 +10162,7 @@ snapshots:
   '@munaxa/icons@1.1.1(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@munaxa/platform': 1.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+    optionalDependencies:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
     transitivePeerDependencies:
@@ -10175,6 +10199,7 @@ snapshots:
   '@munaxa/theme@1.1.1(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@munaxa/platform': 1.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+    optionalDependencies:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
     transitivePeerDependencies:
@@ -10184,6 +10209,7 @@ snapshots:
   '@munaxa/tokens@1.1.1(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@munaxa/platform': 1.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+    optionalDependencies:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
     transitivePeerDependencies:
@@ -10193,6 +10219,7 @@ snapshots:
   '@munaxa/ui@1.1.1(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@munaxa/platform': 1.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+    optionalDependencies:
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
     transitivePeerDependencies:

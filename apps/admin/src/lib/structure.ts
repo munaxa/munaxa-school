@@ -18,6 +18,11 @@ export interface Campus {
   isMain: boolean;
 }
 
+/**
+ * A classroom: a grade plus a section letter, e.g. "Grade 6 · B". Students stay in it and teachers
+ * come to them, so this — not `Classroom` — is what a timetable, a roster and an enrollment point
+ * at. `classroomId` is the physical room it occupies (surfaced in the UI as "Room").
+ */
 export interface Section {
   id: string;
   gradeId: string;
@@ -36,6 +41,7 @@ export interface Grade {
   level: number;
 }
 
+/** A physical room on a campus. Surfaced in the UI as a "Room"; a classroom may be assigned one. */
 export interface Classroom {
   id: string;
   campusId: string;
@@ -152,13 +158,22 @@ async function del(path: string): Promise<void> {
   }
 }
 
+/**
+ * Classrooms. A classroom is a grade plus a section (see `classroomLabel`) — the students stay in
+ * it and the teacher comes to them — so it is a `Section` row, optionally pointing at the room it
+ * occupies (`classroomId` → the `Classroom`/room resource below).
+ */
 export const sectionsApi = {
   list: (gradeId?: string) =>
     authFetch(`/sections${gradeId ? `?gradeId=${encodeURIComponent(gradeId)}` : ''}`).then((r) =>
       json<Section[]>(r),
     ),
-  create: (data: { gradeId: string; name: string; capacity?: number }) =>
+  create: (data: { gradeId: string; name: string; classroomId?: string; capacity?: number }) =>
     authFetch('/sections', { method: 'POST', body: JSON.stringify(data) }).then((r) =>
+      json<Section>(r),
+    ),
+  update: (id: string, data: { name?: string; classroomId?: string | null; capacity?: number }) =>
+    authFetch(`/sections/${id}`, { method: 'PATCH', body: JSON.stringify(data) }).then((r) =>
       json<Section>(r),
     ),
   remove: (id: string) => del(`/sections/${id}`),

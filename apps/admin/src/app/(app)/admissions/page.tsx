@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { classroomLabel } from '@school/domain';
 import { Shell } from '@/components/shell';
 import {
   Badge,
@@ -811,12 +812,12 @@ function StudentCard({
               ))}
             </Select>
           </Field>
-          <Field label="Section (optional)">
+          <Field label="Classroom (optional)">
             <Select value={s.sectionId} onChange={(e) => onChange({ sectionId: e.target.value })}>
               <option value="">—</option>
               {sections.map((sec) => (
                 <option key={sec.id} value={sec.id}>
-                  {sec.name}
+                  {classroomLabel(sec)}
                 </option>
               ))}
             </Select>

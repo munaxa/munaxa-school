@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { classroomLabel } from '@school/domain';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { useConfirm } from '@/components/confirm';
 import {
-  Badge,
   Button,
   Card,
   CardContent,
@@ -97,24 +97,7 @@ export default function AcademicStructurePage() {
         </Card>
 
         {campusId ? (
-          <>
-            <Grades campusId={campusId} />
-            <Classrooms campusId={campusId} />
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('structure.academicYears')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{t('academicYear.subtitle')}</p>
-                <a
-                  href="/structure/academic-year"
-                  className="mt-3 inline-flex items-center text-sm font-medium text-primary-strong hover:underline"
-                >
-                  {t('academicYear.title')} →
-                </a>
-              </CardContent>
-            </Card>
-          </>
+          <CampusStructure campusId={campusId} />
         ) : (
           <p className="text-sm text-muted-foreground">{t('structure.emptyHint')}</p>
         )}
@@ -128,9 +111,50 @@ function useError() {
   return (e: unknown, fallback: string) => toast.error(e instanceof Error ? e.message : fallback);
 }
 
-// --------------------------------------------------------------------------- Grades + Sections
+/**
+ * The campus's academic structure. Rooms are loaded once here and shared with the grades card, so
+ * a room added below is immediately assignable to a classroom above.
+ */
+function CampusStructure({ campusId }: { campusId: string }) {
+  const onErr = useError();
+  const { t } = useI18n();
+  const [rooms, setRooms] = useState<Classroom[]>([]);
 
-function Grades({ campusId }: { campusId: string }) {
+  const loadRooms = useCallback(() => {
+    classroomsApi
+      .list(campusId)
+      .then(setRooms)
+      .catch((e) => onErr(e, 'Failed to load rooms'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campusId]);
+
+  useEffect(() => loadRooms(), [loadRooms]);
+
+  return (
+    <>
+      <Grades campusId={campusId} rooms={rooms} />
+      <Rooms campusId={campusId} rooms={rooms} reload={loadRooms} />
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('structure.academicYears')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{t('academicYear.subtitle')}</p>
+          <a
+            href="/structure/academic-year"
+            className="mt-3 inline-flex items-center text-sm font-medium text-primary-strong hover:underline"
+          >
+            {t('academicYear.title')} →
+          </a>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+// --------------------------------------------------------------------------- Grades + classrooms
+
+function Grades({ campusId, rooms }: { campusId: string; rooms: Classroom[] }) {
   const onErr = useError();
   const toast = useToast();
   const { t } = useI18n();
@@ -227,7 +251,7 @@ function Grades({ campusId }: { campusId: string }) {
                   <span className="text-muted-foreground" dir="rtl">
                     · {g.nameAr}
                   </span>
-                  {openGrade === g.id ? <Sections gradeId={g.id} /> : null}
+                  {openGrade === g.id ? <Classrooms gradeId={g.id} rooms={rooms} /> : null}
                 </TD>
                 <TD className="text-end">
                   <Button
@@ -235,7 +259,7 @@ function Grades({ campusId }: { campusId: string }) {
                     size="sm"
                     onClick={() => setOpenGrade(openGrade === g.id ? null : g.id)}
                   >
-                    {openGrade === g.id ? t('structure.hideSections') : t('structure.sections')}
+                    {openGrade === g.id ? t('structure.hideClassrooms') : t('structure.classrooms')}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => void remove(g.id)}>
                     {t('common.delete')}
@@ -257,19 +281,24 @@ function Grades({ campusId }: { campusId: string }) {
   );
 }
 
-function Sections({ gradeId }: { gradeId: string }) {
+/**
+ * The classrooms of one grade. A classroom *is* the grade + section pair ("Grade 6 · B"): students
+ * stay in it and teachers come to them, so it is the unit rosters, timetables and attendance are
+ * built on. The room below it is only the space it occupies, and is optional.
+ */
+function Classrooms({ gradeId, rooms }: { gradeId: string; rooms: Classroom[] }) {
   const onErr = useError();
-  const { t } = useI18n();
+  const toast = useToast();
+  const { t, locale } = useI18n();
   const confirm = useConfirm();
-  const [sections, setSections] = useState<Section[]>([]);
-  const [name, setName] = useState('');
-  const [capacity, setCapacity] = useState('');
+  const [classrooms, setClassrooms] = useState<Section[]>([]);
+  const [form, setForm] = useState({ name: '', classroomId: '', capacity: '' });
 
   const load = useCallback(() => {
     sectionsApi
       .list(gradeId)
-      .then(setSections)
-      .catch((e) => onErr(e, 'Failed to load sections'));
+      .then(setClassrooms)
+      .catch((e) => onErr(e, 'Failed to load classrooms'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gradeId]);
 
@@ -278,88 +307,145 @@ function Sections({ gradeId }: { gradeId: string }) {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const payload: { gradeId: string; name: string; capacity?: number } = { gradeId, name };
-      if (capacity) payload.capacity = Number(capacity);
+      const payload: { gradeId: string; name: string; classroomId?: string; capacity?: number } = {
+        gradeId,
+        name: form.name,
+      };
+      if (form.classroomId) payload.classroomId = form.classroomId;
+      if (form.capacity) payload.capacity = Number(form.capacity);
       await sectionsApi.create(payload);
-      setName('');
-      setCapacity('');
+      setForm({ name: '', classroomId: '', capacity: '' });
       load();
     } catch (e) {
       onErr(e, 'Create failed');
     }
   }
 
+  /** Assigning (or clearing) the room a classroom sits in — saved on change. */
+  async function assignRoom(id: string, classroomId: string) {
+    try {
+      await sectionsApi.update(id, { classroomId: classroomId || null });
+      toast.success(t('structure.classroomUpdated'));
+      load();
+    } catch (e) {
+      onErr(e, 'Update failed');
+    }
+  }
+
+  async function remove(id: string) {
+    if (!(await confirm())) return;
+    try {
+      await sectionsApi.remove(id);
+      load();
+    } catch (e) {
+      onErr(e, 'Delete failed');
+    }
+  }
+
   return (
-    <div className="mt-2 rounded-lg border border-border bg-background/40 p-3">
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        {sections.map((s) => (
-          <Badge key={s.id} tone="muted">
-            {s.name}
-            {s.capacity ? ` · ${s.capacity}` : ''}
-            <button
-              type="button"
-              className="ms-1 text-muted-foreground hover:text-destructive"
-              onClick={() =>
-                void confirm().then((ok) => {
-                  if (ok)
-                    void sectionsApi
-                      .remove(s.id)
-                      .then(load)
-                      .catch((e) => onErr(e, 'Delete failed'));
-                })
-              }
-              aria-label={`Delete section ${s.name}`}
-            >
-              ✕
-            </button>
-          </Badge>
-        ))}
-        {sections.length === 0 ? (
-          <span className="text-xs text-muted-foreground">{t('structure.noSections')}</span>
-        ) : null}
-      </div>
-      <form onSubmit={(e) => void create(e)} className="flex items-end gap-2">
+    <div className="mt-2 space-y-2 rounded-lg border border-border bg-background/40 p-3">
+      <p className="text-xs text-muted-foreground">{t('structure.classroomHint')}</p>
+
+      <Table>
+        <THead>
+          <TR>
+            <TH>{t('structure.classroom')}</TH>
+            <TH>{t('structure.room')}</TH>
+            <TH className="text-end">{t('structure.capacity')}</TH>
+            <TH className="text-end">{t('common.actions')}</TH>
+          </TR>
+        </THead>
+        <TBody>
+          {classrooms.map((c) => (
+            <TR key={c.id}>
+              <TD className="font-medium">{classroomLabel(c, locale)}</TD>
+              <TD>
+                <Select
+                  className="h-8 w-36"
+                  value={c.classroomId ?? ''}
+                  onChange={(e) => void assignRoom(c.id, e.target.value)}
+                  aria-label={`${t('structure.room')} — ${classroomLabel(c, locale)}`}
+                >
+                  <option value="">{t('structure.noRoom')}</option>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </Select>
+              </TD>
+              <TD className="text-end font-mono text-xs">{c.capacity ?? '—'}</TD>
+              <TD className="text-end">
+                <Button variant="ghost" size="sm" onClick={() => void remove(c.id)}>
+                  {t('common.delete')}
+                </Button>
+              </TD>
+            </TR>
+          ))}
+          {classrooms.length === 0 ? (
+            <TR>
+              <TD colSpan={4}>
+                <EmptyState title={t('structure.noClassrooms')} />
+              </TD>
+            </TR>
+          ) : null}
+        </TBody>
+      </Table>
+
+      <form onSubmit={(e) => void create(e)} className="flex flex-wrap items-end gap-2">
         <Input
           className="h-8 w-28"
-          placeholder={t('structure.sectionPlaceholder')}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          placeholder={t('structure.classroomPlaceholder')}
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
           required
         />
+        <Select
+          className="h-8 w-36"
+          value={form.classroomId}
+          onChange={(e) => setForm({ ...form, classroomId: e.target.value })}
+          aria-label={t('structure.room')}
+        >
+          <option value="">{t('structure.noRoom')}</option>
+          {rooms.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </Select>
         <Input
           className="h-8 w-24"
           type="number"
           placeholder={t('structure.capacity')}
-          value={capacity}
-          onChange={(e) => setCapacity(e.target.value)}
+          value={form.capacity}
+          onChange={(e) => setForm({ ...form, capacity: e.target.value })}
         />
         <Button type="submit" size="sm">
-          {t('structure.addSection')}
+          {t('structure.addClassroom')}
         </Button>
       </form>
     </div>
   );
 }
 
-// --------------------------------------------------------------------------- Classrooms
+// --------------------------------------------------------------------------- Rooms
 
-function Classrooms({ campusId }: { campusId: string }) {
+/** Physical rooms on the campus. A classroom may be assigned one; lessons without a location of
+ *  their own happen there, since it is the teacher who moves between classrooms, not the students. */
+function Rooms({
+  campusId,
+  rooms,
+  reload,
+}: {
+  campusId: string;
+  rooms: Classroom[];
+  reload: () => void;
+}) {
   const onErr = useError();
   const toast = useToast();
   const { t } = useI18n();
   const confirm = useConfirm();
-  const [rooms, setRooms] = useState<Classroom[]>([]);
   const [form, setForm] = useState({ name: '', capacity: '', building: '', floor: '' });
-
-  const load = useCallback(() => {
-    classroomsApi
-      .list(campusId)
-      .then(setRooms)
-      .catch((e) => onErr(e, 'Failed to load classrooms'));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campusId]);
-
-  useEffect(() => load(), [load]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -379,8 +465,8 @@ function Classrooms({ campusId }: { campusId: string }) {
       if (form.floor) payload.floor = form.floor;
       await classroomsApi.create(payload);
       setForm({ name: '', capacity: '', building: '', floor: '' });
-      toast.success('Classroom added');
-      load();
+      toast.success('Room added');
+      reload();
     } catch (e) {
       onErr(e, 'Create failed');
     }
@@ -389,9 +475,10 @@ function Classrooms({ campusId }: { campusId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('structure.classrooms')}</CardTitle>
+        <CardTitle>{t('structure.rooms')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">{t('structure.roomsHint')}</p>
         <form onSubmit={(e) => void create(e)} className="flex flex-wrap items-end gap-2">
           <Field label={t('structure.name')} className="flex-1">
             <Input
@@ -451,7 +538,7 @@ function Classrooms({ campusId }: { campusId: string }) {
                         if (ok)
                           void classroomsApi
                             .remove(r.id)
-                            .then(load)
+                            .then(reload)
                             .catch((e) => onErr(e, 'Delete failed'));
                       })
                     }
@@ -464,7 +551,7 @@ function Classrooms({ campusId }: { campusId: string }) {
             {rooms.length === 0 ? (
               <TR>
                 <TD colSpan={5}>
-                  <EmptyState title={t('structure.noClassrooms')} />
+                  <EmptyState title={t('structure.noRooms')} />
                 </TD>
               </TR>
             ) : null}

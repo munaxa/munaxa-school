@@ -134,7 +134,7 @@ const Map<String, Map<String, String>> _catalog = {
     'en': 'No documents for this child yet.',
     'ar': 'لا توجد مستندات لهذا الطفل بعد.'
   },
-  'empty.noSections': {'en': 'No sections found for this school.', 'ar': 'لا توجد شُعب لهذه المدرسة.'},
+  'empty.noSections': {'en': 'No classrooms found for this school.', 'ar': 'لا توجد شُعب لهذه المدرسة.'},
   'empty.noStudents': {'en': 'No students in this section.', 'ar': 'لا يوجد طلاب في هذه الشعبة.'},
 
   // Requests
@@ -177,10 +177,10 @@ const Map<String, Map<String, String>> _catalog = {
   'resources.openFailed': {'en': 'Could not open this resource.', 'ar': 'تعذّر فتح هذا المصدر.'},
 
   // Teacher class (attendance)
-  'class.section': {'en': 'Section', 'ar': 'الشعبة'},
+  'class.section': {'en': 'Classroom', 'ar': 'الشعبة'},
   'class.period': {'en': 'Period', 'ar': 'الحصة'},
   'class.pickSection': {
-    'en': 'Pick a section to load its roster.',
+    'en': 'Pick a classroom to load its roster.',
     'ar': 'اختر شعبة لتحميل قائمتها.'
   },
   'class.markAllPresent': {'en': 'Mark all present', 'ar': 'تعليم الجميع حاضرين'},
