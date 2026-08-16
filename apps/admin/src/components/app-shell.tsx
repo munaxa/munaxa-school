@@ -21,7 +21,7 @@ import {
 import { logout, type Principal } from '@/lib/auth';
 import { clearPrincipalCache } from '@/lib/session';
 import { advancedApi } from '@/lib/advanced';
-import { academicYearsApi, type AcademicYear } from '@/lib/structure';
+import { useCurrentYear } from './current-year-provider';
 import { ThemeLocaleToggle } from './theme-locale-toggle';
 import { GlobalSearch } from './global-search';
 import { useI18n } from './i18n-provider';
@@ -130,6 +130,12 @@ const NAV_GROUPS: NavGroup[] = [
     titleKey: 'nav.section.academics',
     items: [
       { href: '/timetable', labelKey: 'nav.timetable', icon: 'timetable', perm: 'timetable:read' },
+      {
+        href: '/timetable/subjects',
+        labelKey: 'nav.subjects',
+        icon: 'academics',
+        perm: 'timetable:read',
+      },
       {
         href: '/attendance',
         labelKey: 'nav.attendance',
@@ -607,17 +613,12 @@ export function AppShell({
 /**
  * Top-bar indicator of the current (ACTIVE) Academic Year — visible across the whole Admin Portal.
  * Falls back to a "Finish setup" link when no year is active. Read-only; never mutates anything.
+ * The year comes from {@link useCurrentYear}, so activating or closing a year updates this badge
+ * on the spot — no page reload needed.
  */
 function CurrentYearIndicator() {
   const { t } = useI18n();
-  const [year, setYear] = useState<AcademicYear | null | undefined>(undefined);
-
-  useEffect(() => {
-    academicYearsApi
-      .current()
-      .then(setYear)
-      .catch(() => setYear(null));
-  }, []);
+  const { year } = useCurrentYear();
 
   if (year === undefined) return null; // still loading — render nothing to avoid a flash
 

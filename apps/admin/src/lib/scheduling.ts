@@ -118,7 +118,11 @@ const post = <T>(path: string, body?: unknown) =>
   authFetch(path, { method: 'POST', body: JSON.stringify(body ?? {}) }).then((r) => json<T>(r));
 
 export const subjectsApi = {
-  list: () => authFetch('/subjects').then((r) => json<Subject[]>(r)),
+  /** Active subjects only by default; pass `true` to include the deactivated ones (admin screens). */
+  list: (includeInactive = false) =>
+    authFetch(`/subjects${includeInactive ? '?includeInactive=true' : ''}`).then((r) =>
+      json<Subject[]>(r),
+    ),
   create: (data: { nameEn: string; nameAr: string; code?: string; colorHex?: string }) =>
     post<Subject>('/subjects', data),
   update: (id: string, data: Partial<Subject>) =>
