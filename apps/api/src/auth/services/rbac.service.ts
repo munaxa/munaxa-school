@@ -91,38 +91,57 @@ export class RbacService {
    * shipped permissions reach tenants provisioned before they existed.
    */
   async syncCatalogAndSystemRoles(tx: TxClient): Promise<{ permissions: number; roles: number }> {
-    for (const key of ALL_PERMISSIONS) {
-      const category = key.split(':')[0] ?? 'general';
-      await tx.permission.upsert({
-        where: { key },
-        update: { category },
-        create: { key, category },
-      });
-    }
-    // Resolve catalog ids once (key → id) to avoid a query per grant.
-    const catalog = await tx.permission.findMany({ select: { id: true, key: true } });
+    // Written as a handful of set-based statements rather than a query per permission and per
+    // grant: this runs on every boot against a pooled remote database, where the row-at-a-time
+    // version costs one network round trip each — thousands in total, minutes of wall clock.
+    const categoryOf = (key: string): string => key.split(':')[0] ?? 'general';
+
+    await tx.permission.createMany({
+      data: ALL_PERMISSIONS.map((key) => ({ key, category: categoryOf(key) })),
+      skipDuplicates: true,
+    });
+
+    const catalog = await tx.permission.findMany({
+      select: { id: true, key: true, category: true },
+    });
     const idByKey = new Map(catalog.map((p) => [p.key, p.id]));
+    const categoryByKey = new Map(catalog.map((p) => [p.key, p.category]));
+
+    // Re-align categories only where they actually drifted (normally nothing to do), grouped so
+    // it costs one statement per affected category instead of one per permission.
+    const driftedByCategory = new Map<string, string[]>();
+    for (const key of ALL_PERMISSIONS) {
+      const category = categoryOf(key);
+      const existing = categoryByKey.get(key);
+      if (existing === undefined || existing === category) continue;
+      driftedByCategory.set(category, [...(driftedByCategory.get(category) ?? []), key]);
+    }
+    for (const [category, keys] of driftedByCategory) {
+      await tx.permission.updateMany({ where: { key: { in: keys } }, data: { category } });
+    }
 
     const roles = await tx.role.findMany({
       where: { isSystem: true },
       select: { id: true, key: true },
     });
-    let synced = 0;
-    for (const role of roles) {
-      // Only system roles defined in the baseline; custom roles have generated keys.
-      if (!(role.key in DEFAULT_ROLE_PERMISSIONS)) continue;
+    // Only system roles defined in the baseline; custom roles have generated keys.
+    const baselineRoles = roles.filter((role) => role.key in DEFAULT_ROLE_PERMISSIONS);
+
+    const desired: { roleId: string; permissionId: string }[] = [];
+    for (const role of baselineRoles) {
       for (const permKey of permissionsForRole(role.key as RoleKey)) {
         const permissionId = idByKey.get(permKey);
         if (!permissionId) continue;
-        await tx.rolePermission.upsert({
-          where: { roleId_permissionId: { roleId: role.id, permissionId } },
-          update: {},
-          create: { roleId: role.id, permissionId },
-        });
+        desired.push({ roleId: role.id, permissionId });
       }
-      synced += 1;
     }
-    return { permissions: ALL_PERMISSIONS.length, roles: synced };
+    // Additive only: skipDuplicates leaves existing grants (including per-tenant customizations
+    // on top of the baseline) untouched.
+    if (desired.length > 0) {
+      await tx.rolePermission.createMany({ data: desired, skipDuplicates: true });
+    }
+
+    return { permissions: ALL_PERMISSIONS.length, roles: baselineRoles.length };
   }
 
   /** Grant a role (by key) to a user within a tenant. */
