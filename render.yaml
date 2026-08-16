@@ -23,8 +23,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: '4000'
+      # PORT is deliberately NOT set here. Render injects its own value (10000) and probes that
+      # port from outside the container; pinning PORT to 4000 in the Blueprint would move the
+      # listener away from the value the platform assigned. main.ts reads process.env.PORT and
+      # falls back to 4000, which is what local and docker-compose runs use.
       - key: API_GLOBAL_PREFIX
         value: api
       - key: API_VERSION

@@ -78,8 +78,10 @@ async function bootstrap(): Promise<void> {
     SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
   }
 
-  await app.listen(port);
-  logger.log(`Munaxa API listening on http://localhost:${port}/${globalPrefix}/${version}`);
+  // Bind every interface explicitly: platforms that detect the port from outside the
+  // container (Render, Fly) cannot see a loopback-only listener.
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Munaxa API listening on 0.0.0.0:${port} (prefix /${globalPrefix}/${version})`);
 }
 
 void bootstrap();

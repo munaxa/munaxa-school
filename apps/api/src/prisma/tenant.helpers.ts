@@ -30,9 +30,10 @@ export async function withTenant<T>(
 export async function withPlatform<T>(
   prisma: PrismaClient,
   fn: (tx: TxClient) => Promise<T>,
+  options?: { maxWait?: number; timeout?: number },
 ): Promise<T> {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.is_platform', 'on', true)`;
     return fn(tx);
-  });
+  }, options);
 }
