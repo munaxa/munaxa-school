@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { classroomLabel } from '@school/domain';
 import { Shell } from '@/components/shell';
 import {
@@ -594,19 +595,36 @@ export default function TimetableWorkspace() {
 
               <Card>
                 <CardContent className="space-y-2 p-4">
-                  <h2 className="font-display text-sm font-semibold">Subjects</h2>
-                  <div className="flex flex-wrap gap-1.5">
-                    {subjects.map((s) => (
-                      <span
-                        key={s.id}
-                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
-                        style={{ background: `${s.colorHex}22` }}
-                      >
-                        <span className="h-2 w-2 rounded-full" style={{ background: s.colorHex }} />
-                        {s.nameEn}
-                      </span>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-display text-sm font-semibold">Subjects</h2>
+                    <Link
+                      href="/timetable/subjects"
+                      className="text-xs font-medium text-primary-strong hover:underline"
+                    >
+                      Manage subjects →
+                    </Link>
                   </div>
+                  {subjects.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No subjects yet — add them first, then they become selectable on every class.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {subjects.map((s) => (
+                        <span
+                          key={s.id}
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+                          style={{ background: `${s.colorHex}22` }}
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ background: s.colorHex }}
+                          />
+                          {s.nameEn}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -702,6 +720,15 @@ export default function TimetableWorkspace() {
                   </option>
                 ))}
               </Select>
+              {subjects.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  No subjects defined yet —{' '}
+                  <Link href="/timetable/subjects" className="text-primary-strong hover:underline">
+                    add them here
+                  </Link>
+                  .
+                </p>
+              ) : null}
             </Field>
             <Field label="Teacher" className="col-span-2">
               <Select

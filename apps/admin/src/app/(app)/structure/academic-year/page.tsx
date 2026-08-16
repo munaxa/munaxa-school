@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shell } from '@/components/shell';
+import { useCurrentYearRefresh } from '@/components/current-year-provider';
 import { useI18n } from '@/components/i18n-provider';
 import {
   Badge,
@@ -140,6 +141,7 @@ export default function AcademicYearWorkspacePage() {
 function Workspace({ campusId }: { campusId: string }) {
   const { t } = useI18n();
   const toast = useToast();
+  const refreshCurrentYear = useCurrentYearRefresh();
   const [years, setYears] = useState<AcademicYear[] | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -149,6 +151,14 @@ function Workspace({ campusId }: { campusId: string }) {
       .then(setYears)
       .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to load academic years'));
   }, [campusId, toast]);
+
+  // Anything that changes a year's lifecycle (activate, close, create, edit) also moves the
+  // top-bar "current year" badge, so reload the list and the shell's copy together — the badge
+  // must never need a manual page refresh to catch up.
+  const reload = useCallback(() => {
+    load();
+    refreshCurrentYear();
+  }, [load, refreshCurrentYear]);
 
   useEffect(() => {
     setYears(null);
@@ -185,7 +195,7 @@ function Workspace({ campusId }: { campusId: string }) {
         <EmptyState title={t('structure.noYears')} />
       ) : (
         ordered.map((year) => (
-          <AcademicYearCard key={year.id} year={year} onChanged={load} campusId={campusId} />
+          <AcademicYearCard key={year.id} year={year} onChanged={reload} campusId={campusId} />
         ))
       )}
 
@@ -195,7 +205,7 @@ function Workspace({ campusId }: { campusId: string }) {
         campusId={campusId}
         onCreated={() => {
           setShowCreate(false);
-          load();
+          reload();
         }}
       />
     </div>

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { IDLE_TIMEOUT_MS, logout, type Principal } from '@/lib/auth';
 import { clearPrincipalCache, loadPrincipal } from '@/lib/session';
 import { AppShell } from './app-shell';
+import { CurrentYearProvider } from './current-year-provider';
 import { PrivacyProvider } from './privacy-provider';
 import { Spinner } from '@munaxa/ui';
 
@@ -117,7 +118,9 @@ function ShellGuard({ children }: { children: React.ReactNode }) {
   return (
     <PrincipalContext.Provider value={principal}>
       <PrivacyProvider>
-        <AppShell principal={principal}>{children}</AppShell>
+        <CurrentYearProvider>
+          <AppShell principal={principal}>{children}</AppShell>
+        </CurrentYearProvider>
       </PrivacyProvider>
     </PrincipalContext.Provider>
   );
