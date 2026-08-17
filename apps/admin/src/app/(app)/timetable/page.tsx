@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { classroomLabel } from '@school/domain';
 import { Shell } from '@/components/shell';
+import { TimeCounter, minutesBetween, shiftTime } from '@/components/time-counter';
 import {
   Badge,
   Button,
@@ -14,7 +16,6 @@ import {
   Input,
   PageHeader,
   Select,
-  TimePicker,
   useToast,
   type Tone,
 } from '@munaxa/ui';
@@ -60,11 +61,22 @@ const STATUS_TONE: Record<SchedulePlan['status'], Tone> = {
   ARCHIVED: 'muted',
 };
 
-const emptyClassForm = (day: DayOfWeek, classNumber: number): ClassForm => ({
+/** Where the open timetable is remembered for the rest of the browser session. */
+const SELECTION_KEY = 'munaxa.timetable.selection';
+
+/** Falls back to a first-period-shaped slot when nothing on the grid says otherwise. */
+const DEFAULT_START = '08:00';
+const DEFAULT_END = '08:45';
+
+const emptyClassForm = (
+  day: DayOfWeek,
+  classNumber: number,
+  times: { startTime: string; endTime: string },
+): ClassForm => ({
   dayOfWeek: day,
   classNumber: String(classNumber),
-  startTime: '08:00',
-  endTime: '08:45',
+  startTime: times.startTime,
+  endTime: times.endTime,
   subjectId: '',
   teacherId: '',
   locationId: '',
@@ -80,8 +92,23 @@ interface ClassForm {
   locationId: string;
 }
 
-export default function TimetableWorkspace() {
+/**
+ * The workspace keeps its selection — school, campus, year, semester, plan, classroom, schedule —
+ * in the URL, so leaving for the subject catalogue and coming back lands on the timetable that was
+ * open rather than an empty grid. It also makes an open timetable a link someone can share.
+ */
+export default function TimetablePage() {
+  return (
+    <Suspense fallback={null}>
+      <TimetableWorkspace />
+    </Suspense>
+  );
+}
+
+function TimetableWorkspace() {
   const toast = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Cascade selectors
   const [schools, setSchools] = useState<School[]>([]);
@@ -89,11 +116,11 @@ export default function TimetableWorkspace() {
   const [years, setYears] = useState<AcademicYear[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [plans, setPlans] = useState<SchedulePlan[]>([]);
-  const [schoolId, setSchoolId] = useState('');
-  const [campusId, setCampusId] = useState('');
-  const [yearId, setYearId] = useState('');
-  const [semesterId, setSemesterId] = useState('');
-  const [planId, setPlanId] = useState('');
+  const [schoolId, setSchoolId] = useState(() => searchParams.get('school') ?? '');
+  const [campusId, setCampusId] = useState(() => searchParams.get('campus') ?? '');
+  const [yearId, setYearId] = useState(() => searchParams.get('year') ?? '');
+  const [semesterId, setSemesterId] = useState(() => searchParams.get('semester') ?? '');
+  const [planId, setPlanId] = useState(() => searchParams.get('plan') ?? '');
 
   // Reference data
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -102,14 +129,64 @@ export default function TimetableWorkspace() {
 
   // Working state
   const [overview, setOverview] = useState<PlanOverview | null>(null);
-  const [sectionId, setSectionId] = useState('');
-  const [scheduleType, setScheduleType] = useState<ScheduleType>('REGULAR');
+  const [sectionId, setSectionId] = useState(() => searchParams.get('classroom') ?? '');
+  const [scheduleType, setScheduleType] = useState<ScheduleType>(() =>
+    searchParams.get('schedule') === 'RAMADAN' ? 'RAMADAN' : 'REGULAR',
+  );
   const [classes, setClasses] = useState<EditableClass[]>([]);
   const [editing, setEditing] = useState<{ form: ClassForm; id: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const plan = overview?.plan ?? null;
   const isDraft = plan?.status === 'DRAFT';
+
+  // ── Keep the open timetable in the URL ──────────────────────────────────────
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (schoolId) params.set('school', schoolId);
+    if (campusId) params.set('campus', campusId);
+    if (yearId) params.set('year', yearId);
+    if (semesterId) params.set('semester', semesterId);
+    if (planId) params.set('plan', planId);
+    if (sectionId) params.set('classroom', sectionId);
+    if (scheduleType !== 'REGULAR') params.set('schedule', scheduleType);
+    return params.toString();
+  }, [schoolId, campusId, yearId, semesterId, planId, sectionId, scheduleType]);
+
+  // Arriving with a bare /timetable — from the sidebar, or from a back link that had nothing to
+  // carry — reopens the last timetable of this browser session instead of an empty workspace.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    if (searchParams.toString()) return;
+    const saved = sessionStorage.getItem(SELECTION_KEY);
+    if (!saved) return;
+    const params = new URLSearchParams(saved);
+    setSchoolId(params.get('school') ?? '');
+    setCampusId(params.get('campus') ?? '');
+    setYearId(params.get('year') ?? '');
+    setSemesterId(params.get('semester') ?? '');
+    setPlanId(params.get('plan') ?? '');
+    setSectionId(params.get('classroom') ?? '');
+    setScheduleType(params.get('schedule') === 'RAMADAN' ? 'RAMADAN' : 'REGULAR');
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (query) sessionStorage.setItem(SELECTION_KEY, query);
+  }, [query]);
+
+  useEffect(() => {
+    // `replace`, not `push`: refining the selection is not a step to walk back through.
+    if (searchParams.toString() === query) return;
+    router.replace(query ? `/timetable?${query}` : '/timetable', { scroll: false });
+  }, [query, router, searchParams]);
+
+  /** Send the open timetable along, so the catalogue can hand the user back to exactly this grid. */
+  const subjectsHref = {
+    pathname: '/timetable/subjects',
+    ...(query ? { query: { back: query } } : {}),
+  };
 
   // ── Load cascade ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -252,7 +329,16 @@ export default function TimetableWorkspace() {
 
   function openAdd(day: DayOfWeek, n: number) {
     if (!isDraft) return;
-    setEditing({ form: emptyClassForm(day, n), id: null });
+    // A period keeps the same clock across the week, so the times of any class already sitting in
+    // this row are the right default — the school's bell, not an arbitrary 08:00.
+    const sameRow = classes.find((c) => c.scheduleType === scheduleType && c.classNumber === n);
+    setEditing({
+      form: emptyClassForm(day, n, {
+        startTime: sameRow?.startTime ?? DEFAULT_START,
+        endTime: sameRow?.endTime ?? DEFAULT_END,
+      }),
+      id: null,
+    });
   }
   function openEdit(c: EditableClass) {
     if (!isDraft) return;
@@ -598,7 +684,7 @@ export default function TimetableWorkspace() {
                   <div className="flex items-center justify-between">
                     <h2 className="font-display text-sm font-semibold">Subjects</h2>
                     <Link
-                      href="/timetable/subjects"
+                      href={subjectsHref}
                       className="text-xs font-medium text-primary-strong hover:underline"
                     >
                       Manage subjects →
@@ -676,34 +762,50 @@ export default function TimetableWorkspace() {
           }
         >
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Day">
-              <Select
-                value={editing.form.dayOfWeek}
-                onChange={(e) => setForm({ dayOfWeek: e.target.value as DayOfWeek })}
-              >
-                {DAYS.map((d) => (
-                  <option key={d} value={d}>
-                    {DAY_LABEL[d]}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Class number">
-              <Input
-                type="number"
-                min={1}
-                value={editing.form.classNumber}
-                onChange={(e) => setForm({ classNumber: e.target.value })}
-              />
-            </Field>
+            {/* Adding starts from a cell, so the slot is already decided — showing it as an
+                editable field only invites saving the class into a different square than the one
+                that was clicked. Editing keeps them open, since moving a lesson is a real edit. */}
+            {editing.id ? (
+              <>
+                <Field label="Day">
+                  <Select
+                    value={editing.form.dayOfWeek}
+                    onChange={(e) => setForm({ dayOfWeek: e.target.value as DayOfWeek })}
+                  >
+                    {DAYS.map((d) => (
+                      <option key={d} value={d}>
+                        {DAY_LABEL[d]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Class number">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={editing.form.classNumber}
+                    onChange={(e) => setForm({ classNumber: e.target.value })}
+                  />
+                </Field>
+              </>
+            ) : (
+              <>
+                <Field label="Day">
+                  <Input value={DAY_LABEL[editing.form.dayOfWeek]} readOnly />
+                </Field>
+                <Field label="Class number">
+                  <Input value={editing.form.classNumber} readOnly />
+                </Field>
+              </>
+            )}
             <Field label="Start">
-              <TimePicker
+              <TimeCounter
                 value={editing.form.startTime}
-                onChange={(value) => setForm({ startTime: value })}
+                onChange={(value) => setForm({ startTime: value, endTime: endFor(value) })}
               />
             </Field>
             <Field label="End">
-              <TimePicker
+              <TimeCounter
                 value={editing.form.endTime}
                 onChange={(value) => setForm({ endTime: value })}
               />
@@ -723,7 +825,7 @@ export default function TimetableWorkspace() {
               {subjects.length === 0 ? (
                 <p className="mt-1 text-xs text-muted-foreground">
                   No subjects defined yet —{' '}
-                  <Link href="/timetable/subjects" className="text-primary-strong hover:underline">
+                  <Link href={subjectsHref} className="text-primary-strong hover:underline">
                     add them here
                   </Link>
                   .
@@ -774,6 +876,13 @@ export default function TimetableWorkspace() {
 
   function setForm(patch: Partial<ClassForm>) {
     setEditing((cur) => (cur ? { ...cur, form: { ...cur.form, ...patch } } : cur));
+  }
+
+  /** Counting the start up or down drags the end with it, so the lesson keeps its length. */
+  function endFor(nextStart: string): string {
+    if (!editing) return nextStart;
+    const length = minutesBetween(editing.form.startTime, editing.form.endTime);
+    return length > 0 ? shiftTime(nextStart, length) : editing.form.endTime;
   }
 }
 

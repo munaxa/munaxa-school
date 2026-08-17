@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Shell, usePrincipal } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { useConfirm } from '@/components/confirm';
@@ -76,7 +77,45 @@ const emptyForm = (): SubjectForm => ({
 });
 
 export default function SubjectsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SubjectsCatalogue />
+    </Suspense>
+  );
+}
+
+/** The selection the timetable workspace holds in its own URL. */
+const TIMETABLE_PARAMS = [
+  'school',
+  'campus',
+  'year',
+  'semester',
+  'plan',
+  'classroom',
+  'schedule',
+] as const;
+
+/**
+ * Rebuild the timetable the user came from. The workspace passes its own selection as `back`, so
+ * the link returns to that grid rather than an empty workspace. Only the parameters the workspace
+ * itself understands are copied over — the link is always to `/timetable`, never to a destination
+ * the query string chose.
+ */
+function backToTimetable(back: string | null): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (!back) return query;
+  const source = new URLSearchParams(back);
+  for (const key of TIMETABLE_PARAMS) {
+    const value = source.get(key);
+    if (value) query[key] = value;
+  }
+  return query;
+}
+
+function SubjectsCatalogue() {
   const { t } = useI18n();
+  const searchParams = useSearchParams();
+  const backQuery = backToTimetable(searchParams.get('back'));
   const toast = useToast();
   const confirm = useConfirm();
   const principal = usePrincipal();
@@ -167,7 +206,7 @@ export default function SubjectsPage() {
               <CardTitle>{t('subjects.catalogue')}</CardTitle>
               <div className="flex items-center gap-2">
                 <Link
-                  href="/timetable"
+                  href={{ pathname: '/timetable', query: backQuery }}
                   className="text-sm font-medium text-primary-strong hover:underline"
                 >
                   {t('subjects.backToTimetable')} →
