@@ -35,7 +35,7 @@ import { teachersApi, type Teacher } from '@/lib/people';
 import {
   plansApi,
   subjectsApi,
-  type ClassInput,
+  type ClassUpdate,
   type DayOfWeek,
   type EditableClass,
   type PlanOverview,
@@ -360,8 +360,9 @@ function TimetableWorkspace() {
     if (!editing || !plan) return;
     const f = editing.form;
     if (!f.subjectId) return toast.error('Pick a subject');
-    const payload: ClassInput = {
-      sectionId,
+    // The classroom is the grid itself, so it is only ever stated when the class is created —
+    // the update endpoint has no `sectionId` and refuses a payload that carries one.
+    const lesson: ClassUpdate = {
       scheduleType,
       dayOfWeek: f.dayOfWeek,
       classNumber: Number(f.classNumber),
@@ -373,8 +374,8 @@ function TimetableWorkspace() {
     };
     setBusy(true);
     try {
-      if (editing.id) await plansApi.updateClass(plan.id, editing.id, payload);
-      else await plansApi.addClass(plan.id, payload);
+      if (editing.id) await plansApi.updateClass(plan.id, editing.id, lesson);
+      else await plansApi.addClass(plan.id, { sectionId, ...lesson });
       setEditing(null);
       await Promise.all([reloadClasses(), reloadOverview()]);
     } catch (e) {
@@ -762,42 +763,16 @@ function TimetableWorkspace() {
           }
         >
           <div className="grid grid-cols-2 gap-3">
-            {/* Adding starts from a cell, so the slot is already decided — showing it as an
-                editable field only invites saving the class into a different square than the one
-                that was clicked. Editing keeps them open, since moving a lesson is a real edit. */}
-            {editing.id ? (
-              <>
-                <Field label="Day">
-                  <Select
-                    value={editing.form.dayOfWeek}
-                    onChange={(e) => setForm({ dayOfWeek: e.target.value as DayOfWeek })}
-                  >
-                    {DAYS.map((d) => (
-                      <option key={d} value={d}>
-                        {DAY_LABEL[d]}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field label="Class number">
-                  <Input
-                    type="number"
-                    min={1}
-                    value={editing.form.classNumber}
-                    onChange={(e) => setForm({ classNumber: e.target.value })}
-                  />
-                </Field>
-              </>
-            ) : (
-              <>
-                <Field label="Day">
-                  <Input value={DAY_LABEL[editing.form.dayOfWeek]} readOnly />
-                </Field>
-                <Field label="Class number">
-                  <Input value={editing.form.classNumber} readOnly />
-                </Field>
-              </>
-            )}
+            {/* The square is the grid's to decide, not the dialog's: both adding and editing start
+                from the cell that was clicked, so day and period are shown as what they are and a
+                class can never be saved into a different square than the one it was opened from.
+                A lesson moves by being removed from one cell and added to another. */}
+            <Field label="Day">
+              <Input value={DAY_LABEL[editing.form.dayOfWeek]} readOnly />
+            </Field>
+            <Field label="Class number">
+              <Input value={editing.form.classNumber} readOnly />
+            </Field>
             <Field label="Start">
               <TimeCounter
                 value={editing.form.startTime}
