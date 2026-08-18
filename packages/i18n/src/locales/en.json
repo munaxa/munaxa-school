@@ -1070,7 +1070,9 @@
     "mon": "Mon",
     "tue": "Tue",
     "wed": "Wed",
-    "thu": "Thu"
+    "thu": "Thu",
+    "timeEarlier": "Earlier",
+    "timeLater": "Later"
   },
   "subjects": {
     "title": "Subjects",

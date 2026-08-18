@@ -91,6 +91,13 @@ export interface ClassInput {
   locationId?: string | null;
 }
 
+/**
+ * A class is edited in place, never moved to another classroom, so the API's update payload has no
+ * `sectionId` — and it rejects any property it does not define, so sending one fails the whole
+ * request with "property sectionId should not exist".
+ */
+export type ClassUpdate = Omit<ClassInput, 'sectionId'>;
+
 // ─── Client ───────────────────────────────────────────────────────────────────
 
 async function json<T>(res: Response): Promise<T> {
@@ -156,7 +163,7 @@ export const plansApi = {
   remove: (id: string) => del(`/schedule/plans/${id}`),
   addClass: (id: string, data: ClassInput) =>
     post<EditableClass>(`/schedule/plans/${id}/classes`, data),
-  updateClass: (id: string, classId: string, data: Partial<ClassInput>) =>
+  updateClass: (id: string, classId: string, data: ClassUpdate) =>
     authFetch(`/schedule/plans/${id}/classes/${classId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
