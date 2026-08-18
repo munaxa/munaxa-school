@@ -253,19 +253,21 @@ describe('People management (e2e)', () => {
   });
 
   it('lists an employee marked as teaching staff, with the subjects they instruct', async () => {
-    const { employee, teacher } = await hireTeacher({ employeeNumber: 'T-100' });
+    const { employee, teacher } = await hireTeacher();
 
     expect(employee.teacher).toBeTruthy();
     expect(teacher).toBeDefined();
     expect(teacher.specialization).toBe('Mathematics');
-    expect(teacher.employeeNumber).toBe('T-100');
+    // The facet mirrors the employee, staff number included — one person, one number.
+    expect(teacher.employeeNumber).toBe(employee.employeeNumber);
+    expect(employee.employeeNumber).toMatch(/^E-\d{4}$/);
     expect(teacher.subjects.map((s: { subject: { id: string } }) => s.subject.id)).toEqual([
       subjectId,
     ]);
   });
 
   it('takes a teacher off the teaching staff when HR unticks the box', async () => {
-    const { employee } = await hireTeacher({ employeeNumber: 'T-101' });
+    const { employee } = await hireTeacher();
 
     await http()
       .patch(`/api/v1/employees/${employee.id}`)
@@ -277,6 +279,13 @@ describe('People management (e2e)', () => {
     expect(
       teachers.body.some((t: { employeeId: string | null }) => t.employeeId === employee.id),
     ).toBe(false);
+
+    // …and HR reads the box as unticked, rather than the closed facet it keeps for history.
+    const reread = await http()
+      .get(`/api/v1/employees/${employee.id}`)
+      .set(auth(adminAToken))
+      .expect(200);
+    expect(reread.body.teacher).toBeNull();
   });
 
   it('rejects a subject from outside the school catalogue', async () => {
@@ -296,7 +305,7 @@ describe('People management (e2e)', () => {
   });
 
   it('assigns a teacher to a section and rejects duplicates', async () => {
-    const { teacher } = await hireTeacher({ employeeNumber: 'T-102' });
+    const { teacher } = await hireTeacher();
 
     await http()
       .post(`/api/v1/teachers/${teacher.id}/sections`)
@@ -317,8 +326,8 @@ describe('People management (e2e)', () => {
     expect(sections.body).toHaveLength(1);
   });
 
-  it('creates an employee (secretary)', async () => {
-    await http()
+  it('creates an employee (secretary) and issues the next staff number', async () => {
+    const first = await http()
       .post('/api/v1/employees')
       .set(auth(adminAToken))
       .send({
@@ -329,6 +338,50 @@ describe('People management (e2e)', () => {
         jobTitle: 'Secretary',
       })
       .expect(201);
+    const second = await http()
+      .post('/api/v1/employees')
+      .set(auth(adminAToken))
+      .send({
+        firstNameEn: 'Yara',
+        lastNameEn: 'N',
+        firstNameAr: 'يارا',
+        lastNameAr: 'ن',
+        jobTitle: 'Librarian',
+      })
+      .expect(201);
+
+    expect(first.body.employeeNumber).toMatch(/^E-\d{4}$/);
+    expect(second.body.employeeNumber).toMatch(/^E-\d{4}$/);
+    expect(Number(second.body.employeeNumber.slice(2))).toBe(
+      Number(first.body.employeeNumber.slice(2)) + 1,
+    );
+  });
+
+  it('refuses a staff number another employee already holds', async () => {
+    const taken = await http()
+      .post('/api/v1/employees')
+      .set(auth(adminAToken))
+      .send({
+        firstNameEn: 'Hala',
+        lastNameEn: 'S',
+        firstNameAr: 'هالة',
+        lastNameAr: 'س',
+        jobTitle: 'Accountant',
+      })
+      .expect(201);
+
+    await http()
+      .post('/api/v1/employees')
+      .set(auth(adminAToken))
+      .send({
+        firstNameEn: 'Copy',
+        lastNameEn: 'Cat',
+        firstNameAr: 'نسخة',
+        lastNameAr: 'ق',
+        jobTitle: 'Accountant',
+        employeeNumber: taken.body.employeeNumber,
+      })
+      .expect(409);
   });
 
   it('bulk-imports students from CSV and reports row errors', async () => {

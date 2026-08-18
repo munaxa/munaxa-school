@@ -537,10 +537,7 @@
     "typeStaff": "Staff",
     "searchStaffPlaceholder": "Name, title, specialization…",
     "noStaff": "No staff match your search.",
-    "teachersTab": "Teachers tab",
     "addTeacherHint": "Teaching staff are created here: add an employee and tick “Teaching staff”. They then appear on the Teachers tab.",
-    "teacherDetails": "Teacher details",
-    "manageInTeachers": "Teaching assignments are managed on the Teachers tab.",
     "edit": "Edit",
     "phone": "Phone",
     "fatherName": "Father name",
@@ -2038,7 +2035,8 @@
     "teaching": "Teaching",
     "isTeacher": "Teaching staff — appears on the Teachers tab and can be given lessons",
     "specializationPlaceholder": "e.g. Mathematics",
-    "noSubjectsYet": "No subjects in the catalogue yet — add them under Timetable → Subjects, then choose them here."
+    "noSubjectsYet": "No subjects in the catalogue yet — add them under Timetable → Subjects, then choose them here.",
+    "employeeNumberAuto": "Issued on save"
   },
   "attendanceOps": {
     "title": "Attendance operations",

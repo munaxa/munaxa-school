@@ -715,6 +715,7 @@ model Tenant {
   einvoiceCounter          EInvoiceCounter?
   paymentReceiptCounter    PaymentReceiptCounter?
   studentNumberCounter     StudentNumberCounter?
+  employeeNumberCounter    EmployeeNumberCounter?
   einvoiceDocuments        EInvoiceDocument[]
   einvoiceLogs             EInvoiceLog[]
   feeAdjustments           FeeAdjustment[]
@@ -3016,6 +3017,23 @@ model StudentNumberCounter {
   resetPolicy StudentNumberResetPolicy @default(NEVER)
   createdAt   DateTime                 @default(now()) @db.Timestamptz(6)
   updatedAt   DateTime                 @updatedAt @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+/// Row-locked, per-tenant counter + format config for the staff number every Employee carries.
+/// Same gapless idiom as StudentNumberCounter/PaymentReceiptCounter, created lazily on first use.
+/// A staff number is issued when the person is hired and never reissued, so there is no reset
+/// policy here — unlike students, whose numbering can restart per intake. Default: prefix "E-",
+/// zero-padded to 4, starting at 1 (e.g. "E-0001").
+model EmployeeNumberCounter {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @unique @db.Uuid
+  prefix     String?  @default("E-")
+  padLength  Int      @default(4)
+  nextNumber Int      @default(1)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

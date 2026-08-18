@@ -294,11 +294,18 @@ export function EmployeeEditor({
                 required
               />
             </Field>
+            {/* Issued by the school, not typed at the form: a new hire gets the next number in
+                the sequence. It stays editable afterwards, so a number carried over from an older
+                system can still be corrected. */}
             <Field label={t('people.employeeNumber')}>
-              <Input
-                value={form.employeeNumber}
-                onChange={(e) => set('employeeNumber', e.target.value)}
-              />
+              {isEdit ? (
+                <Input
+                  value={form.employeeNumber}
+                  onChange={(e) => set('employeeNumber', e.target.value)}
+                />
+              ) : (
+                <Input value={t('hr.employeeNumberAuto')} readOnly />
+              )}
             </Field>
             <Field label={t('hr.employmentType')}>
               <Select

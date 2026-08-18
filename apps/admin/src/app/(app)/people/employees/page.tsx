@@ -12,12 +12,10 @@ import {
   departmentsApi,
   employeesApi,
   positionsApi,
-  teachersApi,
   EMPLOYEE_STATUSES,
   type Department,
   type Employee,
   type Position,
-  type Teacher,
 } from '@/lib/people';
 import {
   Button,
@@ -30,21 +28,10 @@ import {
   type ColumnDef,
 } from '@munaxa/ui';
 import { EmployeeEditor } from './employee-editor';
-import { TeacherProfileDialog } from '../teachers/teacher-profile-dialog';
-
-type StaffRow =
-  | { kind: 'employee'; id: string; employee: Employee }
-  | { kind: 'teacher'; id: string; teacher: Teacher };
 
 /** The row's Latin name — what it sorts by, and what its selection checkbox is called. */
-function personName(row: StaffRow): string {
-  const person = row.kind === 'teacher' ? row.teacher : row.employee;
-  return `${person.firstNameEn} ${person.lastNameEn}`;
-}
-
-/** Whether this person teaches — for an employee, that is the teaching facet HR opened. */
-function teaches(row: StaffRow): boolean {
-  return row.kind === 'teacher' || Boolean(row.employee.teacher);
+function personName(employee: Employee): string {
+  return `${employee.firstNameEn} ${employee.lastNameEn}`;
 }
 
 export default function EmployeesPage() {
@@ -55,7 +42,6 @@ export default function EmployeesPage() {
   const canManage = principal.permissions.includes('employee:manage') || principal.isPlatform;
 
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -63,21 +49,18 @@ export default function EmployeesPage() {
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'teacher' | 'employee'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [viewingTeacher, setViewingTeacher] = useState<Teacher | null>(null);
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      // Teachers and general employees are stored separately, but staff want to see them in one
-      // directory — merge both here. Teachers stay managed (assignments) on the Teachers tab.
-      const [emps, tchs, deps, pos] = await Promise.all([
+      // One row per person. Everyone the school employs is an Employee — teaching is a facet on
+      // that same record, so the directory reads it from there rather than merging a second list.
+      const [emps, deps, pos] = await Promise.all([
         employeesApi.list({ includeInactive: true }),
-        teachersApi.list().catch(() => [] as Teacher[]),
         departmentsApi.list().catch(() => [] as Department[]),
         positionsApi.list().catch(() => [] as Position[]),
       ]);
       setEmployees(emps);
-      setTeachers(tchs);
       setDepartments(deps);
       setPositions(pos);
     } catch (e) {
@@ -101,35 +84,26 @@ export default function EmployeesPage() {
     }
   }
 
-  // A teacher is an employee with the teaching facet open, so the employee row already carries
-  // them. Only teacher records from before HR owned the directory — the ones with no employee
-  // behind them — still need a row of their own, or the directory would list a person twice.
-  const legacyTeachers = useMemo(() => teachers.filter((tc) => !tc.employeeId), [teachers]);
-  const teachingCount = legacyTeachers.length + employees.filter((e) => e.teacher).length;
+  const teachingCount = employees.filter((e) => e.teacher).length;
 
-  const rows = useMemo<StaffRow[]>(() => {
-    const all: StaffRow[] = [
-      ...legacyTeachers.map((teacher) => ({ kind: 'teacher' as const, id: teacher.id, teacher })),
-      ...employees.map((employee) => ({ kind: 'employee' as const, id: employee.id, employee })),
-    ];
+  const rows = useMemo<Employee[]>(() => {
     const q = query.trim().toLowerCase();
-    return all.filter((r) => {
-      if (typeFilter === 'teacher' && !teaches(r)) return false;
-      if (typeFilter === 'employee' && teaches(r)) return false;
-      const status = r.kind === 'teacher' ? r.teacher.status : r.employee.status;
-      if (statusFilter !== 'all' && status !== statusFilter) return false;
+    return employees.filter((e) => {
+      if (typeFilter === 'teacher' && !e.teacher) return false;
+      if (typeFilter === 'employee' && e.teacher) return false;
+      if (statusFilter !== 'all' && e.status !== statusFilter) return false;
       if (!q) return true;
-      const p = r.kind === 'teacher' ? r.teacher : r.employee;
-      const role = r.kind === 'teacher' ? (r.teacher.specialization ?? '') : r.employee.jobTitle;
       return (
-        `${p.firstNameEn} ${p.lastNameEn}`.toLowerCase().includes(q) ||
-        `${p.firstNameAr} ${p.lastNameAr}`.includes(query) ||
-        role.toLowerCase().includes(q)
+        `${e.firstNameEn} ${e.lastNameEn}`.toLowerCase().includes(q) ||
+        `${e.firstNameAr} ${e.lastNameAr}`.includes(query) ||
+        e.jobTitle.toLowerCase().includes(q) ||
+        (e.teacher?.specialization ?? '').toLowerCase().includes(q) ||
+        (e.employeeNumber ?? '').toLowerCase().includes(q)
       );
     });
-  }, [legacyTeachers, employees, query, typeFilter, statusFilter]);
+  }, [employees, query, typeFilter, statusFilter]);
 
-  const columns = useMemo<ColumnDef<StaffRow>[]>(
+  const columns = useMemo<ColumnDef<Employee>[]>(
     () => [
       {
         id: 'name',
@@ -137,81 +111,67 @@ export default function EmployeesPage() {
         value: personName,
         sortable: true,
         rowHeader: true,
-        cell: (r) =>
-          r.kind === 'teacher' ? (
-            <button
-              type="button"
-              className="text-start font-medium text-foreground hover:text-primary-strong hover:underline"
-              onClick={() => setViewingTeacher(r.teacher)}
-            >
-              {r.teacher.firstNameEn} {r.teacher.lastNameEn}
-            </button>
-          ) : (
-            <Link
-              href={`/people/employees/${r.employee.id}`}
-              className="font-medium text-foreground hover:text-primary-strong hover:underline"
-            >
-              {r.employee.firstNameEn} {r.employee.lastNameEn}
-            </Link>
-          ),
+        cell: (e) => (
+          <Link
+            href={`/people/employees/${e.id}`}
+            className="font-medium text-foreground hover:text-primary-strong hover:underline"
+          >
+            {e.firstNameEn} {e.lastNameEn}
+          </Link>
+        ),
       },
       {
         id: 'nameAr',
         header: t('common.arabicName'),
-        value: (r) => {
-          const p = r.kind === 'teacher' ? r.teacher : r.employee;
-          return `${p.firstNameAr} ${p.lastNameAr}`;
-        },
+        value: (e) => `${e.firstNameAr} ${e.lastNameAr}`,
         sortable: true,
-        cell: (r) => {
-          const p = r.kind === 'teacher' ? r.teacher : r.employee;
-          return (
-            <span dir="rtl">
-              {p.firstNameAr} {p.lastNameAr}
-            </span>
-          );
-        },
+        cell: (e) => (
+          <span dir="rtl">
+            {e.firstNameAr} {e.lastNameAr}
+          </span>
+        ),
+      },
+      {
+        id: 'employeeNumber',
+        header: t('people.employeeNumber'),
+        value: (e) => e.employeeNumber ?? '',
+        sortable: true,
+        cell: (e) => (
+          <span className="font-mono text-xs text-muted-foreground">{e.employeeNumber || '—'}</span>
+        ),
       },
       {
         id: 'type',
         header: t('people.type'),
-        value: (r) => (teaches(r) ? t('people.typeTeacher') : t('people.typeStaff')),
+        value: (e) => (e.teacher ? t('people.typeTeacher') : t('people.typeStaff')),
         sortable: true,
       },
       {
         id: 'role',
         header: t('people.role'),
-        value: (r) =>
-          r.kind === 'teacher' ? r.teacher.specialization || '—' : r.employee.jobTitle,
+        value: (e) => e.jobTitle,
         sortable: true,
-        cell: (r) =>
-          r.kind === 'teacher' ? (
-            r.teacher.specialization || '—'
-          ) : (
-            <>
-              {r.employee.jobTitle}
-              {r.employee.department ? (
-                <span className="text-muted-foreground"> · {r.employee.department.name}</span>
-              ) : null}
-            </>
-          ),
+        cell: (e) => (
+          <>
+            {e.jobTitle}
+            {e.department ? (
+              <span className="text-muted-foreground"> · {e.department.name}</span>
+            ) : null}
+          </>
+        ),
       },
       {
         id: 'status',
         header: t('common.status'),
-        value: (r) => (r.kind === 'teacher' ? r.teacher.status : r.employee.status),
+        value: (e) => e.status,
         sortable: true,
-        cell: (r) => (
-          <StatusBadge status={r.kind === 'teacher' ? r.teacher.status : r.employee.status} />
-        ),
+        cell: (e) => <StatusBadge status={e.status} />,
       },
     ],
     [t],
   );
 
-  const activeCount =
-    employees.filter((e) => e.status === 'ACTIVE').length +
-    legacyTeachers.filter((tc) => tc.status === 'ACTIVE').length;
+  const activeCount = employees.filter((e) => e.status === 'ACTIVE').length;
 
   if (loading) {
     return (
@@ -249,12 +209,9 @@ export default function EmployeesPage() {
 
         {/* KPIs */}
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Kpi label={t('people.kpiStaff')} value={employees.length + legacyTeachers.length} />
+          <Kpi label={t('people.kpiStaff')} value={employees.length} />
           <Kpi label={t('people.kpiTeachers')} value={teachingCount} />
-          <Kpi
-            label={t('people.kpiEmployees')}
-            value={employees.length + legacyTeachers.length - teachingCount}
-          />
+          <Kpi label={t('people.kpiEmployees')} value={employees.length - teachingCount} />
           <Kpi label={t('people.kpiActive')} value={activeCount} tone="text-accent-cool" />
         </section>
 
@@ -297,44 +254,36 @@ export default function EmployeesPage() {
         <DataGrid
           rows={rows}
           columns={columns}
-          getRowId={(r) => `${r.kind}-${r.id}`}
-          getRowLabel={(r) => personName(r)}
+          getRowId={(e) => e.id}
+          getRowLabel={(e) => personName(e)}
           labels={labels}
           searchable={false}
           rowActionsWidth={canManage ? 132 : 88}
           aria-label={t('nav.hr')}
           emptyState={<EmptyState title={t('people.noStaff')} />}
-          rowActions={(r) =>
-            r.kind === 'teacher' ? (
-              <span className="text-xs text-muted-foreground">{t('people.teachersTab')}</span>
-            ) : (
-              <span className="flex items-center justify-end gap-1">
-                <Link
-                  href={`/people/employees/${r.employee.id}`}
-                  className="text-sm text-primary-strong hover:underline"
+          rowActions={(e) => (
+            <span className="flex items-center justify-end gap-1">
+              <Link
+                href={`/people/employees/${e.id}`}
+                className="text-sm text-primary-strong hover:underline"
+              >
+                {t('people.view')}
+              </Link>
+              {canManage ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => void remove(e.id)}
                 >
-                  {t('people.view')}
-                </Link>
-                {canManage ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => void remove(r.employee.id)}
-                  >
-                    {t('common.delete')}
-                  </Button>
-                ) : null}
-              </span>
-            )
-          }
+                  {t('common.delete')}
+                </Button>
+              ) : null}
+            </span>
+          )}
         />
         <p className="text-xs text-muted-foreground">{t('people.addTeacherHint')}</p>
       </div>
-
-      {viewingTeacher ? (
-        <TeacherProfileDialog teacher={viewingTeacher} onClose={() => setViewingTeacher(null)} />
-      ) : null}
 
       {creating ? (
         <EmployeeEditor

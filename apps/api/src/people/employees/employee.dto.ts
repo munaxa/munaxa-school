@@ -53,9 +53,13 @@ export class CreateEmployeeDto {
   @MaxLength(120)
   jobTitle!: string;
 
-  @ApiPropertyOptional({ description: 'Human-facing staff number, unique per school.' })
+  @ApiPropertyOptional({
+    description:
+      'Human-facing staff number, unique per school. Omit it and the school issues the next one.',
+  })
   @IsOptional()
   @IsString()
+  @MinLength(1)
   @MaxLength(60)
   employeeNumber?: string;
 
