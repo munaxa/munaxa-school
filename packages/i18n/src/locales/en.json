@@ -505,12 +505,8 @@
     "noStudents": "No students yet.",
     "addStudentButton": "Add student",
     "importCsv": "Import CSV",
-    "addTeacher": "Add a teacher",
-    "addTeacherButton": "Add teacher",
     "employeeNumber": "Employee #",
     "specialization": "Specialization",
-    "employeeNumberPlaceholder": "Employee number",
-    "specializationPlaceholder": "Specialization (e.g. Mathematics)",
     "noTeachers": "No teachers yet.",
     "addParent": "Add a parent / guardian",
     "addParentButton": "Add parent / guardian",
@@ -541,10 +537,7 @@
     "typeStaff": "Staff",
     "searchStaffPlaceholder": "Name, title, specialization…",
     "noStaff": "No staff match your search.",
-    "teachersTab": "Teachers tab",
-    "addTeacherHint": "Teachers are added and assigned to classes on the Teachers tab.",
-    "teacherDetails": "Teacher details",
-    "manageInTeachers": "Teaching assignments are managed on the Teachers tab.",
+    "addTeacherHint": "Teaching staff are created here: add an employee and tick “Teaching staff”. They then appear on the Teachers tab.",
     "edit": "Edit",
     "phone": "Phone",
     "fatherName": "Father name",
@@ -620,7 +613,14 @@
     "noStudentsMatch": "No students match your filters.",
     "registerBannerTitle": "Need to register a new student?",
     "registerBannerBody": "Registration runs through Admissions, which creates the complete student profile.",
-    "goToAdmissions": "Go to Admissions"
+    "goToAdmissions": "Go to Admissions",
+    "teachersSubtitle": "Everyone on staff who teaches, and the subjects they instruct.",
+    "addTeacherInHr": "Add a teacher in HR",
+    "teacherFromHrHint": "Teachers are not added here. Add the person in HR and tick “Teaching staff”, choosing the subjects they instruct — they appear on this list straight away.",
+    "subjectsTaught": "Subjects taught",
+    "noSubjects": "No subjects yet",
+    "stopTeaching": "Stop teaching",
+    "stopTeachingConfirm": "Take this person off the teaching staff? Their employee record and the lessons they have already taught are kept — they simply stop appearing here and in the timetable’s teacher picker."
   },
   "cards": {
     "title": "Student cards",
@@ -2031,7 +2031,12 @@
       "certificate": "Certificate",
       "training": "Training",
       "probation": "Probation"
-    }
+    },
+    "teaching": "Teaching",
+    "isTeacher": "Teaching staff — appears on the Teachers tab and can be given lessons",
+    "specializationPlaceholder": "e.g. Mathematics",
+    "noSubjectsYet": "No subjects in the catalogue yet — add them under Timetable → Subjects, then choose them here.",
+    "employeeNumberAuto": "Issued on save"
   },
   "attendanceOps": {
     "title": "Attendance operations",

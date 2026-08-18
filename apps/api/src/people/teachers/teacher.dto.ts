@@ -1,38 +1,21 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EmploymentStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
-export class CreateTeacherDto {
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  firstNameEn!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  lastNameEn!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  firstNameAr!: string;
-
-  @ApiProperty()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
-  lastNameAr!: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @MaxLength(40)
-  employeeNumber?: string;
-
+/**
+ * A teacher is not created here — the teaching facet is opened in HR, on the employee. What is
+ * left is the academic detail a scheduler edits: the specialization shown in the directory and
+ * the subjects the teacher instructs.
+ */
+export class UpdateTeacherDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -43,9 +26,18 @@ export class CreateTeacherDto {
   @IsOptional()
   @IsEnum(EmploymentStatus)
   status?: EmploymentStatus;
-}
 
-export class UpdateTeacherDto extends PartialType(CreateTeacherDto) {}
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Subjects this teacher instructs; replaces the current set.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID(undefined, { each: true })
+  subjectIds?: string[];
+}
 
 export class AssignSectionDto {
   @ApiProperty({ format: 'uuid' })

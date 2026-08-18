@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Permission } from '@school/domain';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { TeacherService } from './teacher.service';
-import { AssignSectionDto, CreateTeacherDto, UpdateTeacherDto } from './teacher.dto';
+import { AssignSectionDto, UpdateTeacherDto } from './teacher.dto';
 
 @ApiTags('teachers')
 @ApiBearerAuth()
@@ -11,14 +11,11 @@ import { AssignSectionDto, CreateTeacherDto, UpdateTeacherDto } from './teacher.
 export class TeacherController {
   constructor(private readonly service: TeacherService) {}
 
-  @Post()
-  @RequirePermissions(Permission.TEACHER_MANAGE)
-  create(@Body() dto: CreateTeacherDto) {
-    return this.service.create(dto);
-  }
-
+  // No POST: a teacher is an employee first. HR creates the person and marks them as teaching
+  // staff (`POST /employees` with `isTeacher`), which is what opens the facet listed here.
   @Get()
   @RequirePermissions(Permission.TEACHER_MANAGE)
+  @ApiOperation({ summary: 'List teaching staff, with the subjects each one instructs.' })
   list() {
     return this.service.list();
   }

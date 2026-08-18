@@ -316,33 +316,39 @@ async function del(path: string): Promise<void> {
   }
 }
 
+/** One subject a teacher instructs, as held in the school's subject catalogue. */
+export interface SubjectRef {
+  id: string;
+  nameEn: string;
+  nameAr: string;
+  colorHex: string;
+}
+
 export interface Teacher {
   id: string;
   firstNameEn: string;
   lastNameEn: string;
   firstNameAr: string;
   lastNameAr: string;
+  /** The HR employee this teaching facet belongs to; null only for pre-HR legacy rows. */
+  employeeId?: string | null;
   employeeNumber?: string | null;
   specialization?: string | null;
   status: EmploymentStatus;
+  subjects?: { subject: SubjectRef }[];
 }
 
-export interface CreateTeacherInput {
-  firstNameEn: string;
-  lastNameEn: string;
-  firstNameAr: string;
-  lastNameAr: string;
-  employeeNumber?: string;
-  specialization?: string;
-  status?: EmploymentStatus;
+/** The subjects a teacher instructs, flattened out of the join rows. */
+export function teacherSubjects(teacher: Teacher): SubjectRef[] {
+  return (teacher.subjects ?? []).map((s) => s.subject);
 }
 
+/**
+ * There is no create here on purpose: a teacher is an employee first. HR creates the person and
+ * marks them as teaching staff, which is what opens the facet this endpoint lists.
+ */
 export const teachersApi = {
   list: () => authFetch('/teachers').then((r) => json<Teacher[]>(r)),
-  create: (data: CreateTeacherInput) =>
-    authFetch('/teachers', { method: 'POST', body: JSON.stringify(data) }).then((r) =>
-      json<Teacher>(r),
-    ),
   remove: (id: string) => del(`/teachers/${id}`),
 };
 
@@ -428,6 +434,8 @@ export interface EmployeeManagerRef {
 export interface EmployeeTeacherRef {
   id: string;
   specialization?: string | null;
+  status?: EmploymentStatus;
+  subjects?: { subject: SubjectRef }[];
 }
 
 /** One lifecycle transition in an employee's status timeline. */
@@ -513,6 +521,11 @@ export interface CreateEmployeeInput {
   departmentId?: string;
   positionId?: string;
   managerId?: string;
+  /** Marks the employee as teaching staff — the only way a teacher comes into being. */
+  isTeacher?: boolean;
+  specialization?: string;
+  /** Subjects this teacher instructs, from the subject catalogue; replaces the current set. */
+  subjectIds?: string[];
 }
 
 export type UpdateEmployeeInput = Partial<Omit<CreateEmployeeInput, 'status'>>;

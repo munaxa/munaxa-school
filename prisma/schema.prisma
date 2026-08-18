@@ -656,6 +656,7 @@ model Tenant {
   employees                Employee[]
   parentStudents           ParentStudent[]
   teacherSections          TeacherSection[]
+  teacherSubjects          TeacherSubject[]
   scheduleExceptions       ScheduleException[]
   timetableConfigs         TimetableConfig[]
   subjects                 Subject[]
@@ -714,6 +715,7 @@ model Tenant {
   einvoiceCounter          EInvoiceCounter?
   paymentReceiptCounter    PaymentReceiptCounter?
   studentNumberCounter     StudentNumberCounter?
+  employeeNumberCounter    EmployeeNumberCounter?
   einvoiceDocuments        EInvoiceDocument[]
   einvoiceLogs             EInvoiceLog[]
   feeAdjustments           FeeAdjustment[]
@@ -1177,6 +1179,7 @@ model Teacher {
   user                   User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   employee               Employee?           @relation(fields: [employeeId], references: [id], onDelete: SetNull)
   sections               TeacherSection[]
+  subjects               TeacherSubject[]
   scheduledClasses       ScheduledClass[]
   exceptionReplacements  ScheduleException[] @relation("ExceptionTeacher")
   exceptionSubstitutions ScheduleException[] @relation("ExceptionSubstitute")
@@ -2079,6 +2082,26 @@ model TeacherSection {
   @@index([sectionId])
 }
 
+// What a teacher is qualified to teach, taken from the school's Subject catalogue. Set in HR when
+// an employee is marked as teaching staff, so the timetable can offer the right teachers for a
+// lesson. Distinct from TeacherSection, which is *where* they teach — this is *what*.
+model TeacherSubject {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  teacherId String   @db.Uuid
+  subjectId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId])
+  @@index([tenantId])
+  @@index([teacherId])
+  @@index([subjectId])
+}
+
 // ----------------------------------------------------------------------------
 // Identity & Access (IAM)
 // ----------------------------------------------------------------------------
@@ -2411,6 +2434,7 @@ model Subject {
   deletedAt DateTime? @db.Timestamptz(6)
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teachers           TeacherSubject[]
   scheduledClasses   ScheduledClass[]
   scheduleExceptions ScheduleException[]
 
@@ -2993,6 +3017,23 @@ model StudentNumberCounter {
   resetPolicy StudentNumberResetPolicy @default(NEVER)
   createdAt   DateTime                 @default(now()) @db.Timestamptz(6)
   updatedAt   DateTime                 @updatedAt @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+/// Row-locked, per-tenant counter + format config for the staff number every Employee carries.
+/// Same gapless idiom as StudentNumberCounter/PaymentReceiptCounter, created lazily on first use.
+/// A staff number is issued when the person is hired and never reissued, so there is no reset
+/// policy here — unlike students, whose numbering can restart per intake. Default: prefix "E-",
+/// zero-padded to 4, starting at 1 (e.g. "E-0001").
+model EmployeeNumberCounter {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @unique @db.Uuid
+  prefix     String?  @default("E-")
+  padLength  Int      @default(4)
+  nextNumber Int      @default(1)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
-import { Button, DatePicker, Field, Input, Select, useToast } from '@munaxa/ui';
+import { Button, Checkbox, DatePicker, Field, Input, Select, useToast } from '@munaxa/ui';
+import { subjectsApi, type Subject } from '@/lib/scheduling';
 import {
   employeesApi,
   EMPLOYEE_ENTRY_STATUSES,
@@ -38,6 +39,9 @@ type FormState = {
   departmentId: string;
   positionId: string;
   managerId: string;
+  isTeacher: boolean;
+  specialization: string;
+  subjectIds: string[];
 };
 
 function initialForm(e?: Employee): FormState {
@@ -65,6 +69,9 @@ function initialForm(e?: Employee): FormState {
     departmentId: e?.departmentId ?? '',
     positionId: e?.positionId ?? '',
     managerId: e?.managerId ?? '',
+    isTeacher: Boolean(e?.teacher),
+    specialization: e?.teacher?.specialization ?? '',
+    subjectIds: (e?.teacher?.subjects ?? []).map((s) => s.subject.id),
   };
 }
 
@@ -89,6 +96,16 @@ export function EmployeeEditor({
   const isEdit = Boolean(employee);
   const [form, setForm] = useState<FormState>(() => initialForm(employee));
   const [busy, setBusy] = useState(false);
+  // The subject catalogue the school already keeps for its timetable — a teacher instructs from
+  // that list, never from a name typed twice.
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+
+  useEffect(() => {
+    void subjectsApi
+      .list()
+      .then(setSubjects)
+      .catch(() => setSubjects([]));
+  }, []);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -128,6 +145,13 @@ export function EmployeeEditor({
     if (form.departmentId) base.departmentId = form.departmentId;
     if (form.positionId) base.positionId = form.positionId;
     if (form.managerId) base.managerId = form.managerId;
+    // The teaching facet: sent on every save, so unticking the box closes it as plainly as
+    // ticking it opens it. The subjects only mean anything while the box is ticked.
+    base.isTeacher = form.isTeacher;
+    if (form.isTeacher) {
+      base.specialization = form.specialization.trim();
+      base.subjectIds = form.subjectIds;
+    }
     if (!isEdit && form.status)
       base.status = form.status as NonNullable<CreateEmployeeInput['status']>;
     return base;
@@ -270,11 +294,18 @@ export function EmployeeEditor({
                 required
               />
             </Field>
+            {/* Issued by the school, not typed at the form: a new hire gets the next number in
+                the sequence. It stays editable afterwards, so a number carried over from an older
+                system can still be corrected. */}
             <Field label={t('people.employeeNumber')}>
-              <Input
-                value={form.employeeNumber}
-                onChange={(e) => set('employeeNumber', e.target.value)}
-              />
+              {isEdit ? (
+                <Input
+                  value={form.employeeNumber}
+                  onChange={(e) => set('employeeNumber', e.target.value)}
+                />
+              ) : (
+                <Input value={t('hr.employeeNumberAuto')} readOnly />
+              )}
             </Field>
             <Field label={t('hr.employmentType')}>
               <Select
@@ -357,6 +388,65 @@ export function EmployeeEditor({
               </Select>
             </Field>
           </Section>
+
+          {/*
+            Teaching is a facet of employment, so it is decided here, on the person — this box is
+            the only thing that puts someone on the Teachers tab and in the timetable's teacher
+            picker, and the subjects say which lessons they can be given.
+          */}
+          <fieldset className="space-y-3">
+            <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {t('hr.teaching')}
+            </legend>
+            <Checkbox
+              checked={form.isTeacher}
+              onChange={(e) => set('isTeacher', e.target.checked)}
+              label={t('hr.isTeacher')}
+            />
+            {form.isTeacher ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label={t('people.specialization')}>
+                  <Input
+                    value={form.specialization}
+                    placeholder={t('hr.specializationPlaceholder')}
+                    onChange={(e) => set('specialization', e.target.value)}
+                  />
+                </Field>
+                <Field label={t('people.subjectsTaught')} className="sm:col-span-2">
+                  {subjects.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">{t('hr.noSubjectsYet')}</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                      {subjects.map((subject) => (
+                        <Checkbox
+                          key={subject.id}
+                          checked={form.subjectIds.includes(subject.id)}
+                          onChange={(e) =>
+                            set(
+                              'subjectIds',
+                              e.target.checked
+                                ? [...form.subjectIds, subject.id]
+                                : form.subjectIds.filter((id) => id !== subject.id),
+                            )
+                          }
+                          label={
+                            <span className="inline-flex items-center gap-1.5">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ background: subject.colorHex }}
+                                aria-hidden="true"
+                              />
+                              {subject.nameEn}
+                            </span>
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </Field>
+              </div>
+            ) : null}
+          </fieldset>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>

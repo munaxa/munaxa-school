@@ -225,6 +225,20 @@ export function EmployeeProfile() {
               value={e.manager ? `${e.manager.firstNameEn} ${e.manager.lastNameEn}` : null}
             />
             <Detail label={t('hr.hireDate')} value={fmtDate(e.hireDate)} />
+            {/* Teaching is a facet of this same person, so it reads here rather than on a
+                separate teacher record. */}
+            {e.teacher ? (
+              <>
+                <Detail label={t('people.specialization')} value={e.teacher.specialization} />
+                <Detail
+                  label={t('people.subjectsTaught')}
+                  value={
+                    (e.teacher.subjects ?? []).map((s) => s.subject.nameEn).join(', ') ||
+                    t('people.noSubjects')
+                  }
+                />
+              </>
+            ) : null}
           </DetailCard>
         </TabsContent>
 

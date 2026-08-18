@@ -29,6 +29,15 @@ production-readiness checklist.
 
 - **`Employee` is the single canonical staff person.** `Teacher` is an academic facet linked 1:1
   (`Teacher.employeeId`); a bus driver (Phase 3) is an `Employee` + `DriverProfile`.
+- **Every employee carries a school-issued staff number.** `EmployeeNumberCounter` is the
+  per-tenant, row-locked counter behind it (same gapless idiom as `StudentNumberCounter`), so a
+  hire — through HR or through recruitment's offer→hire — is given the next number rather than
+  relying on someone typing one. A number entered by hand is honoured and checked for collision.
+- **The teaching facet is opened in HR, and only there.** `POST /employees` with `isTeacher`
+  creates the `Teacher` row in the same transaction, mirroring the employee's names, staff number
+  and status, and records the subjects taught (`TeacherSubject` → the timetable's `Subject`
+  catalogue). `/teachers` has no create endpoint: it lists what HR opened, and unticking the box
+  closes the facet without touching lessons already taught.
 - **Everything is tenant-scoped** (Postgres RLS) with `tenantId` indexes, cursor/offset-bounded
   lists, and per-facet permissions.
 - **Every mutation is audited** through the shared `AuditLog`, and lifecycle changes additionally
