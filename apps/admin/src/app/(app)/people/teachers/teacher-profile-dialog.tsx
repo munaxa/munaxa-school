@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useI18n } from '@/components/i18n-provider';
 import { EmploymentStatusBadge, RecordHeader } from '@/components/domain';
-import type { Teacher } from '@/lib/people';
+import { teacherSubjects, type Teacher } from '@/lib/people';
 import {
   Badge,
   Button,
@@ -78,6 +78,14 @@ export function TeacherProfileDialog({
                 <Detail label={t('people.specialization')} value={teacher.specialization} />
                 <Detail label={t('people.employeeNumber')} value={teacher.employeeNumber} mono />
                 <Detail label={t('common.status')} value={teacher.status} />
+                <Detail
+                  label={t('people.subjectsTaught')}
+                  value={
+                    teacherSubjects(teacher)
+                      .map((s) => s.nameEn)
+                      .join(', ') || t('people.noSubjects')
+                  }
+                />
               </CardContent>
             </Card>
           </TabsContent>

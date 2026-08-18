@@ -6,6 +6,7 @@ import {
   EmployeeRepository,
   type EmployeeDetail,
   type EmployeeListRow,
+  type TeachingFacetInput,
 } from './employee.repository';
 import type {
   CreateEmployeeDto,
@@ -48,7 +49,7 @@ export class EmployeeService {
         `An employee cannot be created at status ${initialStatus}. Allowed: ${ENTRY_STATUSES.join(', ')}.`,
       );
     }
-    return this.repo.create(this.toCreateInput(dto), initialStatus);
+    return this.repo.create(this.toCreateInput(dto), initialStatus, this.toTeachingInput(dto));
   }
 
   async list(query: ListEmployeesQueryDto): Promise<EmployeeListRow[]> {
@@ -89,7 +90,7 @@ export class EmployeeService {
 
   async update(id: string, dto: UpdateEmployeeDto): Promise<EmployeeDetail> {
     await this.assertExists(id);
-    return this.repo.update(id, this.toUpdateInput(dto));
+    return this.repo.update(id, this.toUpdateInput(dto), this.toTeachingInput(dto));
   }
 
   /** Perform a lifecycle transition, enforcing the state machine. */
@@ -150,6 +151,18 @@ export class EmployeeService {
       ...(dto.lastNameAr !== undefined ? { lastNameAr: dto.lastNameAr } : {}),
       ...(dto.jobTitle !== undefined ? { jobTitle: dto.jobTitle } : {}),
       ...this.toSharedInput(dto),
+    };
+  }
+
+  /**
+   * The teaching half of the payload. Kept apart from the employee columns because it is written
+   * to a different record — the Teacher facet — in the same transaction.
+   */
+  private toTeachingInput(dto: CreateEmployeeDto | UpdateEmployeeDto): TeachingFacetInput {
+    return {
+      ...(dto.isTeacher !== undefined ? { isTeacher: dto.isTeacher } : {}),
+      ...(dto.specialization !== undefined ? { specialization: dto.specialization } : {}),
+      ...(dto.subjectIds !== undefined ? { subjectIds: dto.subjectIds } : {}),
     };
   }
 

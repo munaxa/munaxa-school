@@ -1,42 +1,31 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Shell } from '@/components/shell';
 import { useI18n } from '@/components/i18n-provider';
 import { useGridLabels } from '@/components/grid-labels';
 import { useConfirm } from '@/components/confirm';
 import { StatusBadge } from '@/components/status-badge';
-import {
-  EMPLOYMENT_STATUSES,
-  teachersApi,
-  type CreateTeacherInput,
-  type Teacher,
-} from '@/lib/people';
+import { teachersApi, teacherSubjects, type Teacher } from '@/lib/people';
 import {
   Button,
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
   DataGrid,
   EmptyState,
-  Field,
-  Input,
   PageHeader,
-  Select,
   type ColumnDef,
 } from '@munaxa/ui';
 
-const EMPTY: CreateTeacherInput = {
-  firstNameEn: '',
-  lastNameEn: '',
-  firstNameAr: '',
-  lastNameAr: '',
-  employeeNumber: '',
-  specialization: '',
-  status: 'ACTIVE',
-};
-
+/**
+ * The teaching staff of the school — a view of HR, not a second directory.
+ *
+ * Nobody is added here. A teacher is an employee first: HR creates the person and marks them as
+ * teaching staff, choosing the subjects they instruct, and that is what puts them on this list.
+ * Keeping one door in means a teacher always has a contract, a manager and a lifecycle behind
+ * them, instead of a name that exists only in the timetable.
+ */
 export default function TeachersPage() {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -60,7 +49,7 @@ export default function TeachersPage() {
   }, [load]);
 
   async function remove(id: string) {
-    if (!(await confirm())) return;
+    if (!(await confirm({ description: t('people.stopTeachingConfirm') }))) return;
     try {
       await teachersApi.remove(id);
       await load();
@@ -77,6 +66,19 @@ export default function TeachersPage() {
         value: (tch) => `${tch.firstNameEn} ${tch.lastNameEn}`,
         sortable: true,
         rowHeader: true,
+        cell: (tch) =>
+          tch.employeeId ? (
+            <Link
+              href={`/people/employees/${tch.employeeId}`}
+              className="font-medium text-foreground hover:text-primary-strong hover:underline"
+            >
+              {tch.firstNameEn} {tch.lastNameEn}
+            </Link>
+          ) : (
+            <>
+              {tch.firstNameEn} {tch.lastNameEn}
+            </>
+          ),
       },
       {
         id: 'nameAr',
@@ -99,6 +101,34 @@ export default function TeachersPage() {
             {tch.employeeNumber || '—'}
           </span>
         ),
+      },
+      {
+        id: 'subjects',
+        header: t('people.subjectsTaught'),
+        value: (tch) =>
+          teacherSubjects(tch)
+            .map((s) => s.nameEn)
+            .join(', '),
+        cell: (tch) => {
+          const subjects = teacherSubjects(tch);
+          if (subjects.length === 0) {
+            return <span className="text-xs text-muted-foreground">{t('people.noSubjects')}</span>;
+          }
+          return (
+            <span className="flex flex-wrap gap-1">
+              {subjects.map((s) => (
+                <span
+                  key={s.id}
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]"
+                  style={{ background: `${s.colorHex}22` }}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ background: s.colorHex }} />
+                  {s.nameEn}
+                </span>
+              ))}
+            </span>
+          );
+        },
       },
       {
         id: 'specialization',
@@ -128,8 +158,19 @@ export default function TeachersPage() {
 
   return (
     <Shell>
-      <div className="mx-auto max-w-4xl space-y-6">
-        <PageHeader title={t('nav.teachers')} />
+      <div className="mx-auto max-w-5xl space-y-6">
+        <PageHeader
+          title={t('nav.teachers')}
+          description={t('people.teachersSubtitle')}
+          actions={
+            <Link
+              href="/people/employees"
+              className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm hover:bg-secondary/60"
+            >
+              {t('people.addTeacherInHr')}
+            </Link>
+          }
+        />
         {error ? (
           <p className="text-sm text-destructive" role="alert">
             {error}
@@ -137,11 +178,8 @@ export default function TeachersPage() {
         ) : null}
 
         <Card>
-          <CardHeader>
-            <CardTitle>{t('people.addTeacher')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CreateTeacher onCreated={load} onError={setError} />
+          <CardContent className="p-4 text-sm text-muted-foreground">
+            {t('people.teacherFromHrHint')}
           </CardContent>
         </Card>
 
@@ -155,125 +193,11 @@ export default function TeachersPage() {
           emptyState={<EmptyState title={t('people.noTeachers')} />}
           rowActions={(tch) => (
             <Button variant="ghost" size="sm" onClick={() => void remove(tch.id)}>
-              {t('common.delete')}
+              {t('people.stopTeaching')}
             </Button>
           )}
         />
       </div>
     </Shell>
-  );
-}
-
-function CreateTeacher({
-  onCreated,
-  onError,
-}: {
-  onCreated: () => Promise<void>;
-  onError: (m: string) => void;
-}) {
-  const { t } = useI18n();
-  const [form, setForm] = useState<CreateTeacherInput>(EMPTY);
-  const [busy, setBusy] = useState(false);
-
-  function set<K extends keyof CreateTeacherInput>(key: K, value: CreateTeacherInput[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      const payload: CreateTeacherInput = {
-        firstNameEn: form.firstNameEn,
-        lastNameEn: form.lastNameEn,
-        firstNameAr: form.firstNameAr,
-        lastNameAr: form.lastNameAr,
-        status: form.status ?? 'ACTIVE',
-      };
-      if (form.employeeNumber) payload.employeeNumber = form.employeeNumber;
-      if (form.specialization) payload.specialization = form.specialization;
-      await teachersApi.create(payload);
-      setForm(EMPTY);
-      await onCreated();
-    } catch (err) {
-      onError(err instanceof Error ? err.message : 'Create failed');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form onSubmit={(e) => void submit(e)} className="grid gap-2 sm:grid-cols-2">
-      <Field label={t('common.firstNameEn')} htmlFor="teacher-firstNameEn">
-        <Input
-          id="teacher-firstNameEn"
-          placeholder={t('common.firstNameEn')}
-          value={form.firstNameEn}
-          onChange={(e) => set('firstNameEn', e.target.value)}
-          required
-        />
-      </Field>
-      <Field label={t('common.lastNameEn')} htmlFor="teacher-lastNameEn">
-        <Input
-          id="teacher-lastNameEn"
-          placeholder={t('common.lastNameEn')}
-          value={form.lastNameEn}
-          onChange={(e) => set('lastNameEn', e.target.value)}
-          required
-        />
-      </Field>
-      <Field label="الاسم (AR)" htmlFor="teacher-firstNameAr">
-        <Input
-          id="teacher-firstNameAr"
-          placeholder="الاسم (AR)"
-          value={form.firstNameAr}
-          onChange={(e) => set('firstNameAr', e.target.value)}
-          required
-          dir="rtl"
-        />
-      </Field>
-      <Field label="العائلة (AR)" htmlFor="teacher-lastNameAr">
-        <Input
-          id="teacher-lastNameAr"
-          placeholder="العائلة (AR)"
-          value={form.lastNameAr}
-          onChange={(e) => set('lastNameAr', e.target.value)}
-          required
-          dir="rtl"
-        />
-      </Field>
-      <Field label={t('people.employeeNumberPlaceholder')} htmlFor="teacher-employeeNumber">
-        <Input
-          id="teacher-employeeNumber"
-          placeholder={t('people.employeeNumberPlaceholder')}
-          value={form.employeeNumber ?? ''}
-          onChange={(e) => set('employeeNumber', e.target.value)}
-        />
-      </Field>
-      <Field label={t('people.specializationPlaceholder')} htmlFor="teacher-specialization">
-        <Input
-          id="teacher-specialization"
-          placeholder={t('people.specializationPlaceholder')}
-          value={form.specialization ?? ''}
-          onChange={(e) => set('specialization', e.target.value)}
-        />
-      </Field>
-      <Field label={t('common.status')} htmlFor="teacher-status">
-        <Select
-          id="teacher-status"
-          value={form.status ?? 'ACTIVE'}
-          onChange={(e) => set('status', e.target.value as CreateTeacherInput['status'])}
-        >
-          {EMPLOYMENT_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Button type="submit" className="sm:col-span-2" disabled={busy}>
-        {busy ? t('common.adding') : t('people.addTeacherButton')}
-      </Button>
-    </form>
   );
 }

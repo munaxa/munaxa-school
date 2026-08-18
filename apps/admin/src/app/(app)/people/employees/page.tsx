@@ -42,6 +42,11 @@ function personName(row: StaffRow): string {
   return `${person.firstNameEn} ${person.lastNameEn}`;
 }
 
+/** Whether this person teaches — for an employee, that is the teaching facet HR opened. */
+function teaches(row: StaffRow): boolean {
+  return row.kind === 'teacher' || Boolean(row.employee.teacher);
+}
+
 export default function EmployeesPage() {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -96,14 +101,21 @@ export default function EmployeesPage() {
     }
   }
 
+  // A teacher is an employee with the teaching facet open, so the employee row already carries
+  // them. Only teacher records from before HR owned the directory — the ones with no employee
+  // behind them — still need a row of their own, or the directory would list a person twice.
+  const legacyTeachers = useMemo(() => teachers.filter((tc) => !tc.employeeId), [teachers]);
+  const teachingCount = legacyTeachers.length + employees.filter((e) => e.teacher).length;
+
   const rows = useMemo<StaffRow[]>(() => {
     const all: StaffRow[] = [
-      ...teachers.map((teacher) => ({ kind: 'teacher' as const, id: teacher.id, teacher })),
+      ...legacyTeachers.map((teacher) => ({ kind: 'teacher' as const, id: teacher.id, teacher })),
       ...employees.map((employee) => ({ kind: 'employee' as const, id: employee.id, employee })),
     ];
     const q = query.trim().toLowerCase();
     return all.filter((r) => {
-      if (typeFilter !== 'all' && r.kind !== typeFilter) return false;
+      if (typeFilter === 'teacher' && !teaches(r)) return false;
+      if (typeFilter === 'employee' && teaches(r)) return false;
       const status = r.kind === 'teacher' ? r.teacher.status : r.employee.status;
       if (statusFilter !== 'all' && status !== statusFilter) return false;
       if (!q) return true;
@@ -115,7 +127,7 @@ export default function EmployeesPage() {
         role.toLowerCase().includes(q)
       );
     });
-  }, [teachers, employees, query, typeFilter, statusFilter]);
+  }, [legacyTeachers, employees, query, typeFilter, statusFilter]);
 
   const columns = useMemo<ColumnDef<StaffRow>[]>(
     () => [
@@ -163,7 +175,7 @@ export default function EmployeesPage() {
       {
         id: 'type',
         header: t('people.type'),
-        value: (r) => (r.kind === 'teacher' ? t('people.typeTeacher') : t('people.typeStaff')),
+        value: (r) => (teaches(r) ? t('people.typeTeacher') : t('people.typeStaff')),
         sortable: true,
       },
       {
@@ -199,7 +211,7 @@ export default function EmployeesPage() {
 
   const activeCount =
     employees.filter((e) => e.status === 'ACTIVE').length +
-    teachers.filter((tc) => tc.status === 'ACTIVE').length;
+    legacyTeachers.filter((tc) => tc.status === 'ACTIVE').length;
 
   if (loading) {
     return (
@@ -237,9 +249,12 @@ export default function EmployeesPage() {
 
         {/* KPIs */}
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Kpi label={t('people.kpiStaff')} value={employees.length + teachers.length} />
-          <Kpi label={t('people.kpiTeachers')} value={teachers.length} />
-          <Kpi label={t('people.kpiEmployees')} value={employees.length} />
+          <Kpi label={t('people.kpiStaff')} value={employees.length + legacyTeachers.length} />
+          <Kpi label={t('people.kpiTeachers')} value={teachingCount} />
+          <Kpi
+            label={t('people.kpiEmployees')}
+            value={employees.length + legacyTeachers.length - teachingCount}
+          />
           <Kpi label={t('people.kpiActive')} value={activeCount} tone="text-accent-cool" />
         </section>
 

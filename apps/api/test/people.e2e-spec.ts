@@ -1,7 +1,7 @@
 /**
  * End-to-end tests for People Management against a real PostgreSQL: students (+ QR +
- * CSV import + parent linking), parents, teachers (+ section assignment), employees,
- * RBAC enforcement, and tenant isolation.
+ * CSV import + parent linking), parents, teaching staff (hired in HR, with subjects and section
+ * assignment), employees, RBAC enforcement, and tenant isolation.
  */
 import { Test } from '@nestjs/testing';
 import { ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
@@ -24,6 +24,7 @@ describe('People management (e2e)', () => {
   let studentRoleToken: string;
   let adminBToken: string;
   let sectionId: string;
+  let subjectId: string;
 
   const auth = (t: string) => ({ Authorization: `Bearer ${t}` });
   const http = () => request(app.getHttpServer());
@@ -64,6 +65,10 @@ describe('People management (e2e)', () => {
         data: { tenantId: TENANT_A, gradeId: grade.id, name: 'A' },
       });
       sectionId = section.id;
+      const subject = await tx.subject.create({
+        data: { tenantId: TENANT_A, nameEn: 'Mathematics', nameAr: 'الرياضيات' },
+      });
+      subjectId = subject.id;
 
       const adminA = await tx.user.create({
         data: {
@@ -215,27 +220,98 @@ describe('People management (e2e)', () => {
     expect(links.body[0].relation).toBe('FATHER');
   });
 
-  it('assigns a teacher to a section and rejects duplicates', async () => {
-    const teacher = await http()
+  /** Hire someone as teaching staff — the only way a teacher comes into being. */
+  async function hireTeacher(over: Record<string, unknown> = {}) {
+    const employee = await http()
+      .post('/api/v1/employees')
+      .set(auth(adminAToken))
+      .send({
+        firstNameEn: 'Omar',
+        lastNameEn: 'Z',
+        firstNameAr: 'عمر',
+        lastNameAr: 'ز',
+        jobTitle: 'Teacher',
+        isTeacher: true,
+        specialization: 'Mathematics',
+        subjectIds: [subjectId],
+        ...over,
+      })
+      .expect(201);
+    const teachers = await http().get('/api/v1/teachers').set(auth(adminAToken)).expect(200);
+    const teacher = teachers.body.find(
+      (t: { employeeId: string | null }) => t.employeeId === employee.body.id,
+    );
+    return { employee: employee.body, teacher };
+  }
+
+  it('has no standalone teacher endpoint — teaching staff are hired in HR', async () => {
+    await http()
       .post('/api/v1/teachers')
       .set(auth(adminAToken))
-      .send({ firstNameEn: 'Omar', lastNameEn: 'Z', firstNameAr: 'عمر', lastNameAr: 'ز' })
-      .expect(201);
+      .send({ firstNameEn: 'Ghost', lastNameEn: 'T', firstNameAr: 'شبح', lastNameAr: 'ت' })
+      .expect(404);
+  });
+
+  it('lists an employee marked as teaching staff, with the subjects they instruct', async () => {
+    const { employee, teacher } = await hireTeacher({ employeeNumber: 'T-100' });
+
+    expect(employee.teacher).toBeTruthy();
+    expect(teacher).toBeDefined();
+    expect(teacher.specialization).toBe('Mathematics');
+    expect(teacher.employeeNumber).toBe('T-100');
+    expect(teacher.subjects.map((s: { subject: { id: string } }) => s.subject.id)).toEqual([
+      subjectId,
+    ]);
+  });
+
+  it('takes a teacher off the teaching staff when HR unticks the box', async () => {
+    const { employee } = await hireTeacher({ employeeNumber: 'T-101' });
 
     await http()
-      .post(`/api/v1/teachers/${teacher.body.id}/sections`)
+      .patch(`/api/v1/employees/${employee.id}`)
+      .set(auth(adminAToken))
+      .send({ isTeacher: false })
+      .expect(200);
+
+    const teachers = await http().get('/api/v1/teachers').set(auth(adminAToken)).expect(200);
+    expect(
+      teachers.body.some((t: { employeeId: string | null }) => t.employeeId === employee.id),
+    ).toBe(false);
+  });
+
+  it('rejects a subject from outside the school catalogue', async () => {
+    await http()
+      .post('/api/v1/employees')
+      .set(auth(adminAToken))
+      .send({
+        firstNameEn: 'Lina',
+        lastNameEn: 'Q',
+        firstNameAr: 'لينا',
+        lastNameAr: 'ق',
+        jobTitle: 'Teacher',
+        isTeacher: true,
+        subjectIds: ['11111111-1111-4111-8111-111111111111'],
+      })
+      .expect(400);
+  });
+
+  it('assigns a teacher to a section and rejects duplicates', async () => {
+    const { teacher } = await hireTeacher({ employeeNumber: 'T-102' });
+
+    await http()
+      .post(`/api/v1/teachers/${teacher.id}/sections`)
       .set(auth(adminAToken))
       .send({ sectionId, subject: 'Mathematics' })
       .expect(201);
 
     await http()
-      .post(`/api/v1/teachers/${teacher.body.id}/sections`)
+      .post(`/api/v1/teachers/${teacher.id}/sections`)
       .set(auth(adminAToken))
       .send({ sectionId, subject: 'Mathematics' })
       .expect(409);
 
     const sections = await http()
-      .get(`/api/v1/teachers/${teacher.body.id}/sections`)
+      .get(`/api/v1/teachers/${teacher.id}/sections`)
       .set(auth(adminAToken))
       .expect(200);
     expect(sections.body).toHaveLength(1);

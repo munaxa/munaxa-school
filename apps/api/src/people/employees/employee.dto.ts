@@ -1,6 +1,9 @@
 import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
 import { EmploymentStatus, EmploymentType, Gender, MaritalStatus } from '@prisma/client';
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
   IsBooleanString,
   IsDateString,
   IsEmail,
@@ -175,6 +178,33 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsUUID()
   managerId?: string;
+
+  // --- Teaching facet ---
+  // A teacher is an employee first: this is where a school says someone teaches, and it is the
+  // only way a Teacher record comes into being.
+  @ApiPropertyOptional({
+    description: 'Marks this employee as teaching staff — what puts them on the Teachers tab.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isTeacher?: boolean;
+
+  @ApiPropertyOptional({ example: 'Mathematics', description: 'Teaching specialization.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  specialization?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Subjects this teacher instructs, from the school catalogue; replaces the set.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsUUID(undefined, { each: true })
+  subjectIds?: string[];
 }
 
 /** Update omits `status`: employment status only changes through the lifecycle endpoint. */
