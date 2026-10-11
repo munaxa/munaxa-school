@@ -1,17 +1,17 @@
 # Cloudflare Deploy — Munaxa standalone apps
 
-Three apps deploy to Cloudflare from this repository:
+These apps deploy to Cloudflare from this repository:
 
 | App | Path | Cloudflare Worker | Type | Adapter |
 | --- | --- | --- | --- | --- |
 | Demo | `school/munaxademo` | `munaxademo` | Workers | OpenNext (`@opennextjs/cloudflare`) |
-| Landing | `school/landing` | **`munaxa`** | Workers | OpenNext (`@opennextjs/cloudflare`) |
 | Platform docs (Storybook) | `platform` | `platform-storybook` | Workers (static assets) | Storybook static build |
 
-> The landing site's Worker is named **`munaxa`**, not `landing` — that is the Worker
-> `munaxa.com` is attached to. See [The Worker name is load-bearing](#the-worker-name-is-load-bearing).
+> The marketing site (`munaxa.com`, Worker **`munaxa`**) is not part of this repository: it is the
+> corporate landing for School, Work and Docs, deployed from `munaxa/munaxa`. Nothing here may
+> deploy to the `munaxa` Worker — two repositories deploying to one Worker overwrite each other.
 
-All three are part of (or build against) the pnpm workspace, so **builds must run from the
+They are part of (or build against) the pnpm workspace, so **builds must run from the
 repository root**. `cf-emit-root-wrangler.mjs` locates the workspace root by walking up to
 `pnpm-workspace.yaml` and writes the app's real relative path into a root `wrangler.jsonc`, so
 the `school/` nesting is handled automatically.
@@ -20,7 +20,7 @@ the `school/` nesting is handled automatically.
 
 ## How deploys run
 
-**`.github/workflows/deploy-cloudflare.yml` — every merge to `main` deploys all three apps.**
+**`.github/workflows/deploy-cloudflare.yml` — every merge to `main` deploys every app in its matrix.**
 
 The workflow runs each app's own `cf:deploy` script (the same one you run locally), so CI and a
 developer's machine cannot drift apart. It also asserts, before deploying, that each
@@ -31,15 +31,15 @@ Required repository secrets (Settings → Secrets and variables → Actions):
 | Secret | Purpose |
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | Token with **Workers Scripts: Edit** on the account |
-| `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account the three Workers live in |
+| `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account the Workers live in |
 
 The job targets the GitHub `production` environment, so required reviewers can be added there
 if a human gate is ever wanted.
 
 ### No path filtering — deliberately
 
-The workflow deploys all three apps on every merge, with no path filters. That is not an
-oversight. Both Next apps render their entire UI from `@munaxa/ui`, and `cf:deploy` rebuilds
+The workflow deploys every app on every merge, with no path filters. That is not an
+oversight. The apps render their entire UI from `@munaxa/ui`, and `cf:deploy` rebuilds
 that dependency first, so "this merge changed nothing the app consumes" is not a judgement a
 path filter can make correctly. A redundant deploy costs one short build; a skipped one costs a
 silently stale production site.
@@ -53,7 +53,7 @@ match a project's build watch paths, so no build ran at all and the Worker kept 
 previous bundle — green `main`, nothing in the dashboard to indicate a problem.
 
 In **Workers & Pages → \<project\> → Settings → Builds**, disconnect the Git repository on all
-three projects. Leaving it connected means two systems deploy the same Worker and the last one
+projects. Leaving it connected means two systems deploy the same Worker and the last one
 to finish wins, which reintroduces exactly the nondeterminism this workflow removes.
 
 > **Order matters — do not disconnect until the workflow has deployed successfully at least
@@ -72,9 +72,9 @@ existing Worker, **the deploy still succeeds** — wrangler creates a brand-new 
 custom domain points at. The live site keeps serving its old bundle indefinitely, and the deploy
 log is green.
 
-This is what broke the landing site: its config declared `"name": "landing"` while the Worker
-serving `munaxa.com` is `munaxa`. The deploy workflow now asserts the name before deploying, so
-the same drift fails loudly instead of silently.
+This is what once broke the former landing site (since removed from this repository): its config
+declared `"name": "landing"` while the Worker serving `munaxa.com` was `munaxa`. The deploy
+workflow now asserts the name before deploying, so the same drift fails loudly instead of silently.
 
 When adding an app, add its row to the workflow's `matrix.include` alongside its expected Worker
 name.
@@ -85,8 +85,6 @@ name.
 
 These persist on the Worker across deploys — the workflow does not push them.
 
-- `munaxa` (landing): `RESEND_API_KEY`, for the Contact-us emails. (`EMAIL_FROM`,
-  `EMAIL_CONTACT_FROM` and `NEXT_PUBLIC_DEMO_URL` are non-secret and live in `wrangler.jsonc`.)
 - `munaxademo`: `DEMO_SESSION_SECRET` (≥16 chars, required in production), `RESEND_DEMO`
   (or `RESEND_API_KEY`) for the "Book a Demo" intake email. KV namespace `DEMO_ACCOUNTS` is
   already bound in `wrangler.jsonc`.
@@ -102,10 +100,6 @@ Settings → Variables and Secrets.
 # Demo
 pnpm --filter munaxademo run cf:build        # → .open-next/worker.js
 pnpm --filter munaxademo run cf:preview      # optional: run it on workerd locally
-
-# Landing
-pnpm --filter @school/landing run cf:build
-pnpm --filter @school/landing run cf:preview
 
 # Storybook
 pnpm --filter platform run build-storybook   # → storybook-static/
@@ -126,6 +120,5 @@ merge, run the workflow from the Actions tab via **Run workflow** — it accepts
    `.next/standalone/school/munaxademo/.next/...` layout — failing with
    `ENOENT … pages-manifest.json`. Fixed by tracing from the workspace root.
 
-2. **Landing — missing `cf:build` script.** The app had no `cf:build` script, so a build command
-   of `pnpm run cf:build` failed with `ERR_PNPM_NO_SCRIPT`. Its scripts are now normalized to the
-   same `cf:*` set as the demo.
+2. **Landing (since removed) — missing `cf:build` script.** The app had no `cf:build` script, so a
+   build command of `pnpm run cf:build` failed with `ERR_PNPM_NO_SCRIPT`.

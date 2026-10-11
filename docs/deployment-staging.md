@@ -5,8 +5,8 @@ recently-added admin screens can be exercised end-to-end against a live database
 in the repo's actual config: `docker-compose.yml`, `apps/api/.env.example`, `apps/admin/.env.example`,
 `infra/postgres/app-role.sql`, and the Prisma scripts in `apps/api/package.json`.
 
-> Landing (`munaxalanding`) and the demo (`munaxademo`) already deploy to Cloudflare and are out
-> of scope here.
+> The demo (`munaxademo`) already deploys to Cloudflare and is out of scope here. The marketing
+> site (munaxa.com) is not part of this repository; it lives in `munaxa/munaxa`.
 
 ---
 

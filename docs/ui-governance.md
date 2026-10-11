@@ -1,7 +1,7 @@
 # Munaxa UI Governance
 
 **Status:** Authoritative · **Canonical source of truth:** [`/platform`](../../platform/README.md)
-**Applies to:** `apps/admin`, `landing`, `munaxademo` and all Munaxa UI.
+**Applies to:** `apps/admin`, `munaxademo` and all Munaxa UI.
 
 The shared platform at the repository root is the **single, formal source of truth** for
 tokens, themes, components and patterns. This document codifies how Munaxa consumes and enforces
@@ -20,7 +20,6 @@ success / warning / info / destructive roles, in light and dark.
 | Surface                | Theme comes from                                  |
 | ---------------------- | ------------------------------------------------- |
 | `apps/admin` (product) | `@import '@munaxa/ui/css/themes/munaxa';`  |
-| `landing` (marketing)  | `@import '@munaxa/ui/css/themes/munaxa';`  |
 | `munaxademo` (sandbox) | `@import '@munaxa/ui/css/themes/munaxa';`  |
 
 **Rule:** there is exactly one physical palette file. No app inlines colours, forks a theme, or
@@ -72,7 +71,7 @@ it belongs to Munaxa; two consumers means it belongs to the platform.
 - **Colour:** the Munaxa theme (§0). Radius base `0.5rem`, set per app in `globals.css`.
 - **Fonts (one intentional per-surface difference):** `apps/admin` ships **self-hosted IBM Plex
   Sans** (Latin) + **IBM Plex Sans Arabic** (RTL) so the product app has no Google-Fonts/CDN
-  dependency; the public surfaces (`landing`, `munaxademo`) use the display stack **Sora / Inter /
+  dependency; the public surface (`munaxademo`) uses the display stack **Sora / Inter /
   Cairo**. Both expose the same `--font-display` / `--font-body` / `--font-arabic` variables, so
   components are font-agnostic.
 
