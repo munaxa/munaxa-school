@@ -47,12 +47,12 @@ jobs:
       matrix:
         include:
           # `worker` is the Cloudflare Worker each app deploys to, asserted against the app's
-          # own wrangler config below. The landing site's Worker is `munaxa`, not `landing` —
-          # that is the Worker munaxa.com is attached to.
+          # own wrangler config below. The landing site's Worker is `munaxa-school-landing`;
+          # `munaxa` (munaxa.com) belongs to the corporate site in munaxa/munaxa.
           - app: landing
             filter: '@school/landing'
             config: landing/wrangler.jsonc
-            worker: munaxa
+            worker: munaxa-school-landing
           - app: demo
             filter: munaxademo
             config: munaxademo/wrangler.jsonc

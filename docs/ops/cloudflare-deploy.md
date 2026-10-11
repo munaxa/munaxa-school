@@ -5,11 +5,14 @@ Three apps deploy to Cloudflare from this repository:
 | App | Path | Cloudflare Worker | Type | Adapter |
 | --- | --- | --- | --- | --- |
 | Demo | `school/munaxademo` | `munaxademo` | Workers | OpenNext (`@opennextjs/cloudflare`) |
-| Landing | `school/landing` | **`munaxa`** | Workers | OpenNext (`@opennextjs/cloudflare`) |
+| Landing | `school/landing` | **`munaxa-school-landing`** | Workers | OpenNext (`@opennextjs/cloudflare`) |
 | Platform docs (Storybook) | `platform` | `platform-storybook` | Workers (static assets) | Storybook static build |
 
-> The landing site's Worker is named **`munaxa`**, not `landing` — that is the Worker
-> `munaxa.com` is attached to. See [The Worker name is load-bearing](#the-worker-name-is-load-bearing).
+> The landing site's Worker is **`munaxa-school-landing`**. It must not be `munaxa`: that Worker
+> serves `munaxa.com`, which is now the corporate site deployed from `munaxa/munaxa`, and two
+> repositories deploying to one Worker overwrite each other. `munaxa-school-landing` has no custom
+> domain until one is attached in Cloudflare. See
+> [The Worker name is load-bearing](#the-worker-name-is-load-bearing).
 
 All three are part of (or build against) the pnpm workspace, so **builds must run from the
 repository root**. `cf-emit-root-wrangler.mjs` locates the workspace root by walking up to
