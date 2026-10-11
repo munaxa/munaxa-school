@@ -52,8 +52,7 @@ convention and brand usage rules.
 
 - **Component:** `apps/admin/src/components/logo.tsx` and
   `munaxademo/src/components/logo.tsx` — `<Logo variant="horizontal|stacked|wordmark|symbol"
-  size={…} />`. Landing uses `landing/src/components/site/wordmark.tsx`; mobile uses
-  `munaxa_logo.dart`. **All scale by height.**
+  size={…} />`; mobile uses `munaxa_logo.dart`. **All scale by height.**
 - **Vendored copies:** each app keeps downscaled PNGs in its own `public/`, served `unoptimized`
   — the Cloudflare/OpenNext image optimizer cannot process the full-resolution art.
 - **Favicons and app icons** are generated from `favicon.png` (M mark → `favicon.ico`,

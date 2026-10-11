@@ -71,5 +71,4 @@ school/apps/mobile/*.iml
 # Generated, never authored: committing a snapshot is how an application keeps serving last
 # quarter's logo after the approved one changed upstream.
 apps/*/public/branding/
-landing/public/branding/
 munaxademo/public/branding/

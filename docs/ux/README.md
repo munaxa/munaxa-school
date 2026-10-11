@@ -111,4 +111,3 @@ disagree, the rulebook governs.
 | --- | --- |
 | [design-governance.md](./design-governance.md) | Design-system ownership, contribution, review, versioning, migration, deprecation |
 | [documentation-architecture.md](./documentation-architecture.md) | How this documentation is structured and published |
-| [website-design-reference.md](./website-design-reference.md) | The public marketing site's design reference |

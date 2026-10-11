@@ -30,7 +30,6 @@ munaxa-school/
 │   ├── utils/      # Cross-cutting helpers (Jordan validators, money)
 │   ├── i18n/       # en/ar message catalogs
 │   └── brand/      # Munaxa logo lockups (product identity, deduplicated)
-├── landing/        # Marketing site (Next.js, Cloudflare Workers)
 ├── munaxademo/     # Hermetic public demo (Next.js, Cloudflare Workers)
 ├── prisma/         # Prisma schema & migrations (shared PostgreSQL)
 ├── infra/          # Postgres roles, load tests

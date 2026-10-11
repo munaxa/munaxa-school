@@ -142,8 +142,8 @@ jobs:
         working-directory: apps/mobile
         run: flutter test
 
-  # NOTE: munaxademo and landing are workspace members, built/typechecked/linted by the `node`
-  # job above via turbo. The design system they render is NOT built here — it is installed from
+  # NOTE: munaxademo is a workspace member, built/typechecked/linted by the `node` job above
+  # via turbo. The design system it renders is NOT built here — it is installed from
   # the registry as @munaxa/*, and munaxa-platform's own CI is what proves it good.
 
   security:

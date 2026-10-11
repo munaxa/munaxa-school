@@ -55,7 +55,7 @@ def write(img, *paths, **kw):
         print("wrote", p)
 
 
-web = ["apps/admin/src/app", "munaxademo/src/app", "landing/src/app"]
+web = ["apps/admin/src/app", "munaxademo/src/app"]
 # Favicon + PWA icon = the M symbol, transparent.
 write(pad(SYMBOL, 512, 0.86), *[f"{d}/icon.png" for d in web])
 write(pad(SYMBOL, 256, 0.90), *[f"{d}/favicon.ico" for d in web],

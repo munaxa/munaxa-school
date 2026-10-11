@@ -6,7 +6,5 @@ build
 coverage
 pnpm-lock.yaml
 apps/mobile
-landing
-munaxalanding.bak
 *.md
 storybook-static/
