@@ -50,10 +50,51 @@ export const envSchema = z
     SENTRY_DSN: z.string().optional(),
     SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 
+    /**
+     * Where this installation's entitlements come from. `DATABASE` (default): the subscription
+     * plane in this database, exactly as before. `LICENSE_FILE`: a signed Munaxa licence on disk,
+     * verified offline against the public keys below — for a school running Munaxa on its own
+     * server. A licence that is missing or fails verification grants nothing; it never falls back
+     * to the database's permissive "no subscription" behaviour.
+     */
+    LICENSING_MODE: z.enum(['DATABASE', 'LICENSE_FILE']).default('DATABASE'),
+    LICENSE_FILE_PATH: z.string().min(1).optional(),
+    /** JSON `[{"kid":"…","publicKey":"-----BEGIN PUBLIC KEY-----…"}]`. Public keys only. */
+    LICENSE_PUBLIC_KEYS: z.string().min(1).optional(),
+    LICENSE_ALGORITHM: z.enum(['ES256', 'RS256']).default('ES256'),
+    LICENSE_INSTALLATION_ID: z.string().min(1).max(128).optional(),
+
     THROTTLE_TTL: z.coerce.number().int().positive().default(60),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(120),
   })
   .superRefine((env, ctx) => {
+    // Licensing, in every environment: a mode whose inputs are missing would boot and then
+    // refuse every write, which reads as an outage rather than as the misconfiguration it is.
+    if (env.LICENSING_MODE === 'LICENSE_FILE') {
+      for (const key of [
+        'LICENSE_FILE_PATH',
+        'LICENSE_PUBLIC_KEYS',
+        'LICENSE_INSTALLATION_ID',
+      ] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: 'required when LICENSING_MODE=LICENSE_FILE',
+          });
+        }
+      }
+      if (env.LICENSE_PUBLIC_KEYS) {
+        const problem = publicKeysProblem(env.LICENSE_PUBLIC_KEYS);
+        if (problem)
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['LICENSE_PUBLIC_KEYS'],
+            message: problem,
+          });
+      }
+    }
+
     // Production hardening: secrets that are conveniences in dev are mandatory in production.
     if (env.NODE_ENV !== 'production') return;
     if (!env.JWT_ACCESS_SECRET) {
@@ -80,6 +121,37 @@ export const envSchema = z
   });
 
 export type Env = z.infer<typeof envSchema>;
+
+export interface LicensePublicKey {
+  kid: string;
+  publicKey: string;
+}
+
+/** Parses `LICENSE_PUBLIC_KEYS`. Throws on anything that is not a non-empty array of keys. */
+export function parseLicensePublicKeys(raw: string): LicensePublicKey[] {
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('not a non-empty array');
+  return parsed.map((entry: unknown) => {
+    const e = entry as Record<string, unknown>;
+    if (typeof e.kid !== 'string' || typeof e.publicKey !== 'string') {
+      throw new Error('each key needs a kid and a publicKey');
+    }
+    return { kid: e.kid, publicKey: e.publicKey };
+  });
+}
+
+function publicKeysProblem(raw: string): string | null {
+  try {
+    const keys = parseLicensePublicKeys(raw);
+    // An installation holding a private key could sign its own licence.
+    if (keys.some((k) => /PRIVATE KEY/.test(k.publicKey))) {
+      return 'holds a private key; an installation holds public keys only';
+    }
+    return null;
+  } catch (error) {
+    return `is not valid: ${(error as Error).message}`;
+  }
+}
 
 export function validateEnv(config: Record<string, unknown>): Env {
   const parsed = envSchema.safeParse(config);

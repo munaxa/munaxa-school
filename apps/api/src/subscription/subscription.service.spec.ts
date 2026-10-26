@@ -3,8 +3,14 @@ import { LimitKey, PlanFeature } from '@school/domain';
 import { SubscriptionService } from './subscription.service';
 import type { SubscriptionRepository } from './subscription.repository';
 import type { SubscriptionSnapshot } from './subscription.types';
+import type { LicenceSource } from './licence.source';
 
 const TENANT = 't1';
+
+/** `LICENSING_MODE=DATABASE`: the licence defers to the subscription plane, as before. */
+const databaseMode = {
+  current: () => Promise.resolve({ configured: false }),
+} as unknown as LicenceSource;
 
 /** Build a snapshot with a Starter-like plan by default. */
 function snapshot(
@@ -86,7 +92,7 @@ function makeService(snap: SubscriptionSnapshot) {
     loadSnapshot: jest.fn().mockResolvedValue(snap),
     setUsage,
   } as unknown as SubscriptionRepository;
-  return { service: new SubscriptionService(repo), setUsage };
+  return { service: new SubscriptionService(repo, databaseMode), setUsage };
 }
 
 describe('SubscriptionService', () => {

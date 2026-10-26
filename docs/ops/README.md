@@ -7,6 +7,7 @@ Operational documentation for running Munaxa in production. Architecture rationa
 |-----|---------|
 | [deployment.md](./deployment.md) | Build, configure, release (zero-downtime), rollback, feature flags |
 | [runbooks.md](./runbooks.md) | Incident response: outages, DB, rate limits, **backups, DR**, secrets, DSR |
+| [licensing.md](./licensing.md) | On-premises licensing: a signed Munaxa licence verified offline decides capabilities, limits and writes; renewal and server replacement |
 | [monitoring.md](./monitoring.md) | Signals, golden signals/SLOs, alerts, dashboards |
 | [infrastructure.md](./infrastructure.md) | Topology, DB roles, scaling, network/security boundaries, environments |
 | [security-review-checklist.md](./security-review-checklist.md) | Per-release security gate (OWASP-mapped) |
