@@ -3,6 +3,7 @@ import { LimitKey } from '@school/domain';
 import { DomainEvents, type DomainEvent } from '../events/domain-events';
 import { SubscriptionService } from './subscription.service';
 import { SubscriptionRepository } from './subscription.repository';
+import { LicenceSource } from './licence.source';
 
 /** How a domain event maps onto the usage table: set an absolute value, or increment by a delta. */
 export interface UsageMutation {
@@ -27,6 +28,7 @@ export class UsageService implements OnModuleInit {
     private readonly events: DomainEvents,
     private readonly repo: SubscriptionRepository,
     private readonly subscriptions: SubscriptionService,
+    private readonly licence: LicenceSource,
   ) {}
 
   onModuleInit(): void {
@@ -58,7 +60,12 @@ export class UsageService implements OnModuleInit {
     const mutation = UsageService.toMutation(event);
     if (!mutation) return;
     if (mutation.set !== undefined) {
-      await this.repo.setUsage(event.tenantId, mutation.metric, Math.max(0, mutation.set));
+      const value = Math.max(0, mutation.set);
+      await this.repo.setUsage(event.tenantId, mutation.metric, value);
+      // Levels only: the central service records what a tenant holds, not traffic counters. A
+      // no-op unless this deployment is hosted (`LICENSING_MODE=CONTROL_PLANE`); never awaited by
+      // the request, and never able to fail it.
+      void this.licence.reportUsage(event.tenantId, mutation.metric, value);
     } else if (mutation.increment !== undefined) {
       await this.repo.incrementUsage(event.tenantId, mutation.metric, mutation.increment);
     }

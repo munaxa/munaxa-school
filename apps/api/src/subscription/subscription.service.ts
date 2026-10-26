@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { canMutate, isCoreModule, LimitKey, PlanFeature } from '@school/domain';
+import { canLogin, canMutate, isCoreModule, LimitKey, PlanFeature } from '@school/domain';
 import type { SubscriptionPlan, SubscriptionFeature } from '@prisma/client';
 import {
   OperationKind,
@@ -73,7 +73,7 @@ export class SubscriptionService {
 
   /** The evaluation context for a licence decision about this tenant. */
   private licenceContext(tenantId: string, state: Extract<LicenceState, { configured: true }>) {
-    return { now: state.evaluatedAt, tenantId, product: SCHOOL_PRODUCT_KEY };
+    return { now: state.evaluatedAt, tenantId, product: SCHOOL_PRODUCT_KEY, cap: state.cap };
   }
 
   private async snapshot(tenantId: string): Promise<SubscriptionSnapshot> {
@@ -102,7 +102,7 @@ export class SubscriptionService {
    */
   async canUseFeature(tenantId: string, key: string): Promise<boolean> {
     if (isCoreModule(key)) return true;
-    const licence = await this.licence.current();
+    const licence = await this.licence.current(tenantId);
     if (licence.configured) {
       return checkFeature(
         licence.snapshot,
@@ -125,7 +125,7 @@ export class SubscriptionService {
    * `limitOverride` wins over the plan column.
    */
   async getLimit(tenantId: string, key: string): Promise<number | null> {
-    const licence = await this.licence.current();
+    const licence = await this.licence.current(tenantId);
     if (licence.configured) {
       // No licence, or one for another school: a ceiling of zero, never unlimited.
       if (licence.snapshot === null || licence.snapshot.tenantId !== tenantId) return 0;
@@ -143,7 +143,7 @@ export class SubscriptionService {
 
   /** The tenant's subscription status, or `null` when it has no subscription. */
   async status(tenantId: string): Promise<string | null> {
-    const licence = await this.licence.current();
+    const licence = await this.licence.current(tenantId);
     if (licence.configured) {
       const { status } = accessModeOf(licence.snapshot, this.licenceContext(tenantId, licence));
       // No trustworthy licence reads as EXPIRED — read-only — which is what it is.
@@ -154,12 +154,24 @@ export class SubscriptionService {
   }
 
   /**
+   * Why a school's users may not sign in, or `null` when they may — the subscription half of the
+   * sign-in decision (the account's own status is the other half). Only an ARCHIVED school is
+   * refused: in every other state its users sign in and the read-only guard decides what they may
+   * change (see `canLogin`). Platform staff are not subject to it.
+   */
+  async signInRefusal(tenantId: string): Promise<string | null> {
+    const status = await this.status(tenantId);
+    if (status === null || canLogin(status)) return null;
+    return "This school's Munaxa subscription has ended and its records have been archived. Contact Munaxa to restore access.";
+  }
+
+  /**
    * Whether the tenant may perform create/update/delete right now. False in READ_ONLY and any
    * suspended/terminal state; true when ACTIVE/TRIALING/PAST_DUE/GRACE_PERIOD or un-subscribed.
    * Delegates the state→policy decision to the shared domain helper (single source of truth).
    */
   async canMutate(tenantId: string): Promise<boolean> {
-    const licence = await this.licence.current();
+    const licence = await this.licence.current(tenantId);
     if (licence.configured) {
       return checkOperation(
         licence.snapshot,
@@ -224,6 +236,7 @@ export class SubscriptionService {
    * exceed the plan limit. Core capacity is never blocked here — only metered dimensions.
    */
   async assertWithinLimit(tenantId: string, key: string, additional = 1): Promise<void> {
+    await this.assertGrowth(tenantId);
     const limit = await this.getLimit(tenantId, key);
     if (limit === null) return; // unlimited
     const used = await this.currentUsage(tenantId, key);
@@ -244,10 +257,32 @@ export class SubscriptionService {
     currentCount: number,
     additional = 1,
   ): Promise<void> {
+    await this.assertGrowth(tenantId);
     const limit = await this.getLimit(tenantId, key);
     if (limit !== null && currentCount + additional > limit) {
       const plan = await this.currentPlan(tenantId);
       throw new ForbiddenException(upgradeMessage(key, limit, plan?.name ?? 'your current'));
+    }
+  }
+
+  /**
+   * Under a licence or the central service, growth needs the contract's say-so before any limit is
+   * counted: a tenant whose entitlements are only known from a stale snapshot keeps working but
+   * adds nothing, and an expired or suspended one adds nothing at all. The database plane keeps
+   * its own rule, enforced by {@link ReadOnlyStateGuard}.
+   */
+  private async assertGrowth(tenantId: string): Promise<void> {
+    const licence = await this.licence.current(tenantId);
+    if (!licence.configured) return;
+    const decision = checkOperation(
+      licence.snapshot,
+      OperationKind.GROWTH,
+      this.licenceContext(tenantId, licence),
+    );
+    if (!decision.allowed) {
+      throw new ForbiddenException(
+        "Your school's subscription does not allow adding more right now. Existing records are unaffected.",
+      );
     }
   }
 
@@ -293,8 +328,13 @@ export class SubscriptionService {
       features[key] = await this.canUseFeature(tenantId, key);
     }
 
+    const licence = await this.licence.current(tenantId);
     return {
-      status: sub?.status ?? 'NONE',
+      // Under a licence or the central service, the contract's status, not the local table's.
+      status: licence.configured
+        ? // Every shared state has a School name (see `toSchoolStatus`).
+          (((await this.status(tenantId)) ?? 'NONE') as SubscriptionSummary['status'])
+        : (sub?.status ?? 'NONE'),
       billingCycle: sub?.billingCycle ?? null,
       plan,
       isTrial: await this.isTrial(tenantId),

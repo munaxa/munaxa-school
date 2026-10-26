@@ -58,15 +58,6 @@ export const SubscriptionState = {
 } as const;
 export type SubscriptionState = (typeof SubscriptionState)[keyof typeof SubscriptionState];
 
-/** States in which the school may still sign in and view data. */
-const LOGINABLE = new Set<string>([
-  SubscriptionState.TRIALING,
-  SubscriptionState.ACTIVE,
-  SubscriptionState.PAST_DUE,
-  SubscriptionState.GRACE_PERIOD,
-  SubscriptionState.READ_ONLY,
-]);
-
 /** States in which the school retains full read+write access to its data. */
 const WRITABLE = new Set<string>([
   SubscriptionState.TRIALING,
@@ -75,9 +66,17 @@ const WRITABLE = new Set<string>([
   SubscriptionState.GRACE_PERIOD,
 ]);
 
-/** Whether a school in this state can sign in at all. */
+/**
+ * Whether a school in this state can sign in at all.
+ *
+ * Every state but ARCHIVED. Signing in is how a school reaches its own records, and the Munaxa
+ * licensing contract keeps those reachable in every state short of deletion: a suspended or expired
+ * school reads them, a cancelled one exports them. What a signed-in user may then *do* is decided
+ * per request by {@link canMutate} and the read-only guard — never by refusing the door. ARCHIVED
+ * is School's own terminal state, after the retention period, and is not loginable as a customer.
+ */
 export function canLogin(status: string): boolean {
-  return LOGINABLE.has(status);
+  return status !== SubscriptionState.ARCHIVED;
 }
 
 /**

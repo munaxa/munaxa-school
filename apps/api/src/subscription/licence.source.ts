@@ -1,82 +1,242 @@
 import { readFile } from 'node:fs/promises';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  AccessMode,
+  SAAS_AVAILABILITY_POLICY,
+  entitlementsPath,
   licenseVerifier,
+  readEntitlementResponse,
+  resolveSnapshot,
+  unreachable,
+  usagePath,
   verifyLicense,
+  type EntitlementAnswer,
   type EntitlementSnapshot,
   type LicenseVerifier,
+  type UsageBatch,
 } from '@munaxa/licensing';
 import { parseLicensePublicKeys, type Env } from '../config/env.validation';
 
 /** This product's key in every Munaxa licence. */
 export const SCHOOL_PRODUCT_KEY = 'school';
 
+/** The `fetch` the control-plane client sends with. Bound only by tests. */
+export const LICENSING_FETCH = Symbol('LICENSING_FETCH');
+
 export type LicenceState =
   /** `LICENSING_MODE=DATABASE`: the subscription plane decides, as it always has. */
   | { configured: false }
   /**
-   * `LICENSING_MODE=LICENSE_FILE`: the licence decides. `snapshot` is `null` when the file is
-   * missing or fails verification, and then nothing beyond the core modules is granted.
+   * `LICENSE_FILE` or `CONTROL_PLANE`: the Munaxa licensing contract decides. `snapshot` is `null`
+   * when nothing trustworthy is known, and then nothing beyond the core modules is granted.
    */
   | {
       configured: true;
       snapshot: EntitlementSnapshot | null;
+      /** The ceiling an outage imposes on top of the snapshot. `FULL` when the answer is fresh. */
+      cap: AccessMode;
       reason: string | null;
       evaluatedAt: Date;
     };
 
+type Configured = Extract<LicenceState, { configured: true }>;
+
+const CONTROL_PLANE_TIMEOUT_MS = 3_000;
+
 /**
- * The on-premises licence: a signed Munaxa licence file, verified offline with the shared
- * contract (`@munaxa/licensing`). No network, and no key that could sign one — the installation
- * holds public keys only.
+ * Where this installation's entitlements come from, when not from its own database.
  *
- * Re-read at most once per {@link LicenceSource.TTL_MS}, so renewing is copying a new file into
- * place. The latest instant observed is kept for the life of the process and decisions are made at
- * the later of it and the clock, so winding the clock back cannot un-expire a licence while the
- * API runs; across a restart only the licence's own issue time is a floor (see the licensing
- * runbook for that limit).
+ * - **`LICENSE_FILE`** (a school's own server): a signed Munaxa licence, verified offline with the
+ *   shared contract (`@munaxa/licensing`). No network, and no key that could sign one — the
+ *   installation holds public keys only. Re-read at most once per {@link LicenceSource.TTL_MS}, so
+ *   renewing is copying a new file into place.
+ * - **`CONTROL_PLANE`** (Munaxa-hosted): the central subscription service, asked per tenant with
+ *   this deployment's service credential and reused for {@link LicenceSource.TTL_MS}. When it
+ *   cannot be asked, the last snapshot it gave is used, degraded by age through the shared outage
+ *   policy (full for an hour, no growth for a day, read-only for a week, then nothing). A `404` is
+ *   an answer — no subscription — and drops that snapshot, so it cannot bridge a later outage into
+ *   access the service has already withdrawn.
+ *
+ * The latest instant observed is kept for the life of the process and decisions are made at the
+ * later of it and the clock, so winding the clock back cannot un-expire a term while the API runs.
+ * Across a restart only a licence's own issue time is a floor, and a hosted deployment starts with
+ * no remembered snapshot: if the service is down at that moment, tenants are read-only on their
+ * core modules until it answers (see the licensing runbook).
  */
 @Injectable()
 export class LicenceSource {
   static readonly TTL_MS = 60_000;
   private readonly logger = new Logger(LicenceSource.name);
-  private readonly settings: {
+  private readonly file: {
     path: string;
     installationId: string;
     verifier: LicenseVerifier;
-  } | null;
-  private cached: { state: LicenceState; until: number } | null = null;
+  } | null = null;
+  private readonly controlPlane: { url: string; token: string } | null = null;
+  private readonly fetch: typeof fetch;
+  private fileCache: { state: Configured; until: number } | null = null;
+  private readonly tenantCache = new Map<string, { state: Configured; until: number }>();
+  private readonly lastGood = new Map<string, EntitlementSnapshot>();
   private lastObservedAt: Date | null = null;
 
-  constructor(config: ConfigService<Env, true>) {
-    if (config.get('LICENSING_MODE', { infer: true }) !== 'LICENSE_FILE') {
-      this.settings = null;
-      return;
+  constructor(
+    config: ConfigService<Env, true>,
+    @Optional() @Inject(LICENSING_FETCH) fetchImpl?: typeof fetch,
+  ) {
+    this.fetch = fetchImpl ?? globalThis.fetch;
+    const mode = config.get('LICENSING_MODE', { infer: true });
+    // Boot validation has already required and checked what each mode needs.
+    if (mode === 'LICENSE_FILE') {
+      this.file = {
+        path: config.get('LICENSE_FILE_PATH', { infer: true }),
+        installationId: config.get('LICENSE_INSTALLATION_ID', { infer: true }),
+        verifier: licenseVerifier(
+          config.get('LICENSE_ALGORITHM', { infer: true }),
+          parseLicensePublicKeys(config.get('LICENSE_PUBLIC_KEYS', { infer: true })),
+        ),
+      };
+    } else if (mode === 'CONTROL_PLANE') {
+      this.controlPlane = {
+        url: (config.get('CONTROL_PLANE_URL', { infer: true }) ?? '').replace(/\/+$/, ''),
+        token: config.get('CONTROL_PLANE_TOKEN', { infer: true }) ?? '',
+      };
     }
-    // Boot validation has already required and checked these.
-    this.settings = {
-      path: config.get('LICENSE_FILE_PATH', { infer: true }),
-      installationId: config.get('LICENSE_INSTALLATION_ID', { infer: true }),
-      verifier: licenseVerifier(
-        config.get('LICENSE_ALGORITHM', { infer: true }),
-        parseLicensePublicKeys(config.get('LICENSE_PUBLIC_KEYS', { infer: true })),
-      ),
+  }
+
+  /** What is known about this tenant's entitlements right now. */
+  async current(tenantId: string, now: Date = new Date()): Promise<LicenceState> {
+    if (this.file !== null) {
+      if (this.fileCache && this.fileCache.until > now.getTime()) return this.fileCache.state;
+      const state = await this.readFile(this.file, now);
+      this.fileCache = { state, until: now.getTime() + LicenceSource.TTL_MS };
+      return state;
+    }
+    if (this.controlPlane !== null) {
+      const hit = this.tenantCache.get(tenantId);
+      if (hit && hit.until > now.getTime()) return hit.state;
+      const state = await this.ask(this.controlPlane, tenantId, now);
+      this.tenantCache.set(tenantId, { state, until: now.getTime() + LicenceSource.TTL_MS });
+      return state;
+    }
+    return { configured: false };
+  }
+
+  /**
+   * Report a metered level to the central service. Hosted deployments only, and best effort:
+   * usage is informational there, School enforces its own limits against its own rows, and a lost
+   * report never changes access. Idempotent on (tenant, metric, instant), so a retry is harmless.
+   */
+  async reportUsage(
+    tenantId: string,
+    metric: string,
+    value: number,
+    at = new Date(),
+  ): Promise<void> {
+    if (this.controlPlane === null) return;
+    const batch: UsageBatch = {
+      reports: [
+        { tenantId, metric, value: Math.max(0, Math.trunc(value)), measuredAt: at.toISOString() },
+      ],
+    };
+    try {
+      const response = await this.fetch(
+        `${this.controlPlane.url}${usagePath(SCHOOL_PRODUCT_KEY)}`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${this.controlPlane.token}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify(batch),
+          signal: AbortSignal.timeout(CONTROL_PLANE_TIMEOUT_MS),
+          redirect: 'error',
+        },
+      );
+      if (!response.ok) this.logger.warn(`Usage report refused: HTTP ${response.status}`);
+    } catch (error) {
+      this.logger.warn(`Usage report not delivered: ${(error as Error).name}`);
+    }
+  }
+
+  private observe(now: Date): Date {
+    const evaluatedAt =
+      this.lastObservedAt && this.lastObservedAt > now ? this.lastObservedAt : now;
+    this.lastObservedAt = evaluatedAt;
+    return evaluatedAt;
+  }
+
+  private async ask(
+    settings: { url: string; token: string },
+    tenantId: string,
+    now: Date,
+  ): Promise<Configured> {
+    const evaluatedAt = this.observe(now);
+    const answer = await this.fetchEntitlements(settings, tenantId);
+    if (answer.kind === 'SNAPSHOT') {
+      this.lastGood.set(tenantId, answer.snapshot);
+      return {
+        configured: true,
+        snapshot: answer.snapshot,
+        cap: AccessMode.FULL,
+        reason: null,
+        evaluatedAt,
+      };
+    }
+    this.logger.warn(`Entitlements for ${tenantId} could not be confirmed: ${answer.reason}`);
+    if (answer.kind === 'NONE') {
+      this.lastGood.delete(tenantId);
+      return {
+        configured: true,
+        snapshot: null,
+        cap: AccessMode.NONE,
+        reason: answer.reason,
+        evaluatedAt,
+      };
+    }
+    const resolved = resolveSnapshot(
+      null,
+      this.lastGood.get(tenantId) ?? null,
+      evaluatedAt,
+      SAAS_AVAILABILITY_POLICY,
+    );
+    return {
+      configured: true,
+      snapshot: resolved.snapshot,
+      cap: resolved.cap,
+      reason: answer.reason,
+      evaluatedAt,
     };
   }
 
-  async current(now: Date = new Date()): Promise<LicenceState> {
-    if (this.settings === null) return { configured: false };
-    if (this.cached && this.cached.until > now.getTime()) return this.cached.state;
-    const state = await this.read(this.settings, now);
-    this.cached = { state, until: now.getTime() + LicenceSource.TTL_MS };
-    return state;
+  /** Never throws: an outage is an answer, and a thrown error tends to be caught permissively. */
+  private async fetchEntitlements(
+    settings: { url: string; token: string },
+    tenantId: string,
+  ): Promise<EntitlementAnswer> {
+    try {
+      const response = await this.fetch(
+        `${settings.url}${entitlementsPath(SCHOOL_PRODUCT_KEY, tenantId)}`,
+        {
+          headers: { authorization: `Bearer ${settings.token}`, accept: 'application/json' },
+          signal: AbortSignal.timeout(CONTROL_PLANE_TIMEOUT_MS),
+          // A redirect would carry the credential somewhere this deployment was not told about.
+          redirect: 'error',
+        },
+      );
+      return readEntitlementResponse(
+        { status: response.status, body: await response.text() },
+        { product: SCHOOL_PRODUCT_KEY, tenantId },
+      );
+    } catch (error) {
+      return unreachable((error as Error).name === 'TimeoutError' ? 'TIMEOUT' : 'NETWORK');
+    }
   }
 
-  private async read(
-    settings: NonNullable<LicenceSource['settings']>,
+  private async readFile(
+    settings: NonNullable<LicenceSource['file']>,
     now: Date,
-  ): Promise<LicenceState> {
+  ): Promise<Configured> {
     const evaluatedAt =
       this.lastObservedAt && this.lastObservedAt > now ? this.lastObservedAt : now;
     let text: string;
@@ -94,11 +254,17 @@ export class LicenceSource {
     });
     if (!result.ok) return this.refused(`LICENSE_${result.reason}`, evaluatedAt);
     this.lastObservedAt = evaluatedAt;
-    return { configured: true, snapshot: result.snapshot, reason: null, evaluatedAt };
+    return {
+      configured: true,
+      snapshot: result.snapshot,
+      cap: AccessMode.FULL,
+      reason: null,
+      evaluatedAt,
+    };
   }
 
-  private refused(reason: string, evaluatedAt: Date): LicenceState {
+  private refused(reason: string, evaluatedAt: Date): Configured {
     this.logger.warn(`The licence could not be confirmed: ${reason}`);
-    return { configured: true, snapshot: null, reason, evaluatedAt };
+    return { configured: true, snapshot: null, cap: AccessMode.NONE, reason, evaluatedAt };
   }
 }

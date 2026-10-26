@@ -55,9 +55,16 @@ export const envSchema = z
      * plane in this database, exactly as before. `LICENSE_FILE`: a signed Munaxa licence on disk,
      * verified offline against the public keys below — for a school running Munaxa on its own
      * server. A licence that is missing or fails verification grants nothing; it never falls back
-     * to the database's permissive "no subscription" behaviour.
+     * to the database's permissive "no subscription" behaviour. `CONTROL_PLANE`: the central Munaxa
+     * subscription service, asked per tenant with this deployment's service credential — for
+     * Munaxa-hosted School. A tenant it has no subscription for gets nothing beyond the core
+     * modules, never the permissive default.
      */
-    LICENSING_MODE: z.enum(['DATABASE', 'LICENSE_FILE']).default('DATABASE'),
+    LICENSING_MODE: z.enum(['DATABASE', 'LICENSE_FILE', 'CONTROL_PLANE']).default('DATABASE'),
+    /** The central service's origin, e.g. `https://control.munaxa.com`. */
+    CONTROL_PLANE_URL: z.string().url().optional(),
+    /** This deployment's service credential (`mxc_…`), issued in the Super Admin portal. A secret. */
+    CONTROL_PLANE_TOKEN: z.string().min(20).optional(),
     LICENSE_FILE_PATH: z.string().min(1).optional(),
     /** JSON `[{"kid":"…","publicKey":"-----BEGIN PUBLIC KEY-----…"}]`. Public keys only. */
     LICENSE_PUBLIC_KEYS: z.string().min(1).optional(),
@@ -92,6 +99,26 @@ export const envSchema = z
             path: ['LICENSE_PUBLIC_KEYS'],
             message: problem,
           });
+      }
+    }
+
+    if (env.LICENSING_MODE === 'CONTROL_PLANE') {
+      for (const key of ['CONTROL_PLANE_URL', 'CONTROL_PLANE_TOKEN'] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: 'required when LICENSING_MODE=CONTROL_PLANE',
+          });
+        }
+      }
+      // The credential travels in a header: never over plain HTTP outside a developer's machine.
+      if (env.NODE_ENV === 'production' && env.CONTROL_PLANE_URL?.startsWith('http://')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CONTROL_PLANE_URL'],
+          message: 'must be https in production',
+        });
       }
     }
 

@@ -286,3 +286,30 @@ describe('SubscriptionService', () => {
     });
   });
 });
+
+describe('the sign-in policy', () => {
+  it('lets every school in except an archived one', async () => {
+    for (const status of [
+      'TRIALING',
+      'ACTIVE',
+      'PAST_DUE',
+      'READ_ONLY',
+      'SUSPENDED',
+      'EXPIRED',
+      'CANCELLED',
+    ]) {
+      const { service } = makeService(snapshot({ status }));
+      await expect(service.signInRefusal(TENANT)).resolves.toBeNull();
+    }
+    const { service: archived } = makeService(snapshot({ status: 'ARCHIVED' }));
+    await expect(archived.signInRefusal(TENANT)).resolves.toMatch(/archived/);
+    const { service: unsubscribed } = makeService(snapshot({ noSubscription: true }));
+    await expect(unsubscribed.signInRefusal(TENANT)).resolves.toBeNull();
+  });
+
+  it('a school that signs in while suspended reads but cannot change anything', async () => {
+    const { service } = makeService(snapshot({ status: 'SUSPENDED' }));
+    await expect(service.signInRefusal(TENANT)).resolves.toBeNull();
+    await expect(service.canMutate(TENANT)).resolves.toBe(false);
+  });
+});

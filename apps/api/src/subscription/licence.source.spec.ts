@@ -81,7 +81,7 @@ function service(): SubscriptionService {
 describe('LicenceSource and SubscriptionService on premises', () => {
   it('in DATABASE mode the licence defers to the subscription plane', async () => {
     const source = new LicenceSource(configOf({ DATABASE_URL: env.DATABASE_URL }));
-    await expect(source.current()).resolves.toEqual({ configured: false });
+    await expect(source.current(TENANT)).resolves.toEqual({ configured: false });
   });
 
   it('a valid licence decides features, limits and writes', async () => {
