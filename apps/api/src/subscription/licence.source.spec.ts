@@ -9,6 +9,7 @@ import { PlanFeature } from '@school/domain';
 import type { Env } from '../config/env.validation';
 import { validateEnv } from '../config/env.validation';
 import { LicenceSource } from './licence.source';
+import { MemoryLicensingStateStore } from './licensing-state.store';
 import { SubscriptionService } from './subscription.service';
 import type { SubscriptionRepository } from './subscription.repository';
 
@@ -75,12 +76,18 @@ const untouchable = new Proxy({} as SubscriptionRepository, {
 });
 
 function service(): SubscriptionService {
-  return new SubscriptionService(untouchable, new LicenceSource(configOf(env)));
+  return new SubscriptionService(
+    untouchable,
+    new LicenceSource(configOf(env), new MemoryLicensingStateStore()),
+  );
 }
 
 describe('LicenceSource and SubscriptionService on premises', () => {
   it('in DATABASE mode the licence defers to the subscription plane', async () => {
-    const source = new LicenceSource(configOf({ DATABASE_URL: env.DATABASE_URL }));
+    const source = new LicenceSource(
+      configOf({ DATABASE_URL: env.DATABASE_URL }),
+      new MemoryLicensingStateStore(),
+    );
     await expect(source.current(TENANT)).resolves.toEqual({ configured: false });
   });
 

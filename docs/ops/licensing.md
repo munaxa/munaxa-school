@@ -67,9 +67,10 @@ mistake degrades schools over hours rather than locking them out at once — and
 every refresh. A `404` is an answer: no subscription. It applies at once and is not bridged by any
 remembered answer.
 
-The last answers are remembered in memory only. A process that starts while the service is down
-has nothing to bridge with, so its schools are read-only on their core modules until the service
-answers. Start new processes only when the service is reachable, or roll them one at a time.
+The last answer for each school is kept in the `LicensingState` table, so a process that starts
+while the service is down bridges the outage with it exactly as a running one would — degraded by
+its age, by the table above. A school the service last answered "no subscription" for has no
+snapshot to bridge with, and gets the core modules, read-only, until the service answers.
 
 ## On premises: `LICENSE_FILE`
 
@@ -90,7 +91,10 @@ The API refuses to start if any of these is missing, or if `LICENSE_PUBLIC_KEYS`
 ## Limits, stated rather than discovered
 
 - A licence cannot be revoked offline; it is valid until it ends.
-- Clock rollback: decisions are made at the later of the clock and the latest instant this process
-  has observed, so winding the clock back while the API runs is detected. Across a restart only a
-  licence's own issue time is a floor. School keeps that instant per process; Munaxa Docs persists
-  it in its database. Persisting it here needs a table, and is the follow-up if a site needs it.
+- Clock rollback: decisions are made at the later of the clock and the latest instant observed for
+  the school, which `LicensingState.lastObservedAt` keeps across restarts and only ever moves
+  forward. Winding the server clock back cannot make an ended term current, before or after a
+  restart. A clock that was wrong from the first boot and never moved backwards cannot be detected.
+- `LicensingState` is under the school's own row-level security and is created by the
+  `20261027090000_licensing_state` migration; `infra/postgres/app-role.sql` (run after migrations
+  in every deployment) grants the application role access to it.

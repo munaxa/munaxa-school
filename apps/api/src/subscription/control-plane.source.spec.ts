@@ -5,6 +5,7 @@ import { LimitKey, PlanFeature } from '@school/domain';
 import type { Env } from '../config/env.validation';
 import { validateEnv } from '../config/env.validation';
 import { LicenceSource } from './licence.source';
+import { MemoryLicensingStateStore } from './licensing-state.store';
 import { SubscriptionService } from './subscription.service';
 import type { SubscriptionRepository } from './subscription.repository';
 
@@ -71,9 +72,9 @@ const untouchable = new Proxy({} as SubscriptionRepository, {
   },
 });
 
-function setup() {
+function setup(store: MemoryLicensingStateStore = new MemoryLicensingStateStore()) {
   const http = fakeFetch();
-  const source = new LicenceSource(configOf(env), http.fetchImpl);
+  const source = new LicenceSource(configOf(env), store, http.fetchImpl);
   return { ...http, source, service: new SubscriptionService(untouchable, source) };
 }
 
@@ -172,6 +173,50 @@ describe('School against the central subscription service', () => {
     jest.setSystemTime(new Date('2026-12-01T00:00:00.000Z'));
     replies.push({ status: 200, body: snapshot({ expiresAt: '2027-01-01T00:00:00.000Z' }) });
     await expect(service.status(TENANT)).resolves.toBe('EXPIRED');
+  });
+
+  it('a restarted process bridges an outage with the answer an earlier one kept', async () => {
+    const store = new MemoryLicensingStateStore();
+    const first = setup(store);
+    first.replies.push({ status: 200, body: snapshot() });
+    await expect(first.service.canMutate(TENANT)).resolves.toBe(true);
+
+    // A new process, started while the service is down.
+    jest.setSystemTime(T0.getTime() + 0.5 * HOUR);
+    const restarted = setup(store);
+    restarted.replies.push({ status: 503 });
+    await expect(restarted.service.canMutate(TENANT)).resolves.toBe(true);
+    jest.setSystemTime(T0.getTime() + 48 * HOUR);
+    const later = setup(store);
+    later.replies.push(new Error('connect ECONNREFUSED'));
+    await expect(later.service.canMutate(TENANT)).resolves.toBe(false);
+    await expect(later.service.canUseFeature(TENANT, 'attendance')).resolves.toBe(true);
+  });
+
+  it('a kept "no subscription" is not bridged by anything after a restart', async () => {
+    const store = new MemoryLicensingStateStore();
+    const first = setup(store);
+    first.replies.push({ status: 200, body: snapshot() }, { status: 404 });
+    await first.service.canMutate(TENANT);
+    jest.setSystemTime(T0.getTime() + 2 * 60_000);
+    await expect(first.service.canMutate(TENANT)).resolves.toBe(false);
+    const restarted = setup(store);
+    restarted.replies.push({ status: 503 });
+    await expect(restarted.service.canMutate(TENANT)).resolves.toBe(false);
+  });
+
+  it('a clock wound back across a restart cannot make an ended term current', async () => {
+    const store = new MemoryLicensingStateStore();
+    const ended = snapshot({ expiresAt: '2027-01-01T00:00:00.000Z' });
+    jest.setSystemTime(new Date('2027-01-10T00:00:00.000Z'));
+    const first = setup(store);
+    first.replies.push({ status: 200, body: ended });
+    await expect(first.service.status(TENANT)).resolves.toBe('EXPIRED');
+    jest.setSystemTime(new Date('2026-12-01T00:00:00.000Z'));
+    const restarted = setup(store);
+    restarted.replies.push({ status: 200, body: ended });
+    await expect(restarted.service.status(TENANT)).resolves.toBe('EXPIRED');
+    await expect(restarted.service.canMutate(TENANT)).resolves.toBe(false);
   });
 
   it('reports usage levels best effort, never throwing', async () => {
