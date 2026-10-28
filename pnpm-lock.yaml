@@ -127,6 +127,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.717.0
         version: 3.1101.0
+      '@munaxa/licensing':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -2308,6 +2311,10 @@ packages:
 
   '@munaxa/crypto@2.4.1':
     resolution: {integrity: sha512-lwpqkVxalAqs+ckGLJ5wd0JxMp01W41yU9eMM8MyxGdotQ5jzJgkKbzJHcv+K/0DCgXZuXJNlIurdGZrqN9sqA==, tarball: https://npm.pkg.github.com/download/@munaxa/crypto/2.4.1/27441011962d39c0d0588eb8e3a5ae2a4185e8fd}
+    engines: {node: '>=22.12.0'}
+
+  '@munaxa/licensing@0.1.0':
+    resolution: {integrity: sha512-hO6bpa/zC4oKUtvhvA9ohWqK9LrxQ/7BG70w51OalLks2sdSWN2tKV1xP/kfwM6dRA9927OCRI4v514EN7/fRw==, tarball: https://npm.pkg.github.com/download/@munaxa/licensing/0.1.0/682b2146be9b9105f15c734f7467f32397edc715}
     engines: {node: '>=22.12.0'}
 
   '@munaxa/platform@1.3.0':
@@ -9945,6 +9952,10 @@ snapshots:
   '@munaxa/crypto@2.4.1':
     dependencies:
       '@munaxa/types': 2.4.1
+
+  '@munaxa/licensing@0.1.0':
+    dependencies:
+      '@munaxa/crypto': 2.4.1
 
   '@munaxa/platform@1.3.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
