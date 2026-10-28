@@ -12,7 +12,9 @@ import {
   StudentStatus,
   TransportDirection,
 } from '@prisma/client';
-import { TenantRepository } from '../../common/tenant.repository';
+import { lockScope, TenantRepository } from '../../common/tenant.repository';
+import { countStudents } from '../../people/students/student.repository';
+import { assertRoom, CAPACITY_SCOPE, type Capacity } from '../../subscription/capacity';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantConnectionManager } from '../../prisma/tenant-connection.service';
 import type { TxClient } from '../../prisma/tenant.helpers';
@@ -796,7 +798,7 @@ export class AdmissionsRepository extends TenantRepository {
    * Financial Account (Payer) and a single unified write path handles one or many students. Returns
    * the created enrollment (unchanged contract for existing callers).
    */
-  async commit(dto: CommitDto) {
+  async commit(dto: CommitDto, capacity: Capacity) {
     const quote = await this.run((tx) =>
       tx.enrollmentQuote.findFirst({
         where: { id: dto.quoteId },
@@ -823,37 +825,43 @@ export class AdmissionsRepository extends TenantRepository {
       existingParentId = link?.parentId;
     }
 
-    const result = await this.familyCommit({
-      idempotencyKey: dto.idempotencyKey,
-      academicYearId: quote.academicYearId,
-      ...(existingParentId ? { existingParentId } : {}),
-      ...(dto.parent ? { parent: dto.parent } : {}),
-      ownerType: FinancialAccountOwnerType.GUARDIAN,
-      paymentMode: quote.paymentMode,
-      installments: quote.installments,
-      ...(quote.firstDueDate
-        ? { firstDueDate: quote.firstDueDate.toISOString().slice(0, 10) }
-        : {}),
-      registrationFeePaid: dto.registrationFeePaid ?? true,
-      students: [
-        {
-          quoteId: dto.quoteId,
-          ...(dto.existingStudentId ? { existingStudentId: dto.existingStudentId } : {}),
-          ...(dto.student ? { student: dto.student } : {}),
-          ...(dto.sectionId ? { sectionId: dto.sectionId } : {}),
-          ...(dto.busRouteId ? { busRouteId: dto.busRouteId } : {}),
-          ...(dto.busTripRound ? { busTripRound: dto.busTripRound } : {}),
-          ...(dto.areaId ? { areaId: dto.areaId } : {}),
-          ...(dto.transportRequested !== undefined
-            ? { transportRequested: dto.transportRequested }
-            : {}),
-        },
-      ],
-    });
+    const result = await this.familyCommit(
+      {
+        idempotencyKey: dto.idempotencyKey,
+        academicYearId: quote.academicYearId,
+        ...(existingParentId ? { existingParentId } : {}),
+        ...(dto.parent ? { parent: dto.parent } : {}),
+        ownerType: FinancialAccountOwnerType.GUARDIAN,
+        paymentMode: quote.paymentMode,
+        installments: quote.installments,
+        ...(quote.firstDueDate
+          ? { firstDueDate: quote.firstDueDate.toISOString().slice(0, 10) }
+          : {}),
+        registrationFeePaid: dto.registrationFeePaid ?? true,
+        students: [
+          {
+            quoteId: dto.quoteId,
+            ...(dto.existingStudentId ? { existingStudentId: dto.existingStudentId } : {}),
+            ...(dto.student ? { student: dto.student } : {}),
+            ...(dto.sectionId ? { sectionId: dto.sectionId } : {}),
+            ...(dto.busRouteId ? { busRouteId: dto.busRouteId } : {}),
+            ...(dto.busTripRound ? { busTripRound: dto.busTripRound } : {}),
+            ...(dto.areaId ? { areaId: dto.areaId } : {}),
+            ...(dto.transportRequested !== undefined
+              ? { transportRequested: dto.transportRequested }
+              : {}),
+          },
+        ],
+      },
+      capacity,
+    );
 
     const enrollmentId = result.enrollmentIds[0];
     if (!enrollmentId) throw new BadRequestException('Commit produced no enrollment');
-    return this.run((tx) => tx.enrollment.findFirstOrThrow({ where: { id: enrollmentId } }));
+    const enrollment = await this.run((tx) =>
+      tx.enrollment.findFirstOrThrow({ where: { id: enrollmentId } }),
+    );
+    return { enrollment, studentsTotal: 'studentsTotal' in result ? result.studentsTotal : null };
   }
 
   // ── Atomic account registration commit (the single canonical write path) ──
@@ -867,7 +875,7 @@ export class AdmissionsRepository extends TenantRepository {
    * tenant requires finance approval, hold that student's enrollment in PENDING_APPROVAL (charges
    * deferred until approval — see decideModification); otherwise auto-approved.
    */
-  async familyCommit(dto: FamilyCommitDto) {
+  async familyCommit(dto: FamilyCommitDto, capacity: Capacity) {
     return this.run(async (tx, tenantId) => {
       if (!dto.students || dto.students.length === 0) {
         throw new BadRequestException('At least one student is required');
@@ -879,6 +887,17 @@ export class AdmissionsRepository extends TenantRepository {
         where: { tenantId_idempotencyKey: { tenantId, idempotencyKey: firstKey } },
       });
       if (prior) return this.loadFamilyResult(tx, dto.idempotencyKey);
+
+      // New students count against the plan's limit, under the same per-tenant lock every other
+      // student create takes, before this transaction takes any other.
+      const newStudents = dto.students.filter((entry) => !entry.existingStudentId).length;
+      let studentsTotal: number | null = null;
+      if (newStudents > 0) {
+        await lockScope(tx, CAPACITY_SCOPE.students, tenantId);
+        const current = await countStudents(tx);
+        assertRoom(capacity, current, newStudents);
+        studentsTotal = current + newStudents;
+      }
 
       // 1) Guardian — link an existing parent or create a new one (dedup by mobile).
       const relation = dto.parent?.relation ?? ParentRelation.GUARDIAN;
@@ -1137,7 +1156,7 @@ export class AdmissionsRepository extends TenantRepository {
         },
       });
 
-      return { financialAccount, plan: familyPlan, enrollmentIds };
+      return { financialAccount, plan: familyPlan, enrollmentIds, studentsTotal };
     });
   }
 
@@ -1178,7 +1197,11 @@ export class AdmissionsRepository extends TenantRepository {
    *   SEPARATE  — bill the new student through the family account but on their own independent plan.
    *   NEW_PLAN  — start a brand-new family plan (requires confirm=true; affects accounting).
    */
-  async addStudentToFamily(financialAccountId: string, dto: AddFamilyStudentDto) {
+  async addStudentToFamily(
+    financialAccountId: string,
+    dto: AddFamilyStudentDto,
+    capacity: Capacity,
+  ) {
     return this.run(async (tx, tenantId) => {
       const key = `${dto.idempotencyKey}:add`;
       const prior = await tx.registrationCommitment.findUnique({
@@ -1186,6 +1209,15 @@ export class AdmissionsRepository extends TenantRepository {
         select: { enrollmentId: true },
       });
       if (prior) return { enrollmentId: prior.enrollmentId, mode: dto.mode, reused: true };
+
+      // A new student counts against the plan's limit, under the students lock, first.
+      let studentsTotal: number | null = null;
+      if (!dto.existingStudentId) {
+        await lockScope(tx, CAPACITY_SCOPE.students, tenantId);
+        const current = await countStudents(tx);
+        assertRoom(capacity, current, 1);
+        studentsTotal = current + 1;
+      }
 
       const fa = await tx.payer.findFirst({
         where: { id: financialAccountId },
@@ -1382,7 +1414,13 @@ export class AdmissionsRepository extends TenantRepository {
         metadata: { financialAccountId, studentId, mode: dto.mode, planId },
       });
 
-      return { enrollmentId: enrollment.id, mode: dto.mode, financialAccountId, planId };
+      return {
+        enrollmentId: enrollment.id,
+        mode: dto.mode,
+        financialAccountId,
+        planId,
+        studentsTotal,
+      };
     });
   }
 

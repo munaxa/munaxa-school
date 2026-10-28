@@ -16,6 +16,7 @@ import {
   type SubscriptionStatus as SharedStatus,
 } from '@munaxa/licensing';
 import { LicenceSource, SCHOOL_PRODUCT_KEY, type LicenceState } from './licence.source';
+import { assertRoom, UNLIMITED, type Capacity } from './capacity';
 import { SubscriptionRepository } from './subscription.repository';
 import type {
   PlanView,
@@ -257,12 +258,25 @@ export class SubscriptionService {
     currentCount: number,
     additional = 1,
   ): Promise<void> {
+    assertRoom(await this.capacity(tenantId, key), currentCount, additional);
+  }
+
+  /**
+   * How far a counted dimension may grow, after refusing growth outright when the subscription does
+   * not allow it. The count is the caller's: see {@link Capacity}.
+   */
+  async capacity(tenantId: string, key: string): Promise<Capacity> {
     await this.assertGrowth(tenantId);
     const limit = await this.getLimit(tenantId, key);
-    if (limit !== null && currentCount + additional > limit) {
-      const plan = await this.currentPlan(tenantId);
-      throw new ForbiddenException(upgradeMessage(key, limit, plan?.name ?? 'your current'));
-    }
+    if (limit === null) return UNLIMITED;
+    // The plan is named only when this database's plane decides; under a licence or the central
+    // service the local plan is not the answer, and may not exist.
+    const licensed = (await this.licence.current(tenantId)).configured;
+    const plan = licensed ? null : await this.currentPlan(tenantId);
+    return {
+      limit,
+      refusal: new ForbiddenException(upgradeMessage(key, limit, plan?.name ?? 'your current')),
+    };
   }
 
   /**

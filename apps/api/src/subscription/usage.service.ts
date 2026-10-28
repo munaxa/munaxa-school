@@ -44,6 +44,8 @@ export class UsageService implements OnModuleInit {
       case 'CampusCreated':
       case 'CampusDeleted':
         return { metric: LimitKey.CAMPUSES, set: event.total };
+      case 'StaffChanged':
+        return { metric: LimitKey.STAFF, set: event.total };
       case 'StorageChanged':
         return { metric: LimitKey.STORAGE_GB, set: event.gigabytes };
       case 'ApiRequestRecorded':

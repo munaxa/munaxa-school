@@ -14,6 +14,7 @@ export type DomainEvent =
   | { type: 'StudentArchived'; tenantId: string; total: number }
   | { type: 'CampusCreated'; tenantId: string; total: number }
   | { type: 'CampusDeleted'; tenantId: string; total: number }
+  | { type: 'StaffChanged'; tenantId: string; total: number }
   | { type: 'StorageChanged'; tenantId: string; gigabytes: number }
   | { type: 'ApiRequestRecorded'; tenantId: string; count?: number }
   | { type: 'AiUsageRecorded'; tenantId: string; units?: number }

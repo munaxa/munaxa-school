@@ -1,38 +1,45 @@
 import { Injectable } from '@nestjs/common';
 import type { ParentStudent, Prisma, Student, StudentStatus, StudentVaccine } from '@prisma/client';
 import { TenantRepository } from '../../common/tenant.repository';
+import type { TxClient } from '../../prisma/tenant.helpers';
+import { assertRoom, CAPACITY_SCOPE, type Capacity } from '../../subscription/capacity';
 import { allocateStudentNumber } from './student-number';
+
+/**
+ * Non-deleted students in the transaction's tenant: the figure the plan's student limit counts.
+ * Shared with admissions, which creates students inside its own enrolment transaction.
+ */
+export function countStudents(tx: TxClient): Promise<number> {
+  return tx.student.count({ where: { deletedAt: null } });
+}
 
 /** A parent↔student link enriched with the parent's contact details. */
 export type ParentLink = Prisma.ParentStudentGetPayload<{ include: { parent: true } }>;
 
 @Injectable()
 export class StudentRepository extends TenantRepository {
-  create(data: Omit<Prisma.StudentUncheckedCreateInput, 'tenantId'>): Promise<Student> {
-    return this.run(async (tx, tenantId) => {
-      // Every student gets a permanent internal Student Number (Decision 6), unless one is supplied.
-      const studentNumber = data.studentNumber ?? (await allocateStudentNumber(tx, tenantId));
-      return tx.student.create({ data: { ...data, tenantId, studentNumber } });
-    });
-  }
-
-  /** Count non-deleted students in the tenant — the live figure for subscription quota checks. */
-  countActive(): Promise<number> {
-    return this.run((tx) => tx.student.count({ where: { deletedAt: null } }));
-  }
-
-  /** Create many students in one transaction; returns the created rows. */
-  createManyTx(
+  /**
+   * Creates the students in one transaction, only if the tenant's students plus these fit
+   * `capacity`. Counted and created under the tenant's students lock, so concurrent creates — two
+   * forms, a form and a CSV import, an admission — cannot each see room for the last place. All
+   * or nothing: when they do not fit, nothing is created. Returns the rows and the new total.
+   */
+  createWithinCapacity(
     rows: Array<Omit<Prisma.StudentUncheckedCreateInput, 'tenantId'>>,
-  ): Promise<Student[]> {
-    return this.run((tx, tenantId) =>
-      Promise.all(
-        rows.map(async (data) => {
-          const studentNumber = data.studentNumber ?? (await allocateStudentNumber(tx, tenantId));
-          return tx.student.create({ data: { ...data, tenantId, studentNumber } });
-        }),
-      ),
-    );
+    capacity: Capacity,
+  ): Promise<{ created: Student[]; total: number }> {
+    return this.runSerialized(CAPACITY_SCOPE.students, async (tx, tenantId) => {
+      const current = await countStudents(tx);
+      assertRoom(capacity, current, rows.length);
+      const created: Student[] = [];
+      for (const data of rows) {
+        // Every student gets a permanent internal Student Number (Decision 6), unless one is
+        // supplied. One at a time: each allocation must see the one before it.
+        const studentNumber = data.studentNumber ?? (await allocateStudentNumber(tx, tenantId));
+        created.push(await tx.student.create({ data: { ...data, tenantId, studentNumber } }));
+      }
+      return { created, total: current + created.length };
+    });
   }
 
   findMany(filter: {

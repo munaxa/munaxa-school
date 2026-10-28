@@ -1,3 +1,5 @@
+import type { DomainEvents } from '../../events/domain-events';
+import type { SubscriptionService } from '../../subscription/subscription.service';
 import { BadRequestException } from '@nestjs/common';
 import { AdmissionsService } from './admissions.service';
 import { AddFamilyStudentMode, type ReEnrollDto } from './admissions.dto';
@@ -22,7 +24,12 @@ function setup(ctx: { financialAccountId: string | null; alreadyEnrolled: boolea
     tryAutoGenerate: jest.fn().mockResolvedValue(undefined),
   } as unknown as RegistrationAgreementService;
   const quote = {} as unknown as QuoteService;
-  const service = new AdmissionsService(repo, quote, agreements);
+  // Re-enrolment never creates a student, so it never asks for capacity or publishes a total.
+  const subscriptions = {
+    capacity: jest.fn().mockRejectedValue(new Error('capacity is not asked on re-enrolment')),
+  } as unknown as SubscriptionService;
+  const events = { emit: jest.fn() } as unknown as DomainEvents;
+  const service = new AdmissionsService(repo, quote, agreements, subscriptions, events);
   return { service, reEnrollContext, addStudentToFamily };
 }
 
@@ -65,6 +72,8 @@ describe('AdmissionsService.reEnroll (Step 7 — shared pipeline, never recreate
         quoteId: 'quote-1',
         mode: AddFamilyStudentMode.NEW_PLAN,
       }),
+      // No new student, so no place under the plan's limit is taken.
+      { limit: null, refusal: null },
     );
   });
 
@@ -74,6 +83,10 @@ describe('AdmissionsService.reEnroll (Step 7 — shared pipeline, never recreate
       alreadyEnrolled: false,
     });
     await service.reEnroll({ ...dto, financialAccountId: 'payer-override' });
-    expect(addStudentToFamily).toHaveBeenCalledWith('payer-override', expect.any(Object));
+    expect(addStudentToFamily).toHaveBeenCalledWith(
+      'payer-override',
+      expect.any(Object),
+      expect.anything(),
+    );
   });
 });

@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EmploymentStatus, type Prisma } from '@prisma/client';
-import { Permission } from '@school/domain';
+import { LimitKey, Permission } from '@school/domain';
+import { requireTenantId } from '../../common/tenant.util';
+import { DomainEvents } from '../../events/domain-events';
+import { UNLIMITED, type Capacity } from '../../subscription/capacity';
+import { SubscriptionService } from '../../subscription/subscription.service';
 import { TenantContextStore } from '../../prisma/tenant-context';
 import {
   EmployeeRepository,
@@ -14,7 +18,12 @@ import type {
   TransitionEmployeeStatusDto,
   UpdateEmployeeDto,
 } from './employee.dto';
-import { allowedNextStatuses, canTransition, ENTRY_STATUSES } from './employee-lifecycle.logic';
+import {
+  allowedNextStatuses,
+  canTransition,
+  ENTRY_STATUSES,
+  isStaffStatus,
+} from './employee-lifecycle.logic';
 
 /** ISO date-string → Date, or undefined when absent. */
 function toDate(value: string | undefined): Date | undefined {
@@ -40,16 +49,29 @@ const SENSITIVE_FIELDS = [
 
 @Injectable()
 export class EmployeeService {
-  constructor(private readonly repo: EmployeeRepository) {}
+  constructor(
+    private readonly repo: EmployeeRepository,
+    private readonly subscriptions: SubscriptionService,
+    private readonly events: DomainEvents,
+  ) {}
 
-  create(dto: CreateEmployeeDto): Promise<EmployeeDetail> {
+  async create(dto: CreateEmployeeDto): Promise<EmployeeDetail> {
     const initialStatus = dto.status ?? EmploymentStatus.ACTIVE;
     if (!ENTRY_STATUSES.includes(initialStatus)) {
       throw new BadRequestException(
         `An employee cannot be created at status ${initialStatus}. Allowed: ${ENTRY_STATUSES.join(', ')}.`,
       );
     }
-    return this.repo.create(this.toCreateInput(dto), initialStatus, this.toTeachingInput(dto));
+    // Hiring straight onto the staff takes a place under the plan's staff limit; a candidate does
+    // not. The repository counts and creates under the staff lock.
+    const { employee, staffTotal } = await this.repo.create(
+      this.toCreateInput(dto),
+      initialStatus,
+      this.toTeachingInput(dto),
+      await this.staffCapacity(isStaffStatus(initialStatus)),
+    );
+    this.publishStaff(staffTotal);
+    return employee;
   }
 
   async list(query: ListEmployeesQueryDto): Promise<EmployeeListRow[]> {
@@ -104,13 +126,17 @@ export class EmployeeService {
           : `${employee.status} is a terminal status; no further transitions are allowed.`,
       );
     }
-    return this.repo.transitionStatus(
+    const joins = !isStaffStatus(employee.status) && isStaffStatus(dto.toStatus);
+    const result = await this.repo.transitionStatus(
       id,
       employee.status,
       dto.toStatus,
       dto.reason,
       toDate(dto.effectiveDate),
+      await this.staffCapacity(joins),
     );
+    this.publishStaff(result.staffTotal);
+    return result.employee;
   }
 
   async statusHistory(id: string): Promise<EmployeeDetail['statusHistory']> {
@@ -120,7 +146,21 @@ export class EmployeeService {
 
   async remove(id: string): Promise<void> {
     await this.assertExists(id);
-    await this.repo.softDelete(id);
+    const { staffTotal } = await this.repo.softDelete(id);
+    this.publishStaff(staffTotal);
+  }
+
+  /** The plan's staff capacity, asked only when a person is joining the staff. */
+  private staffCapacity(joins: boolean): Promise<Capacity> {
+    return joins
+      ? this.subscriptions.capacity(requireTenantId(), LimitKey.STAFF)
+      : Promise.resolve(UNLIMITED);
+  }
+
+  /** The new staff count, for the usage counter and the central service, when it moved. */
+  private publishStaff(total: number | null): void {
+    if (total !== null)
+      this.events.emit({ type: 'StaffChanged', tenantId: requireTenantId(), total });
   }
 
   private async assertExists(id: string) {

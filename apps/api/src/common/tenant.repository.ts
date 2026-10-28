@@ -30,6 +30,22 @@ export abstract class TenantRepository {
   }
 
   /**
+   * {@link run}, holding a transaction-scoped advisory lock on `(scope, tenant)` first, so units of
+   * work in the same scope for the same tenant run one at a time. For check-then-act on a count — a
+   * plan limit — where two concurrent requests would otherwise both see room for one more. The lock
+   * is released when the transaction ends; other tenants and other scopes never wait for it.
+   */
+  protected runSerialized<T>(
+    scope: string,
+    fn: (tx: TxClient, tenantId: string) => Promise<T>,
+  ): Promise<T> {
+    return this.run(async (tx, tenantId) => {
+      await lockScope(tx, scope, tenantId);
+      return fn(tx, tenantId);
+    });
+  }
+
+  /**
    * Write an audit log entry inside the SAME transaction as a state change, so the action and
    * its audit commit together (mandatory for financial actions — see Phase 9 / doc 10).
    */
@@ -54,4 +70,13 @@ export abstract class TenantRepository {
       },
     });
   }
+}
+
+/**
+ * Takes the transaction-scoped advisory lock on `(scope, tenant)`, for a unit of work that is
+ * already inside a transaction (see `TenantRepository.runSerialized`). Released at commit or
+ * rollback.
+ */
+export async function lockScope(tx: TxClient, scope: string, tenantId: string): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${scope}), hashtext(${tenantId}))`;
 }
