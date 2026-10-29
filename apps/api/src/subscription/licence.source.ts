@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import {
   AccessMode,
   SAAS_AVAILABILITY_POLICY,
+  applyRevocation,
+  resolveRevocationList,
+  revocationInForce,
   entitlementsPath,
   licenseVerifier,
   readEntitlementResponse,
@@ -73,6 +76,8 @@ export class LicenceSource {
     path: string;
     installationId: string;
     verifier: LicenseVerifier;
+    /** Where Munaxa delivers the signed revocation list; `null` when not configured. */
+    revocationPath: string | null;
   } | null = null;
   private readonly controlPlane: { url: string; token: string } | null = null;
   private readonly fetch: typeof fetch;
@@ -80,6 +85,8 @@ export class LicenceSource {
   private readonly tenantCache = new Map<string, { state: Configured; until: number }>();
   private readonly lastGood = new Map<string, EntitlementSnapshot>();
   private lastObservedAt: Date | null = null;
+  /** The newest revocation list this installation verified, as delivered (platform ADR-0022). */
+  private persistedRevocation: string | null = null;
   private readonly loaded = new Set<string>();
 
   constructor(
@@ -98,6 +105,7 @@ export class LicenceSource {
           config.get('LICENSE_ALGORITHM', { infer: true }),
           parseLicensePublicKeys(config.get('LICENSE_PUBLIC_KEYS', { infer: true })),
         ),
+        revocationPath: config.get('LICENSE_REVOCATION_PATH', { infer: true }) ?? null,
       };
     } else if (mode === 'CONTROL_PLANE') {
       this.controlPlane = {
@@ -186,6 +194,9 @@ export class LicenceSource {
     }
     if (stored.snapshot && !this.lastGood.has(tenantId)) {
       this.lastGood.set(tenantId, stored.snapshot);
+    }
+    if (stored.revocationList !== null && this.persistedRevocation === null) {
+      this.persistedRevocation = stored.revocationList;
     }
   }
 
@@ -306,20 +317,78 @@ export class LicenceSource {
     });
     if (!result.ok) return this.refused(`LICENSE_${result.reason}`, evaluatedAt);
     this.lastObservedAt = evaluatedAt;
+    // A revoked licence is suspended; nothing here can widen what the licence grants.
+    const revocation = await this.revocation(settings, evaluatedAt);
+    const entry = revocationInForce(result.license, revocation.resolution, evaluatedAt);
+    if (entry !== null) {
+      this.logger.warn(`The licence ${result.license.licenseId} is revoked (${entry.reason}).`);
+    }
+    const snapshot = applyRevocation(result.snapshot, entry);
     // Only the licence's own school is remembered: another tenant asking learns nothing it may keep.
     if (result.snapshot.tenantId === tenantId) {
-      await this.remember(tenantId, {
-        snapshot: result.snapshot,
-        source: 'LICENSE_FILE',
-        observedAt: evaluatedAt,
-      });
+      await this.remember(tenantId, { snapshot, source: 'LICENSE_FILE', observedAt: evaluatedAt });
+      if (revocation.persist !== null) {
+        try {
+          await this.store.writeRevocationList(
+            tenantId,
+            revocation.persist.text,
+            revocation.persist.sequence,
+          );
+        } catch (error) {
+          this.logger.warn(`The revocation list could not be kept: ${(error as Error).name}`);
+        }
+      }
     }
     return {
       configured: true,
-      snapshot: result.snapshot,
+      snapshot,
       cap: AccessMode.FULL,
       reason: null,
       evaluatedAt,
+    };
+  }
+
+  /**
+   * The revocation list in force: the file Munaxa delivered, if newer and valid, else the one
+   * persisted earlier (`resolveRevocationList`). A missing, unreadable, older or forged file leaves
+   * the persisted list in force; a persisted list that no longer verifies fails closed.
+   */
+  private async revocation(
+    settings: NonNullable<LicenceSource['file']>,
+    evaluatedAt: Date,
+  ): Promise<{
+    resolution: ReturnType<typeof resolveRevocationList>;
+    persist: { text: string; sequence: number } | null;
+  }> {
+    let offered: string | null = null;
+    if (settings.revocationPath !== null) {
+      try {
+        offered = await readFile(settings.revocationPath, 'utf8');
+      } catch {
+        offered = null; // No list delivered, or not readable: the persisted one stays in force.
+      }
+    }
+    const resolution = resolveRevocationList(offered, this.persistedRevocation, {
+      verifier: settings.verifier,
+      product: SCHOOL_PRODUCT_KEY,
+      now: evaluatedAt,
+    });
+    if (resolution.rejected !== null) {
+      this.logger.warn(`The revocation list was not taken: ${resolution.rejected}`);
+    }
+    if (resolution.persistedInvalid) {
+      this.logger.error(
+        resolution.failClosed
+          ? 'The kept revocation list no longer verifies: every licence is suspended until a valid list is installed.'
+          : 'The kept revocation list no longer verifies; a valid list replaced it.',
+      );
+    }
+    if (resolution.persist === null || resolution.list === null)
+      return { resolution, persist: null };
+    this.persistedRevocation = resolution.persist;
+    return {
+      resolution,
+      persist: { text: resolution.persist, sequence: resolution.list.sequence },
     };
   }
 

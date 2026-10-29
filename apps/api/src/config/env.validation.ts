@@ -70,6 +70,8 @@ export const envSchema = z
     LICENSE_PUBLIC_KEYS: z.string().min(1).optional(),
     LICENSE_ALGORITHM: z.enum(['ES256', 'RS256']).default('ES256'),
     LICENSE_INSTALLATION_ID: z.string().min(1).max(128).optional(),
+    /** The signed revocation list Munaxa delivers next to the licence (`mxr1`). Optional. */
+    LICENSE_REVOCATION_PATH: z.string().min(1).optional(),
 
     THROTTLE_TTL: z.coerce.number().int().positive().default(60),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(120),

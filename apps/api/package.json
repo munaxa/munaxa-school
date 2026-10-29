@@ -28,7 +28,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",
     "@aws-sdk/s3-request-presigner": "^3.717.0",
-    "@munaxa/licensing": "^0.1.0",
+    "@munaxa/licensing": "^0.2.0",
     "@school/contracts": "workspace:*",
     "@school/domain": "workspace:*",
     "@school/utils": "workspace:*",

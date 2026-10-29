@@ -87,6 +87,15 @@ The API refuses to start if any of these is missing, or if `LICENSE_PUBLIC_KEYS`
 - **Replace the server:** a licence is bound to `LICENSE_INSTALLATION_ID`, so a new server stops
   verifying the old licence. Ask Munaxa for a reactivation (reason `SERVER_REPLACEMENT`, naming the
   old licence id) and install the licence that comes back; it supersedes the old one.
+- **Revoke:** Munaxa can revoke a licence the server already holds, without waiting for its term to
+  end. Set `LICENSE_REVOCATION_PATH=/etc/munaxa/school.revocations` and copy the signed revocation
+  list Munaxa sends you (the Super Admin portal's "revocation list" download) to that path. A list
+  that names this server's licence makes the school read-only (`SUSPENDED`); a list never grants
+  anything. The newest verified list is kept in `LicensingState` and only a list with a higher
+  sequence replaces it, so deleting the file or copying an older list back does not lift a
+  revocation, across restarts too. A delivered list that fails verification is ignored and logged;
+  if the kept list itself no longer verifies, the school is read-only until a valid list is
+  installed, because an unverifiable list must never widen access.
 
 ## How counted limits are enforced
 
@@ -133,11 +142,13 @@ The bucket role needs `s3:PutObject`, `s3:GetObject` (also used by `HEAD`), `s3:
 
 ## Limits, stated rather than discovered
 
-- A licence cannot be revoked offline; it is valid until it ends.
+- A fully offline server learns of a revocation only when the new list reaches it. Until someone
+  copies the list to `LICENSE_REVOCATION_PATH`, the licence it holds works until it ends.
 - Clock rollback: decisions are made at the later of the clock and the latest instant observed for
   the school, which `LicensingState.lastObservedAt` keeps across restarts and only ever moves
   forward. Winding the server clock back cannot make an ended term current, before or after a
   restart. A clock that was wrong from the first boot and never moved backwards cannot be detected.
 - `LicensingState` is under the school's own row-level security and is created by the
-  `20261027090000_licensing_state` migration; `infra/postgres/app-role.sql` (run after migrations
+  `20261027090000_licensing_state` migration (the kept revocation list is added by
+  `20261029130000_licensing_revocation`); `infra/postgres/app-role.sql` (run after migrations
   in every deployment) grants the application role access to it.
