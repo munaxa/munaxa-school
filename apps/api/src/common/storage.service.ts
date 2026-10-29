@@ -301,8 +301,9 @@ export class StorageService {
    */
   async reconcileTenant(tenantId: string): Promise<{ adopted: number; vanished: number } | null> {
     if (!this.configured) return null;
+    const listedAt = new Date();
     const listed = await this.listPrefix(`tenants/${tenantId}/`);
-    const result = await this.ledger.reconcile(tenantId, listed);
+    const result = await this.ledger.reconcile(tenantId, listed, listedAt);
     this.reportStored(tenantId, result.total);
     return { adopted: result.adopted, vanished: result.vanished };
   }

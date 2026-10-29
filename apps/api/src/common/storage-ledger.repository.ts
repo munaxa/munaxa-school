@@ -150,37 +150,44 @@ export class StorageLedgerRepository extends TenantRepository {
    * ledger agree with a listing of the school's prefix in the bucket. An object the ledger does
    * not know, or knows only as an expired reservation, is recorded as stored at its listed size;
    * a stored object the bucket no longer has is marked deleted. Live reservations are left alone —
-   * their upload may still be in flight. Never refuses: these bytes are already in the bucket.
+   * their upload may still be in flight — and so is any row changed after `listedAt`, the moment
+   * the listing began. Never refuses: these bytes are already in the bucket.
    */
   reconcile(
     tenantId: string,
     listed: ReadonlyMap<string, bigint>,
+    listedAt: Date,
     now = new Date(),
   ): Promise<{ adopted: number; vanished: number; total: bigint }> {
     return withTenant(this.connections.clientFor(tenantId), tenantId, async (tx) => {
       await lockScope(tx, CAPACITY_SCOPE.storage, tenantId);
-      const rows = await tx.storedObject.findMany({
-        where: { state: { not: STORED_OBJECT_STATE.DELETED } },
-      });
+      const rows = await tx.storedObject.findMany();
       const known = new Map(rows.map((row) => [row.key, row]));
+      // The listing was taken before this lock. A row changed since then — an upload confirmed, an
+      // object deleted — is newer than the listing, which cannot speak for it either way.
+      const newer = (row: StoredObject | undefined) =>
+        row !== undefined && row.updatedAt >= listedAt;
       let adopted = 0;
       let vanished = 0;
       for (const [key, bytes] of listed) {
         const row = known.get(key);
+        if (newer(row)) continue;
         if (row?.state === STORED_OBJECT_STATE.STORED && row.storedBytes === bytes) continue;
         if (row?.state === STORED_OBJECT_STATE.RESERVED && row.expiresAt > now) continue;
+        // Unknown, an expired reservation, a stale size, or marked deleted while the object is in
+        // fact still there (a delete that failed): the bucket holds these bytes, so they count.
         await upsertState(tx, tenantId, key, STORED_OBJECT_STATE.STORED, bytes, bytes, now);
         adopted += 1;
       }
       for (const row of rows) {
-        const live = row.state === STORED_OBJECT_STATE.RESERVED && row.expiresAt > now;
-        if (!listed.has(row.key) && !live) {
-          await tx.storedObject.update({
-            where: { key: row.key },
-            data: { state: STORED_OBJECT_STATE.DELETED },
-          });
-          vanished += 1;
-        }
+        if (row.state === STORED_OBJECT_STATE.DELETED || newer(row) || listed.has(row.key))
+          continue;
+        if (row.state === STORED_OBJECT_STATE.RESERVED && row.expiresAt > now) continue;
+        await tx.storedObject.update({
+          where: { key: row.key },
+          data: { state: STORED_OBJECT_STATE.DELETED },
+        });
+        vanished += 1;
       }
       return { adopted, vanished, total: await storedBytes(tx) };
     });

@@ -229,11 +229,56 @@ describe('Storage limit, metered by stored bytes (e2e)', () => {
     await leaveRoom(1, 10 * MIB);
     const unconfirmed = `tenants/${TENANT_ID}/homework/h/uploaded-never-confirmed.pdf`;
     const listed = new Map([[unconfirmed, 3_000n]]); // the filler is gone from the bucket
-    const result = await ledger.reconcile(TENANT_ID, listed);
+    const result = await ledger.reconcile(TENANT_ID, listed, new Date());
     expect(result).toMatchObject({ adopted: 1, vanished: 1, total: 3_000n });
     const states = new Map((await rows()).map((r) => [r.key, r.state]));
     expect(states.get(unconfirmed)).toBe('STORED');
     expect(states.get(`tenants/${TENANT_ID}/filler/existing.bin`)).toBe('DELETED');
+  });
+
+  it('reconciliation leaves alone what changed after the listing was taken', async () => {
+    await leaveRoom(1, 10 * MIB);
+    const listedAt = new Date(Date.now() - 60_000); // the listing began a minute ago
+    const key = (name: string) => `tenants/${TENANT_ID}/homework/h/${name}`;
+    await withPlatform(prisma, (tx) =>
+      tx.storedObject.createMany({
+        data: [
+          // Confirmed after the listing began, so the listing does not show it: still stored.
+          {
+            key: key('confirmed-since.pdf'),
+            tenantId: TENANT_ID,
+            state: 'STORED',
+            reservedBytes: 7n,
+            storedBytes: 7n,
+            expiresAt: new Date(),
+          },
+          // Deleted after the listing began, so the listing still shows it: still deleted.
+          {
+            key: key('deleted-since.pdf'),
+            tenantId: TENANT_ID,
+            state: 'DELETED',
+            reservedBytes: 9n,
+            expiresAt: new Date(),
+          },
+        ],
+      }),
+    );
+    // The filler predates the listing and is absent from it: it really is gone.
+    await withPlatform(prisma, (tx) =>
+      tx.storedObject.updateMany({
+        where: { key: `tenants/${TENANT_ID}/filler/existing.bin` },
+        data: { updatedAt: new Date(Date.now() - 120_000) },
+      }),
+    );
+    const result = await ledger.reconcile(
+      TENANT_ID,
+      new Map([[key('deleted-since.pdf'), 9n]]),
+      listedAt,
+    );
+    expect(result).toMatchObject({ adopted: 0, vanished: 1, total: 7n });
+    const states = new Map((await rows()).map((r) => [r.key, r.state]));
+    expect(states.get(key('confirmed-since.pdf'))).toBe('STORED');
+    expect(states.get(key('deleted-since.pdf'))).toBe('DELETED');
   });
 
   it('refuses at the database a ledger row outside its school', async () => {

@@ -118,7 +118,7 @@ branding assets, signed agreements — goes through `StorageService`, provided o
 | Confirm the upload | The object's size is read from the bucket (`HEAD`), not from the request, and the limit is re-checked under the lock with that size in place of the reservation. Too large: the object is deleted and the confirmation refused. Not there: refused. Confirming the same key again counts it once |
 | Replace or delete | Branding assets delete the object they replace or remove (unless another slot still uses it); agreements delete superseded copies. Each deletion releases its bytes |
 | Upload never confirmed | When its reservation expires it is settled with what the bucket holds: counted if the object arrived, released if not |
-| Reconciliation | `pnpm --filter @school/api storage:reconcile` lists each school's prefix and makes the ledger agree: unknown objects (never confirmed, or older than the ledger) are counted, objects gone from the bucket are released. Run it daily, and once after the `stored_objects` migration first deploys so existing files count |
+| Reconciliation | `pnpm --filter @school/api storage:reconcile` lists each school's prefix and makes the ledger agree: unknown objects (never confirmed, or older than the ledger) are counted, objects gone from the bucket are released. A row changed after the listing began is left alone, so an upload confirmed or a file deleted while it runs is never miscounted. Run it daily, and once after the `stored_objects` migration first deploys so existing files count |
 
 Ten simultaneous upload URLs with room for three issue exactly three
 (`test/storage-quota.e2e-spec.ts`); without the lock, eight were issued. Usage is reported in whole
