@@ -22,8 +22,8 @@
     "@school/contracts": "workspace:*",
     "@school/domain": "workspace:*",
     "@school/i18n": "workspace:*",
-    "@sentry/nextjs": "^9.0.0",
-    "next": "15.1.4",
+    "@sentry/nextjs": "^9.47.2",
+    "next": "15.5.28",
     "posthog-js": "^1.205.0",
     "react": "19.0.0",
     "react-dom": "19.0.0"

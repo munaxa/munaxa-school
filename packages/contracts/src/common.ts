@@ -37,7 +37,7 @@ export interface ProblemDetails {
 /** Health-check response. */
 export const healthResponseSchema = z.object({
   status: z.enum(['ok', 'error']),
-  info: z.record(z.object({ status: z.string() })).optional(),
-  details: z.record(z.unknown()).optional(),
+  info: z.record(z.string(), z.object({ status: z.string() })).optional(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
