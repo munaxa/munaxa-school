@@ -229,7 +229,10 @@ describe('Storage limit, metered by stored bytes (e2e)', () => {
     await leaveRoom(1, 10 * MIB);
     const unconfirmed = `tenants/${TENANT_ID}/homework/h/uploaded-never-confirmed.pdf`;
     const listed = new Map([[unconfirmed, 3_000n]]); // the filler is gone from the bucket
-    const result = await ledger.reconcile(TENANT_ID, listed, new Date());
+    // The listing begins after the ledger was last written. (At the same millisecond the guard
+    // treats a row as newer than the listing and leaves it alone, which is the safe side.)
+    const listedAt = new Date(Date.now() + 1_000);
+    const result = await ledger.reconcile(TENANT_ID, listed, listedAt);
     expect(result).toMatchObject({ adopted: 1, vanished: 1, total: 3_000n });
     const states = new Map((await rows()).map((r) => [r.key, r.state]));
     expect(states.get(unconfirmed)).toBe('STORED');
