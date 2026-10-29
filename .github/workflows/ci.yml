@@ -155,6 +155,7 @@ jobs:
       contents: read
       pull-requests: read
       packages: read
+      actions: read
     steps:
       - uses: actions/checkout@v6
         with:
@@ -171,6 +172,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+      # Every production deploy waits on the `production-gate` job (scripts/deploy-gate.mjs).
+      # The lint keeps a new or edited workflow from routing around it; the report shows on each
+      # pull request whether the `production` environment would currently let a deploy through.
+      - name: Deployment gates · tests and workflow lint
+        run: |
+          node --test scripts/deploy-gate.test.mjs
+          node scripts/deploy-gate.mjs lint
+      - name: Deployment gates · production environment
+        run: node scripts/deploy-gate.mjs report-environment production
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Dependency audit
         run: pnpm audit --prod || true
       # The gitleaks-action wrapper requires a paid licence for organisation-owned

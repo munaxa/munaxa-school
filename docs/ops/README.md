@@ -6,6 +6,7 @@ Operational documentation for running Munaxa in production. Architecture rationa
 | Doc | Purpose |
 |-----|---------|
 | [deployment.md](./deployment.md) | Build, configure, release (zero-downtime), rollback, feature flags |
+| [deployment-gates.md](./deployment-gates.md) | Production approval gate: required GitHub environment settings |
 | [runbooks.md](./runbooks.md) | Incident response: outages, DB, rate limits, **backups, DR**, secrets, DSR |
 | [licensing.md](./licensing.md) | On-premises licensing: a signed Munaxa licence verified offline decides capabilities, limits and writes; renewal and server replacement |
 | [monitoring.md](./monitoring.md) | Signals, golden signals/SLOs, alerts, dashboards |

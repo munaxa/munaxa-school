@@ -20,21 +20,25 @@ the `school/` nesting is handled automatically.
 
 ## How deploys run
 
-**`.github/workflows/deploy-cloudflare.yml` — every merge to `main` deploys every app in its matrix.**
+**`.github/workflows/deploy-cloudflare.yml` — every merge to `main` requests a production deploy of
+every app in its matrix, which waits for a reviewer's approval.** Its `production-gate` job fails
+the run before anything is built unless the `production` environment requires a reviewer — see
+[deployment-gates.md](./deployment-gates.md).
 
 The workflow runs each app's own `cf:deploy` script (the same one you run locally), so CI and a
 developer's machine cannot drift apart. It also asserts, before deploying, that each
 `wrangler.jsonc` names the Worker that app is supposed to deploy to.
 
-Required repository secrets (Settings → Secrets and variables → Actions):
+Required **`production` environment** secrets (Settings → Environments → production; not
+repository secrets, which every workflow on every branch can read):
 
 | Secret | Purpose |
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | Token with **Workers Scripts: Edit** on the account |
 | `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account the Workers live in |
 
-The job targets the GitHub `production` environment, so required reviewers can be added there
-if a human gate is ever wanted.
+The job targets the GitHub `production` environment, which must have required reviewers, no
+admin bypass, and `main` as its only deployment branch; the gate enforces this.
 
 ### No path filtering — deliberately
 
@@ -105,9 +109,8 @@ pnpm --filter munaxademo run cf:preview      # optional: run it on workerd local
 pnpm --filter platform run build-storybook   # → storybook-static/
 ```
 
-To deploy by hand (needs `CLOUDFLARE_API_TOKEN` in the environment), or to redeploy without a
-merge, run the workflow from the Actions tab via **Run workflow** — it accepts
-`workflow_dispatch`.
+To redeploy without a merge, run the workflow from the Actions tab via **Run workflow** on `main`
+— it accepts `workflow_dispatch` and goes through the same gate and approval.
 
 ---
 
