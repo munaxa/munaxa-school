@@ -6,9 +6,13 @@
 
 | Mode | For | Decides |
 | --- | --- | --- |
-| `DATABASE` (default) | Hosted School as it has always run | The subscription plane in this database. A school with no subscription is permissive, by design, for schools that predate billing |
+| `DATABASE` (default) | Development and test only | The subscription plane in this database. A school with no subscription is permissive, by design, for schools that predate billing |
 | `CONTROL_PLANE` | Munaxa-hosted School, managed from the Super Admin portal | The central Munaxa subscription service (`munaxa-control`), asked per school |
 | `LICENSE_FILE` | A school's own server, possibly offline | A signed Munaxa licence on disk, verified with public keys only |
+
+With `NODE_ENV=production` the API refuses to start in `DATABASE` mode, including when
+`LICENSING_MODE` is unset and would default to it: a production deployment must name
+`CONTROL_PLANE` or `LICENSE_FILE`, both of which grant nothing a school is not licensed for.
 
 In both licensing modes the shared contract `@munaxa/licensing` decides, in place of the
 subscription plane:
