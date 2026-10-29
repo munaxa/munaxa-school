@@ -276,3 +276,35 @@ test('a check for another environment, or a conditional one, fails', () => {
   conditional.jobs.migrate.steps[1].if = 'false';
   assert.match(workflowProblems('w.yml', conditional).join(), /unconditionally/);
 });
+
+test('installing private packages with GITHUB_TOKEN alone fails; the package token passes', () => {
+  const job = (env) => ({
+    on: { pull_request: null },
+    jobs: { build: { steps: [{ run: 'pnpm install', env }] } },
+  });
+  assert.match(
+    workflowProblems('w.yml', job({ NODE_AUTH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' })).join(),
+    /GITHUB_TOKEN alone/,
+  );
+  assert.deepEqual(
+    workflowProblems(
+      'w.yml',
+      job({ NODE_AUTH_TOKEN: '${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}' }),
+    ),
+    [],
+  );
+  const image = {
+    on: { pull_request: null },
+    jobs: {
+      img: {
+        steps: [
+          {
+            uses: 'docker/build-push-action@v6',
+            with: { secrets: 'github_token=${{ secrets.GITHUB_TOKEN }}' },
+          },
+        ],
+      },
+    },
+  };
+  assert.match(workflowProblems('w.yml', image).join(), /GITHUB_TOKEN alone/);
+});
