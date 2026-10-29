@@ -24,7 +24,7 @@ compatible upgrade of the parent exists; each one is listed here with its remova
 | Package | Path | Fix | Why it is still open |
 | --- | --- | --- | --- |
 | `@opentelemetry/core`, six `@opentelemetry/instrumentation-*` | `@sentry/nextjs` 9 → `@sentry/node` 9 | Sentry SDK 10 | A major SDK upgrade of the admin app's error reporting; its own change |
-| `uuid` < 11.1.1 | `exceljs` → `uuid` 8 | none in `exceljs` | The advisory is v3/v5/v6 with a caller buffer; `exceljs` calls only `v4()` without one, and nothing here imports `uuid` |
+| `uuid` < 11.1.1 | `exceljs` → `uuid` 8; `@sentry/nextjs` → `@sentry/webpack-plugin` → `uuid` 9 | Sentry SDK 10 for the build plugin; none in `exceljs` | The advisory is v3/v5/v6 with a caller buffer; `exceljs` calls only `v4()` without one, the Sentry plugin runs at build time, and nothing here imports `uuid` |
 | `deepmerge` ≤ 4.3.1 | `@nestjs/cli` → `fork-ts-checker-webpack-plugin` | none published | Build tool only; no fixed version exists |
 
 ## Remediation log
