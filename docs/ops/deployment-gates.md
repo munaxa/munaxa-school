@@ -20,7 +20,7 @@ The gate fails closed: if the API cannot be read, nothing deploys.
 | Workflow | Target on push | Production |
 | --- | --- | --- |
 | `deploy-cloudflare.yml` | `production` (`munaxademo` Worker) | Gate, then **waits for a reviewer**; without the settings below the run fails at the gate |
-| `deploy.yml` | `staging` only (images, staging migrations, staging rollout) | Only by **Run workflow** with `environment: production`, gated the same way |
+| `deploy.yml` | `staging` only (images, staging migrations once the database is declared, staging rollout) | Only by **Run workflow** with `environment: production`, gated the same way |
 | `seed-environment.yml` | never (manual only) | Gated the same way |
 | `ci.yml` | pull requests only | Never deploys; reports the gate's state on each PR |
 
@@ -42,7 +42,22 @@ targets production through `deploy.yml`.
    secret is readable by any workflow on any branch; an environment secret only by a job that has
    passed the environment's rules.
 
-Do the same for `staging` (secrets only; reviewers optional).
+5. **Environment variables** `DATABASE_ENVIRONMENT` = `production` and `DATABASE_HOST` = the host
+   of the production database URL (variables, not secrets: they name, they do not grant).
+
+Do the same for `staging`: its secrets, and `DATABASE_ENVIRONMENT` = `staging` with `DATABASE_HOST`
+= the staging database's host (reviewers optional).
+
+## Which database a job may change
+
+`DIRECT_DATABASE_URL` is a secret, so nothing in a workflow — or in its logs — can show which
+database it names; a `staging` secret that was really production's would be migrated on every
+merge. Every job that migrates or seeds therefore runs `deploy-gate.mjs verify-database <target>`
+before it connects, and stops unless the environment declares the database:
+`DATABASE_ENVIRONMENT` equals the job's environment, and `DATABASE_HOST` equals the URL's host. A
+repository-level variable cannot satisfy the production check by accident: it would say `staging`.
+The URL is never printed. Until the variables are set, a merge's staging migration fails at this
+step and changes nothing.
 
 Until steps 1–3 are done, every production run fails at the gate with the missing setting named —
 which is the intended, safe default. The `Deployment gates · production environment` step on each

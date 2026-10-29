@@ -114,6 +114,15 @@ jobs:
       DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v6
+      # The URL is a secret, so nothing here can see which database it names. Before connecting,
+      # the environment must declare it: DATABASE_ENVIRONMENT (its own name) and DATABASE_HOST
+      # (the host the URL points at). Otherwise the job stops (docs/ops/deployment-gates.md).
+      - name: Require the database this environment declares
+        run: node scripts/deploy-gate.mjs verify-database "$TARGET"
+        env:
+          TARGET: ${{ github.event.inputs.environment || 'staging' }}
+          DATABASE_ENVIRONMENT: ${{ vars.DATABASE_ENVIRONMENT }}
+          DATABASE_HOST: ${{ vars.DATABASE_HOST }}
       - uses: pnpm/action-setup@v6
         with:
           version: '10.33.0'
