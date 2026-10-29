@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { parse } from 'yaml';
-import { environmentProblems, workflowProblems } from './deploy-gate.mjs';
+import { databaseProblems, environmentProblems, workflowProblems } from './deploy-gate.mjs';
 
 const protectedEnvironment = {
   name: 'production',
@@ -182,4 +182,97 @@ test('privileged triggers and secrets: inherit fail', () => {
     jobs: { call: { uses: './x.yml', secrets: 'inherit' } },
   };
   assert.match(workflowProblems('w.yml', inherit).join(), /secrets: inherit/);
+});
+
+const staging = {
+  target: 'staging',
+  url: 'postgresql://owner:secret@db.staging.example:5432/app',
+  declaredEnvironment: 'staging',
+  declaredHost: 'db.staging.example',
+};
+
+test('a database the environment declares, by name and host, may be changed', () => {
+  assert.deepEqual(databaseProblems(staging), []);
+  assert.deepEqual(databaseProblems({ ...staging, declaredHost: 'DB.Staging.Example' }), []);
+});
+
+test('no database configured is not this check to refuse', () => {
+  assert.deepEqual(databaseProblems({ ...staging, url: '' }), []);
+});
+
+test('an undeclared database is refused', () => {
+  const problems = databaseProblems({ ...staging, declaredEnvironment: '', declaredHost: '' });
+  assert.equal(problems.length, 2);
+  assert.match(problems.join(), /DATABASE_ENVIRONMENT/);
+  assert.match(problems.join(), /DATABASE_HOST/);
+});
+
+test("a staging secret that points at another host — production's — is refused", () => {
+  const problems = databaseProblems({ ...staging, url: 'postgresql://o:s@db.prod.example/app' });
+  assert.match(problems.join(), /points at db\.prod\.example/);
+});
+
+test('a declaration for another environment is refused (a repository-level variable leaking)', () => {
+  assert.match(
+    databaseProblems({ ...staging, target: 'production' }).join(),
+    /declared for "staging", but this job targets "production"/,
+  );
+});
+
+test('the refusal never contains the URL or its password', () => {
+  const problems = databaseProblems({
+    ...staging,
+    url: 'postgresql://o:hunter2@db.prod.example/a',
+  });
+  assert.doesNotMatch(problems.join(), /hunter2|postgresql:/);
+  assert.deepEqual(databaseProblems({ ...staging, url: 'not a url' }), [
+    'The database URL is not a URL.',
+  ]);
+});
+
+/** A job that migrates, to mutate. */
+const migrating = () => ({
+  on: { workflow_dispatch: null },
+  jobs: {
+    'production-gate': {
+      steps: [
+        { run: 'node scripts/deploy-gate.mjs verify-environment "$T"', env: { T: 'staging' } },
+      ],
+    },
+    migrate: {
+      needs: 'production-gate',
+      environment: 'staging',
+      env: { DIRECT_DATABASE_URL: '${{ secrets.DIRECT_DATABASE_URL }}' },
+      steps: [
+        { uses: 'actions/checkout@v6' },
+        { run: 'node scripts/deploy-gate.mjs verify-database "$T"', env: { T: 'staging' } },
+        { run: 'pnpm prisma:deploy' },
+      ],
+    },
+  },
+});
+
+test('a migrating job that checks its database first passes', () => {
+  assert.deepEqual(workflowProblems('w.yml', migrating()), []);
+});
+
+test('a migrating job without the database check fails', () => {
+  const w = migrating();
+  w.jobs.migrate.steps.splice(1, 1);
+  assert.match(workflowProblems('w.yml', w).join(), /never runs `verify-database`/);
+});
+
+test('a database step before the check fails', () => {
+  const w = migrating();
+  w.jobs.migrate.steps.splice(1, 0, { run: 'psql "$DIRECT_DATABASE_URL" -c "select 1"' });
+  assert.match(workflowProblems('w.yml', w).join(), /before `verify-database`/);
+});
+
+test('a check for another environment, or a conditional one, fails', () => {
+  const other = migrating();
+  other.jobs.migrate.steps[1].env.T = 'production';
+  assert.match(workflowProblems('w.yml', other).join(), /checks the database for `production`/);
+  const conditional = migrating();
+  conditional.jobs.migrate.steps[1].if = 'false';
+  assert.match(workflowProblems('w.yml', conditional).join(), /unconditionally/);
 });

@@ -16,6 +16,14 @@
  *     rather than a failure (a pull request deploys nothing), so the state of the gate is visible
  *     before a merge. An unreadable API still fails, since the gate itself would then fail.
  *
+ *   node scripts/deploy-gate.mjs verify-database <target>
+ *     Run as the first step of every job that migrates or seeds a database. The database URL is a
+ *     secret, so nothing in a workflow can see which database it names; a staging secret that is
+ *     really production's would be migrated on every merge. So the environment must say, in two
+ *     plain variables, which database it is for: `DATABASE_ENVIRONMENT` (the environment's own
+ *     name) and `DATABASE_HOST` (the host the URL must point at). Missing, or not matching the URL,
+ *     and the job stops before it connects. The URL itself is never printed.
+ *
  *   node scripts/deploy-gate.mjs lint [workflowDir]
  *     Run in CI. Statically checks the workflows so a new job cannot route around the gate: every
  *     job with an environment needs the gate (directly or through another job), with the same
@@ -144,6 +152,67 @@ async function verifyEnvironment(target, { advisory = false } = {}) {
 }
 
 /* ----------------------------------------------------------------------------------------------
+ * verify-database
+ * -------------------------------------------------------------------------------------------- */
+
+/**
+ * Pure: the problems with letting a job change the database `url` names, in environment `target`,
+ * given what that environment declares. `[]` means it may proceed. An empty `url` is not a problem
+ * here — the job's own steps decide whether "no database" means skip or fail.
+ */
+export function databaseProblems({ target, url, declaredEnvironment, declaredHost }) {
+  if (!target) return ['No target environment was given.'];
+  if (!url) return [];
+  let host;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return ['The database URL is not a URL.'];
+  }
+  const problems = [];
+  if (!declaredEnvironment) {
+    problems.push(
+      `The "${target}" environment does not declare DATABASE_ENVIRONMENT; set it to "${target}".`,
+    );
+  } else if (declaredEnvironment !== target) {
+    problems.push(
+      `The database is declared for "${declaredEnvironment}", but this job targets "${target}".`,
+    );
+  }
+  if (!declaredHost) {
+    problems.push(`The "${target}" environment does not declare DATABASE_HOST.`);
+  } else if (declaredHost.toLowerCase() !== host) {
+    problems.push(
+      `The database URL points at ${host}, not at the declared DATABASE_HOST ${declaredHost}.`,
+    );
+  }
+  return problems;
+}
+
+function verifyDatabase(target) {
+  const problems = databaseProblems({
+    target,
+    url: process.env.DIRECT_DATABASE_URL ?? '',
+    declaredEnvironment: process.env.DATABASE_ENVIRONMENT ?? '',
+    declaredHost: process.env.DATABASE_HOST ?? '',
+  });
+  if (problems.length > 0) {
+    for (const problem of problems) console.log(`::error title=Database target::${problem}`);
+    console.log(
+      `::error title=Database target::Nothing was changed. Set the variables on Settings → ` +
+        `Environments → ${target} (docs/ops/deployment-gates.md), then re-run.`,
+    );
+    return Promise.resolve(1);
+  }
+  console.log(
+    process.env.DIRECT_DATABASE_URL
+      ? `The "${target}" database is ${process.env.DATABASE_HOST}, as the environment declares.`
+      : `No database is configured for "${target}".`,
+  );
+  return Promise.resolve(0);
+}
+
+/* ----------------------------------------------------------------------------------------------
  * lint
  * -------------------------------------------------------------------------------------------- */
 
@@ -228,6 +297,33 @@ export function workflowProblems(file, workflow) {
   }
 
   for (const [id, job] of Object.entries(jobs)) {
+    if (!JSON.stringify(job).includes('secrets.DIRECT_DATABASE_URL')) continue;
+    const steps = job.steps ?? [];
+    const check = steps.findIndex((step) =>
+      /deploy-gate\.mjs\s+verify-database/.test(String(step.run ?? '')),
+    );
+    const touches = steps.findIndex((step) =>
+      /prisma|psql|db:seed|DATABASE_URL/.test(String(step.run ?? '')),
+    );
+    if (check < 0) {
+      add(`job \`${id}\` reads DIRECT_DATABASE_URL but never runs \`verify-database\`.`);
+    } else {
+      if (touches >= 0 && touches < check) {
+        add(`job \`${id}\` uses the database before \`verify-database\` checks it.`);
+      }
+      const value = String(steps[check].run).match(/verify-database\s+"?([^"\n]+?)"?\s*$/m)?.[1];
+      const fromEnv = value?.match(/^\$\{?([A-Z_]+)\}?$/);
+      const target = fromEnv ? (steps[check].env?.[fromEnv[1]] ?? job.env?.[fromEnv[1]]) : value;
+      if (target === undefined || normalise(target) !== normalise(environmentName(job) ?? '')) {
+        add(`job \`${id}\` checks the database for \`${target}\`, not its own environment.`);
+      }
+      if (steps[check]['continue-on-error'] || steps[check].if != null) {
+        add(`job \`${id}\` must run \`verify-database\` unconditionally.`);
+      }
+    }
+  }
+
+  for (const [id, job] of Object.entries(jobs)) {
     if (job.secrets === 'inherit') add(`job \`${id}\` passes \`secrets: inherit\`.`);
     const used = [...JSON.stringify(job).matchAll(/secrets\.([A-Za-z0-9_]+)/g)].map((m) => m[1]);
     const scoped = [...new Set(used)].filter((name) => !UNSCOPED_SECRETS.has(name));
@@ -256,13 +352,15 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       ? verifyEnvironment(argument)
       : command === 'report-environment'
         ? verifyEnvironment(argument, { advisory: true })
-        : command === 'lint'
-          ? lint(argument)
-          : Promise.reject(
-              new Error(
-                'usage: deploy-gate.mjs verify-environment|report-environment <target> | lint',
-              ),
-            );
+        : command === 'verify-database'
+          ? verifyDatabase(argument)
+          : command === 'lint'
+            ? lint(argument)
+            : Promise.reject(
+                new Error(
+                  'usage: deploy-gate.mjs verify-environment|report-environment|verify-database <target> | lint',
+                ),
+              );
   run.then(
     (code) => process.exit(code),
     (error) => {
