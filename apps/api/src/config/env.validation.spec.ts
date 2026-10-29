@@ -110,8 +110,8 @@ describe('validateEnv', () => {
       expect(env.LICENSING_MODE).toBe('CONTROL_PLANE');
     });
 
-    it.each(['development', 'test'])('keeps the DATABASE default in %s', (NODE_ENV) => {
-      expect(validateEnv({ ...base, NODE_ENV }).LICENSING_MODE).toBe('DATABASE');
+    it.each(['development', 'test'])('keeps the DATABASE default in %s', (nodeEnv) => {
+      expect(validateEnv({ ...base, NODE_ENV: nodeEnv }).LICENSING_MODE).toBe('DATABASE');
     });
   });
 });
