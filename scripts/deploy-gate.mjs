@@ -124,10 +124,11 @@ async function verifyEnvironment(target, { advisory = false } = {}) {
     for (const problem of problems) console.log(`::${level} title=Production gate::${problem}`);
     console.log(
       `::${level} title=Production gate::` +
-        (advisory ? 'Production deploys will fail at the gate until ' : 'Nothing was deployed. ') +
-        `Configure Settings → Environments → ${PROTECTED_TARGET} as described in ` +
-        'docs/ops/deployment-gates.md' +
-        (advisory ? '.' : ', then re-run.'),
+        (advisory
+          ? 'Production deploys will fail at the gate until Settings → Environments → '
+          : 'Nothing was deployed. Configure Settings → Environments → ') +
+        `${PROTECTED_TARGET} as described in docs/ops/deployment-gates.md` +
+        (advisory ? ' is configured.' : ', then re-run.'),
     );
     return advisory ? 0 : 1;
   }
