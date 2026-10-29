@@ -29,9 +29,24 @@ permissions:
   contents: read
 
 jobs:
+  production-gate:
+    name: Production gate · approval required
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Require a protected environment for production
+        run: node scripts/deploy-gate.mjs verify-environment "$TARGET"
+        env:
+          TARGET: ${{ github.event.inputs.environment }}
+          GITHUB_TOKEN: ${{ github.token }}
+
   seed:
     name: Seed ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
+    needs: production-gate
     environment: ${{ github.event.inputs.environment }}
     permissions:
       contents: read
