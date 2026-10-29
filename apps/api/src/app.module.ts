@@ -1,3 +1,4 @@
+import { StorageModule } from './common/storage.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -80,6 +81,7 @@ import { LoggingInterceptor } from './observability/logging.interceptor';
       skipIf: () => process.env.NODE_ENV === 'test',
     }),
     PrismaModule,
+    StorageModule,
     HealthModule,
     AuthModule,
     StructureModule,

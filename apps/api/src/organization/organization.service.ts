@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import type { OrganizationSettings, Prisma } from '@prisma/client';
 import { StorageService, type PresignedUpload } from '../common/storage.service';
 import { requireTenantId } from '../common/tenant.util';
@@ -38,6 +38,8 @@ export type OrganizationView = OrganizationSettings & {
 
 @Injectable()
 export class OrganizationService {
+  private readonly logger = new Logger(OrganizationService.name);
+
   constructor(
     private readonly repo: OrganizationRepository,
     private readonly storage: StorageService,
@@ -121,10 +123,15 @@ export class OrganizationService {
   async confirmAsset(dto: ConfirmAssetDto): Promise<OrganizationView> {
     this.storage.assertKeyInTenant(dto.fileKey);
     this.storage.assertImageAllowed(dto.contentType, dto.size);
+    await this.storage.commitUpload(dto.fileKey);
     const column = SLOT_TO_COLUMN[dto.slot];
-    return this.apply(`organization.asset.${dto.slot}.updated`, {
+    const previous = (await this.repo.getOrCreate())[column];
+    const view = await this.apply(`organization.asset.${dto.slot}.updated`, {
       [column]: dto.fileKey,
     });
+    // A replaced asset is deleted, so its bytes stop counting against the plan's storage.
+    if (typeof previous === 'string' && previous !== dto.fileKey) await this.discard(previous);
+    return view;
   }
 
   /** Clear an asset slot (remove the stored key) — the feature toggle controls visibility. */
@@ -133,8 +140,24 @@ export class OrganizationService {
       throw new BadRequestException(`Unknown asset slot: ${slot}`);
     }
     const column = SLOT_TO_COLUMN[slot];
-    return this.apply(`organization.asset.${slot}.removed`, {
+    const previous = (await this.repo.getOrCreate())[column];
+    const view = await this.apply(`organization.asset.${slot}.removed`, {
       [column]: null,
+    });
+    if (typeof previous === 'string') await this.discard(previous);
+    return view;
+  }
+
+  /**
+   * Deletes an asset no slot refers to any more. After the slot changed, so a failure here leaves an
+   * orphan the storage reconciliation still counts — never a slot pointing at a missing file.
+   */
+  private async discard(fileKey: string): Promise<void> {
+    if (await this.repo.isReferenced(fileKey)) return;
+    await this.storage.deleteObject(fileKey).catch((error: unknown) => {
+      this.logger.warn(
+        `Could not delete replaced asset ${fileKey}: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
     });
   }
 

@@ -3,6 +3,18 @@ import type { OrganizationSettings, Prisma } from '@prisma/client';
 import { TenantRepository } from '../common/tenant.repository';
 import { TenantContextStore } from '../prisma/tenant-context';
 
+/** The settings columns that hold an uploaded asset's object key. */
+const ASSET_KEY_COLUMNS = [
+  'logoKey',
+  'darkLogoKey',
+  'smallLogoKey',
+  'stampKey',
+  'signatureKey',
+  'bannerKey',
+  'pushIconKey',
+  'notificationImageKey',
+] as const satisfies readonly (keyof OrganizationSettings)[];
+
 /** A single field-level change captured for the audit log. */
 type ChangeSet = Prisma.OrganizationSettingsUpdateInput;
 
@@ -14,6 +26,20 @@ type ChangeSet = Prisma.OrganizationSettingsUpdateInput;
  */
 @Injectable()
 export class OrganizationRepository extends TenantRepository {
+  /** Whether any asset slot still holds `fileKey` (one upload may fill two slots). */
+  isReferenced(fileKey: string): Promise<boolean> {
+    return this.run(async (tx) => {
+      const found = await tx.organizationSettings.findFirst({
+        where: {
+          deletedAt: null,
+          OR: ASSET_KEY_COLUMNS.map((column) => ({ [column]: fileKey })),
+        },
+        select: { id: true },
+      });
+      return found !== null;
+    });
+  }
+
   /** Fetch the tenant settings, lazily creating the default row on first access. */
   getOrCreate(): Promise<OrganizationSettings> {
     return this.run(async (tx, tenantId) => this.ensure(tx, tenantId));

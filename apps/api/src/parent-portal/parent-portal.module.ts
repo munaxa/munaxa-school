@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { SchedulingModule } from '../scheduling/scheduling.module';
-import { StorageService } from '../common/storage.service';
 import { ParentScopeService } from './common/parent-scope.service';
 import { LeaveRequestController } from './leave-requests/leave-request.controller';
 import { LeaveRequestService } from './leave-requests/leave-request.service';
@@ -25,7 +24,6 @@ import { DashboardRepository } from './dashboard/dashboard.repository';
   controllers: [LeaveRequestController, PtmController, DocumentController, DashboardController],
   providers: [
     ParentScopeService,
-    StorageService,
     LeaveRequestService,
     LeaveRequestRepository,
     PtmService,

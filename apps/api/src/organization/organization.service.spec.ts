@@ -31,7 +31,8 @@ function setup(current: Partial<OrganizationSettings> = {}) {
   const update = jest
     .fn<Promise<OrganizationSettings>, [string, Record<string, unknown>]>()
     .mockImplementation((_action, changes) => Promise.resolve({ ...row, ...changes }));
-  const repo = { getOrCreate, update } as unknown as OrganizationRepository;
+  const isReferenced = jest.fn().mockResolvedValue(false);
+  const repo = { getOrCreate, update, isReferenced } as unknown as OrganizationRepository;
 
   const buildKey = jest.fn(
     (tid: string, prefix: string, name: string) => `tenants/${tid}/${prefix}/x-${name}`,
@@ -40,12 +41,16 @@ function setup(current: Partial<OrganizationSettings> = {}) {
   const presignDownload = jest.fn().mockResolvedValue('https://download');
   const assertKeyInTenant = jest.fn();
   const assertImageAllowed = jest.fn();
+  const commitUpload = jest.fn().mockResolvedValue(undefined);
+  const deleteObject = jest.fn().mockResolvedValue(undefined);
   const storage = {
     buildKey,
     presignImageUpload,
     presignDownload,
     assertKeyInTenant,
     assertImageAllowed,
+    commitUpload,
+    deleteObject,
   } as unknown as StorageService;
 
   return {
@@ -57,6 +62,9 @@ function setup(current: Partial<OrganizationSettings> = {}) {
     presignDownload,
     assertKeyInTenant,
     assertImageAllowed,
+    commitUpload,
+    deleteObject,
+    isReferenced,
   };
 }
 
@@ -134,6 +142,38 @@ describe('OrganizationService', () => {
       });
     });
 
+    it('counts a confirmed asset against storage before persisting its key', async () => {
+      const { service, commitUpload, update } = setup();
+      await service.confirmAsset({
+        slot: 'logo',
+        fileKey: 'tenants/t1/o/a.png',
+        contentType: 'image/png',
+      });
+      expect(commitUpload).toHaveBeenCalledWith('tenants/t1/o/a.png');
+      expect(commitUpload.mock.invocationCallOrder[0]).toBeLessThan(
+        update.mock.invocationCallOrder[0]!,
+      );
+    });
+
+    it('deletes the asset it replaces, unless another slot still uses it', async () => {
+      const replaced = setup({ logoKey: 'tenants/t1/o/old.png' });
+      await replaced.service.confirmAsset({
+        slot: 'logo',
+        fileKey: 'tenants/t1/o/new.png',
+        contentType: 'image/png',
+      });
+      expect(replaced.deleteObject).toHaveBeenCalledWith('tenants/t1/o/old.png');
+
+      const shared = setup({ logoKey: 'tenants/t1/o/old.png' });
+      shared.isReferenced.mockResolvedValue(true);
+      await shared.service.confirmAsset({
+        slot: 'logo',
+        fileKey: 'tenants/t1/o/new.png',
+        contentType: 'image/png',
+      });
+      expect(shared.deleteObject).not.toHaveBeenCalled();
+    });
+
     it('rejects an unknown asset slot on removal', async () => {
       const { service } = setup();
       await expect(service.removeAsset('bogus' as never)).rejects.toThrow(BadRequestException);
@@ -143,6 +183,12 @@ describe('OrganizationService', () => {
       const { service, update } = setup({ stampKey: 'tenants/t1/organization/s.png' });
       await service.removeAsset('stamp');
       expect(update.mock.calls[0]![1]).toMatchObject({ stampKey: null });
+    });
+
+    it('deletes a removed asset, so its bytes stop counting', async () => {
+      const { service, deleteObject } = setup({ stampKey: 'tenants/t1/organization/s.png' });
+      await service.removeAsset('stamp');
+      expect(deleteObject).toHaveBeenCalledWith('tenants/t1/organization/s.png');
     });
   });
 });

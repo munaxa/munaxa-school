@@ -1,6 +1,6 @@
 # Arabic rendering in the PDF pipeline
 
-PDFKit (via **fontkit**) *does* run the embedded font's OpenType shaper — hand it Arabic in **logical**
+PDFKit (via **fontkit**) _does_ run the embedded font's OpenType shaper — hand it Arabic in **logical**
 order and the correctly joined glyphs come out — but it performs **no** Unicode bidirectional
 reordering. So the renderer keeps text in logical Unicode and supplies only the missing bidi step,
 letting the font shape natively. There is **no** hand-written presentation-form table.
@@ -61,7 +61,8 @@ pointing `PDF_ARABIC_FONT_PATH` at it.
 ## Known limitations
 
 ### 1. Automatic width-wrapping of long mixed-direction paragraphs
-Run order is computed per string. A single-direction paragraph (all Arabic *or* all Latin) wraps
+
+Run order is computed per string. A single-direction paragraph (all Arabic _or_ all Latin) wraps
 correctly because the font/PDFKit handle it. A long paragraph that **mixes** directions **and** relies
 on PDFKit's automatic width-wrapping can order runs incorrectly across a line break, because the visual
 run order is computed for the whole string, not per wrapped line. Not affected: the overwhelming
@@ -70,10 +71,12 @@ signatures, footers) and single-direction paragraphs. Mitigation: insert explici
 break points. Full fix: per-line bidi layout (take over line breaking from PDFKit).
 
 ### 2. Copy/paste depends on `/ActualText`
+
 Correct copy/search/accessibility relies on `/ActualText`, honoured by Acrobat, Chrome/Edge, poppler
 and PDF/UA readers. Extractors that ignore it see the shaped glyph order.
 
 ### 3. Paragraph alignment
+
 The renderer keeps its existing left alignment for body paragraphs; RTL text is shaped and correctly
 ordered but not right-aligned. Right-aligning RTL blocks is intentionally left out to preserve backward
-compatibility (right/center alignment *is* handled for meta boxes, totals and table columns).
+compatibility (right/center alignment _is_ handled for meta boxes, totals and table columns).

@@ -19,7 +19,8 @@
     "prisma:studio": "prisma studio --schema=../../prisma/schema.prisma",
     "db:seed": "prisma db seed --schema=../../prisma/schema.prisma",
     "db:seed:demo": "tsx scripts/seed-demo.ts",
-    "db:seed:platform-owner": "tsx scripts/seed-platform-owner.ts"
+    "db:seed:platform-owner": "tsx scripts/seed-platform-owner.ts",
+    "storage:reconcile": "node dist/jobs/reconcile-storage.js"
   },
   "prisma": {
     "seed": "tsx ../../prisma/seed.ts"
