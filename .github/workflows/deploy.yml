@@ -1,9 +1,10 @@
 name: Deploy
 
 # Build & publish container images to GHCR on every merge to main, then apply database
-# migrations and deploy — both gated. Staging deploys on merge; production is manual
-# (workflow_dispatch) and protected by the GitHub `production` environment (add required
-# reviewers there for a human gate).
+# migrations and deploy. A merge only ever targets staging; production is manual
+# (workflow_dispatch with environment=production) and runs only after the `production-gate` job
+# has proved that the GitHub `production` environment requires a reviewer's approval — otherwise
+# the run fails before any migration. See docs/ops/deployment-gates.md.
 
 on:
   push:
@@ -28,6 +29,20 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  production-gate:
+    name: Production gate · approval required
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Require a protected environment for production
+        run: node scripts/deploy-gate.mjs verify-environment "$TARGET"
+        env:
+          TARGET: ${{ github.event.inputs.environment || 'staging' }}
+          GITHUB_TOKEN: ${{ github.token }}
+
   build-images:
     name: Build & push container images
     runs-on: ubuntu-latest
@@ -84,7 +99,7 @@ jobs:
   migrate:
     name: Apply database migrations
     runs-on: ubuntu-latest
-    needs: build-images
+    needs: [production-gate, build-images]
     environment: ${{ github.event.inputs.environment || 'staging' }}
     # Installing needs to pull @munaxa/* from GitHub Packages. The workflow-level
     # default is contents:read only, which authenticates but cannot download a
@@ -99,6 +114,15 @@ jobs:
       DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v6
+      # The URL is a secret, so nothing here can see which database it names. Before connecting,
+      # the environment must declare it: DATABASE_ENVIRONMENT (its own name) and DATABASE_HOST
+      # (the host the URL points at). Otherwise the job stops (docs/ops/deployment-gates.md).
+      - name: Require the database this environment declares
+        run: node scripts/deploy-gate.mjs verify-database "$TARGET"
+        env:
+          TARGET: ${{ github.event.inputs.environment || 'staging' }}
+          DATABASE_ENVIRONMENT: ${{ vars.DATABASE_ENVIRONMENT }}
+          DATABASE_HOST: ${{ vars.DATABASE_HOST }}
       - uses: pnpm/action-setup@v6
         with:
           version: '10.33.0'

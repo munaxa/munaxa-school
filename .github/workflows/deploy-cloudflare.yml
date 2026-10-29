@@ -9,10 +9,17 @@ name: Deploy Cloudflare
 # not match a project's watch paths, so no build ran and the Worker kept serving its previous
 # bundle — green `main`, nothing in the dashboard, stale site.
 #
-# Deployment now lives here instead. Every merge to `main` redeploys every app below, unconditionally
-# and with no path filtering: the apps render their UI from `@munaxa/ui`, so "nothing they
-# consume changed" is not a judgement a path filter can make correctly. A redundant deploy costs
-# one short build; a skipped one costs a silently stale production site.
+# Deployment now lives here instead. Every merge to `main` requests a production deploy of every
+# app below, unconditionally and with no path filtering: the apps render their UI from
+# `@munaxa/ui`, so "nothing they consume changed" is not a judgement a path filter can make
+# correctly. A redundant deploy costs one short build; a skipped one costs a silently stale
+# production site.
+#
+# A request is not a deploy. The `production-gate` job first proves, from the GitHub API, that the
+# `production` environment requires a reviewer's approval (and that admins cannot bypass it, and
+# only `main` may deploy); if it does not, the run fails before anything is built and nothing is
+# deployed. If it does, the deploy job waits in Actions until a reviewer approves it. See
+# docs/ops/deployment-gates.md.
 
 on:
   push:
@@ -33,9 +40,24 @@ env:
   PNPM_VERSION: '10.33.0'
 
 jobs:
+  production-gate:
+    name: Production gate · approval required
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Require a protected production environment
+        run: node scripts/deploy-gate.mjs verify-environment "$TARGET"
+        env:
+          TARGET: production
+          GITHUB_TOKEN: ${{ github.token }}
+
   deploy:
     name: Deploy ${{ matrix.app }} → ${{ matrix.worker }}
     runs-on: ubuntu-latest
+    needs: production-gate
     environment: production
     # Installing needs to pull @munaxa/* from GitHub Packages; the workflow-level
     # contents:read default cannot download a private package.
