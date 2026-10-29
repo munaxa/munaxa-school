@@ -5,6 +5,17 @@
   "setupFiles": ["<rootDir>/setup-env.ts"],
   "testRegex": ".e2e-spec.ts$",
   "transform": {
+    "^.+/node_modules/.+\\.js$": [
+      "ts-jest",
+      {
+        "isolatedModules": true,
+        "tsconfig": {
+          "allowJs": true,
+          "module": "commonjs",
+          "target": "es2022"
+        }
+      }
+    ],
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
@@ -14,5 +25,6 @@
     "^(\\.{1,2}/.*)\\.js$": "$1"
   },
   "maxWorkers": 1,
-  "testTimeout": 60000
+  "testTimeout": 60000,
+  "transformIgnorePatterns": ["/node_modules/(?!(\\.pnpm/@munaxa\\+|@munaxa/))"]
 }

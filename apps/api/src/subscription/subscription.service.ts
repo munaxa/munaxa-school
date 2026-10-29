@@ -5,8 +5,18 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { canMutate, isCoreModule, LimitKey, PlanFeature } from '@school/domain';
+import { canLogin, canMutate, isCoreModule, LimitKey, PlanFeature } from '@school/domain';
 import type { SubscriptionPlan, SubscriptionFeature } from '@prisma/client';
+import {
+  OperationKind,
+  accessModeOf,
+  checkFeature,
+  checkOperation,
+  limitOf,
+  type SubscriptionStatus as SharedStatus,
+} from '@munaxa/licensing';
+import { LicenceSource, SCHOOL_PRODUCT_KEY, type LicenceState } from './licence.source';
+import { assertRoom, UNLIMITED, type Capacity } from './capacity';
 import { SubscriptionRepository } from './subscription.repository';
 import type {
   PlanView,
@@ -45,13 +55,27 @@ const LIMIT_COLUMN: Record<
  *
  * Snapshots are cached in-process for a short TTL (the same pattern as {@link FeatureGate}),
  * since these checks run on hot paths but subscriptions change rarely.
+ *
+ * **On premises** (`LICENSING_MODE=LICENSE_FILE`) the licence replaces steps 2–4: features,
+ * limits and write access come from the verified licence through the shared Munaxa contract
+ * (`@munaxa/licensing`), and a missing or invalid licence grants nothing beyond the core modules —
+ * never the permissive un-subscribed default, which would turn a deleted licence file into an
+ * unlimited one.
  */
 @Injectable()
 export class SubscriptionService {
   static readonly TTL_MS = 30_000;
   private readonly cache = new Map<string, CacheEntry>();
 
-  constructor(private readonly repo: SubscriptionRepository) {}
+  constructor(
+    private readonly repo: SubscriptionRepository,
+    private readonly licence: LicenceSource,
+  ) {}
+
+  /** The evaluation context for a licence decision about this tenant. */
+  private licenceContext(tenantId: string, state: Extract<LicenceState, { configured: true }>) {
+    return { now: state.evaluatedAt, tenantId, product: SCHOOL_PRODUCT_KEY, cap: state.cap };
+  }
 
   private async snapshot(tenantId: string): Promise<SubscriptionSnapshot> {
     const now = Date.now();
@@ -79,6 +103,15 @@ export class SubscriptionService {
    */
   async canUseFeature(tenantId: string, key: string): Promise<boolean> {
     if (isCoreModule(key)) return true;
+    const licence = await this.licence.current(tenantId);
+    if (licence.configured) {
+      return checkFeature(
+        licence.snapshot,
+        key,
+        OperationKind.READ,
+        this.licenceContext(tenantId, licence),
+      ).allowed;
+    }
     const snap = await this.snapshot(tenantId);
 
     const override = snap.overrides.get(key);
@@ -93,6 +126,12 @@ export class SubscriptionService {
    * `limitOverride` wins over the plan column.
    */
   async getLimit(tenantId: string, key: string): Promise<number | null> {
+    const licence = await this.licence.current(tenantId);
+    if (licence.configured) {
+      // No licence, or one for another school: a ceiling of zero, never unlimited.
+      if (licence.snapshot === null || licence.snapshot.tenantId !== tenantId) return 0;
+      return limitOf(licence.snapshot, key);
+    }
     const snap = await this.snapshot(tenantId);
 
     const override = snap.overrides.get(key);
@@ -105,8 +144,26 @@ export class SubscriptionService {
 
   /** The tenant's subscription status, or `null` when it has no subscription. */
   async status(tenantId: string): Promise<string | null> {
+    const licence = await this.licence.current(tenantId);
+    if (licence.configured) {
+      const { status } = accessModeOf(licence.snapshot, this.licenceContext(tenantId, licence));
+      // No trustworthy licence reads as EXPIRED — read-only — which is what it is.
+      return status === null ? 'EXPIRED' : toSchoolStatus(status);
+    }
     const snap = await this.snapshot(tenantId);
     return snap.subscription?.status ?? null;
+  }
+
+  /**
+   * Why a school's users may not sign in, or `null` when they may — the subscription half of the
+   * sign-in decision (the account's own status is the other half). Only an ARCHIVED school is
+   * refused: in every other state its users sign in and the read-only guard decides what they may
+   * change (see `canLogin`). Platform staff are not subject to it.
+   */
+  async signInRefusal(tenantId: string): Promise<string | null> {
+    const status = await this.status(tenantId);
+    if (status === null || canLogin(status)) return null;
+    return "This school's Munaxa subscription has ended and its records have been archived. Contact Munaxa to restore access.";
   }
 
   /**
@@ -115,6 +172,14 @@ export class SubscriptionService {
    * Delegates the state→policy decision to the shared domain helper (single source of truth).
    */
   async canMutate(tenantId: string): Promise<boolean> {
+    const licence = await this.licence.current(tenantId);
+    if (licence.configured) {
+      return checkOperation(
+        licence.snapshot,
+        OperationKind.WRITE,
+        this.licenceContext(tenantId, licence),
+      ).allowed;
+    }
     return canMutate(await this.status(tenantId));
   }
 
@@ -172,6 +237,7 @@ export class SubscriptionService {
    * exceed the plan limit. Core capacity is never blocked here — only metered dimensions.
    */
   async assertWithinLimit(tenantId: string, key: string, additional = 1): Promise<void> {
+    await this.assertGrowth(tenantId);
     const limit = await this.getLimit(tenantId, key);
     if (limit === null) return; // unlimited
     const used = await this.currentUsage(tenantId, key);
@@ -192,10 +258,45 @@ export class SubscriptionService {
     currentCount: number,
     additional = 1,
   ): Promise<void> {
+    assertRoom(await this.capacity(tenantId, key), currentCount, additional);
+  }
+
+  /**
+   * How far a counted dimension may grow, after refusing growth outright when the subscription does
+   * not allow it. The count is the caller's: see {@link Capacity}.
+   */
+  async capacity(tenantId: string, key: string): Promise<Capacity> {
+    await this.assertGrowth(tenantId);
     const limit = await this.getLimit(tenantId, key);
-    if (limit !== null && currentCount + additional > limit) {
-      const plan = await this.currentPlan(tenantId);
-      throw new ForbiddenException(upgradeMessage(key, limit, plan?.name ?? 'your current'));
+    if (limit === null) return UNLIMITED;
+    // The plan is named only when this database's plane decides; under a licence or the central
+    // service the local plan is not the answer, and may not exist.
+    const licensed = (await this.licence.current(tenantId)).configured;
+    const plan = licensed ? null : await this.currentPlan(tenantId);
+    return {
+      limit,
+      refusal: new ForbiddenException(upgradeMessage(key, limit, plan?.name ?? 'your current')),
+    };
+  }
+
+  /**
+   * Under a licence or the central service, growth needs the contract's say-so before any limit is
+   * counted: a tenant whose entitlements are only known from a stale snapshot keeps working but
+   * adds nothing, and an expired or suspended one adds nothing at all. The database plane keeps
+   * its own rule, enforced by {@link ReadOnlyStateGuard}.
+   */
+  private async assertGrowth(tenantId: string): Promise<void> {
+    const licence = await this.licence.current(tenantId);
+    if (!licence.configured) return;
+    const decision = checkOperation(
+      licence.snapshot,
+      OperationKind.GROWTH,
+      this.licenceContext(tenantId, licence),
+    );
+    if (!decision.allowed) {
+      throw new ForbiddenException(
+        "Your school's subscription does not allow adding more right now. Existing records are unaffected.",
+      );
     }
   }
 
@@ -241,8 +342,13 @@ export class SubscriptionService {
       features[key] = await this.canUseFeature(tenantId, key);
     }
 
+    const licence = await this.licence.current(tenantId);
     return {
-      status: sub?.status ?? 'NONE',
+      // Under a licence or the central service, the contract's status, not the local table's.
+      status: licence.configured
+        ? // Every shared state has a School name (see `toSchoolStatus`).
+          (((await this.status(tenantId)) ?? 'NONE') as SubscriptionSummary['status'])
+        : (sub?.status ?? 'NONE'),
       billingCycle: sub?.billingCycle ?? null,
       plan,
       isTrial: await this.isTrial(tenantId),
@@ -337,3 +443,11 @@ const LIMIT_LABEL: Record<string, string> = {
   [LimitKey.STAFF]: 'staff',
   [LimitKey.STORAGE_GB]: 'storage (GB)',
 };
+
+/**
+ * The shared lifecycle's states in this product's own vocabulary. They share names but one:
+ * School calls a trial `TRIALING`.
+ */
+function toSchoolStatus(status: SharedStatus): string {
+  return status === 'TRIAL' ? 'TRIALING' : status;
+}

@@ -6,6 +6,8 @@ import { PlanFeatureGuard } from './plan-feature.guard';
 import { PricingService } from './pricing.service';
 import { ReadOnlyStateGuard } from './read-only-state.guard';
 import { UsageService } from './usage.service';
+import { LicenceSource } from './licence.source';
+import { LicensingStateStore, PrismaLicensingStateStore } from './licensing-state.store';
 
 /**
  * Subscription plane. Exported globally so any module can enforce limits/capabilities through
@@ -19,6 +21,8 @@ import { UsageService } from './usage.service';
   providers: [
     SubscriptionService,
     SubscriptionRepository,
+    LicenceSource,
+    { provide: LicensingStateStore, useClass: PrismaLicensingStateStore },
     PlanFeatureGuard,
     PricingService,
     ReadOnlyStateGuard,

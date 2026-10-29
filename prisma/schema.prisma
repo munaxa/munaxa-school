@@ -783,6 +783,7 @@ model Tenant {
   // SaaS subscription plane
   subscription       TenantSubscription?
   subscriptionUsages SubscriptionUsage[]
+  licensingState     LicensingState?
   planChanges        PlanChangeHistory[]
   billingProfile     BillingProfile?
   trial              Trial?
@@ -5629,6 +5630,19 @@ model TenantSubscription {
 
 /// A current usage counter for a tenant against one metered dimension
 /// (students, campuses, staff, storage_gb, api_calls). One row per metric.
+/// What this deployment last verified about the school's entitlements (docs/ops/licensing.md).
+/// Written by the licensing source only; `lastObservedAt` only moves forward.
+model LicensingState {
+  tenantId       String   @id @db.Uuid
+  snapshot       Json?
+  source         String
+  lastObservedAt DateTime @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
 model SubscriptionUsage {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @db.Uuid

@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { AdmissionStatus, ApprovalStatus, EnrollmentStatus } from '@prisma/client';
+import { LimitKey } from '@school/domain';
 import { AdmissionsRepository } from './admissions.repository';
+import { DomainEvents } from '../../events/domain-events';
+import { requireTenantId } from '../../common/tenant.util';
+import { UNLIMITED, type Capacity } from '../../subscription/capacity';
+import { SubscriptionService } from '../../subscription/subscription.service';
 import { QuoteService } from './quote.service';
 import { RegistrationAgreementService } from '../../documents/registration-agreement.service';
 import { TenantContextStore } from '../../prisma/tenant-context';
@@ -30,6 +35,8 @@ export class AdmissionsService {
     private readonly repo: AdmissionsRepository,
     private readonly quotes: QuoteService,
     private readonly agreements: RegistrationAgreementService,
+    private readonly subscriptions: SubscriptionService,
+    private readonly events: DomainEvents,
   ) {}
 
   /**
@@ -39,6 +46,24 @@ export class AdmissionsService {
    * re-bound because the request's async scope has already unwound by the time this runs. Best-effort:
    * tryAutoGenerate never throws, and any failure here is logged, not surfaced to the caller.
    */
+  /** The plan's student capacity, asked only when the request creates students. */
+  private studentCapacity(creates: boolean): Promise<Capacity> {
+    return creates
+      ? this.subscriptions.capacity(requireTenantId(), LimitKey.STUDENTS)
+      : Promise.resolve(UNLIMITED);
+  }
+
+  /** The new student total, for the usage counter, when the commit created students. */
+  private publishStudents(result: object): void {
+    if ('studentsTotal' in result && typeof result.studentsTotal === 'number') {
+      this.events.emit({
+        type: 'StudentCreated',
+        tenantId: requireTenantId(),
+        total: result.studentsTotal,
+      });
+    }
+  }
+
   private scheduleAgreement(enrollmentId: string): void {
     const context = TenantContextStore.get();
     const runner = () => this.agreements.tryAutoGenerate(enrollmentId);
@@ -82,7 +107,11 @@ export class AdmissionsService {
   // agreement when finance approves — see approve()). Generation is idempotent (one immutable
   // agreement per enrollment) and never blocks/fails the commit.
   async commit(dto: CommitDto) {
-    const enrollment = await this.repo.commit(dto);
+    const { enrollment, studentsTotal } = await this.repo.commit(
+      dto,
+      await this.studentCapacity(!dto.existingStudentId),
+    );
+    this.publishStudents({ studentsTotal });
     if (enrollment.admissionStatus === AdmissionStatus.REGISTERED) {
       // Fire-and-forget: return the committed enrollment immediately; the agreement PDF renders in
       // the background so the registrar isn't blocked on it (see scheduleAgreement).
@@ -97,7 +126,9 @@ export class AdmissionsService {
    * committed snapshot / family plan) in the background — same fire-and-forget pattern as commit().
    */
   async familyCommit(dto: FamilyCommitDto) {
-    const result = await this.repo.familyCommit(dto);
+    const creates = (dto.students ?? []).some((entry) => !entry.existingStudentId);
+    const result = await this.repo.familyCommit(dto, await this.studentCapacity(creates));
+    this.publishStudents(result);
     // The agreement is one-per-guardian+year; scheduling it for any of the family's enrolments
     // produces the single family agreement covering all the children.
     if (result.enrollmentIds.length > 0) this.scheduleAgreement(result.enrollmentIds[0]!);
@@ -109,7 +140,12 @@ export class AdmissionsService {
    * touches paid installments. Regenerates the ONE family agreement from the updated snapshot.
    */
   async addStudentToFamily(financialAccountId: string, dto: AddFamilyStudentDto) {
-    const result = await this.repo.addStudentToFamily(financialAccountId, dto);
+    const result = await this.repo.addStudentToFamily(
+      financialAccountId,
+      dto,
+      await this.studentCapacity(!dto.existingStudentId),
+    );
+    this.publishStudents(result);
     if (result.enrollmentId) this.scheduleAgreement(result.enrollmentId);
     return result;
   }
@@ -132,24 +168,29 @@ export class AdmissionsService {
       );
     }
 
-    const result = await this.repo.addStudentToFamily(financialAccountId, {
-      idempotencyKey: dto.idempotencyKey,
-      quoteId: dto.quoteId,
-      mode: dto.mode ?? AddFamilyStudentMode.NEW_PLAN,
-      existingStudentId: dto.studentId,
-      ...(dto.sectionId ? { sectionId: dto.sectionId } : {}),
-      ...(dto.areaId ? { areaId: dto.areaId } : {}),
-      ...(dto.transportRequested !== undefined
-        ? { transportRequested: dto.transportRequested }
-        : {}),
-      ...(dto.registrationFeePaid !== undefined
-        ? { registrationFeePaid: dto.registrationFeePaid }
-        : {}),
-      ...(dto.paymentMode ? { paymentMode: dto.paymentMode } : {}),
-      ...(dto.installments ? { installments: dto.installments } : {}),
-      ...(dto.firstDueDate ? { firstDueDate: dto.firstDueDate } : {}),
-      ...(dto.confirm !== undefined ? { confirm: dto.confirm } : {}),
-    });
+    const result = await this.repo.addStudentToFamily(
+      financialAccountId,
+      {
+        idempotencyKey: dto.idempotencyKey,
+        quoteId: dto.quoteId,
+        mode: dto.mode ?? AddFamilyStudentMode.NEW_PLAN,
+        existingStudentId: dto.studentId,
+        ...(dto.sectionId ? { sectionId: dto.sectionId } : {}),
+        ...(dto.areaId ? { areaId: dto.areaId } : {}),
+        ...(dto.transportRequested !== undefined
+          ? { transportRequested: dto.transportRequested }
+          : {}),
+        ...(dto.registrationFeePaid !== undefined
+          ? { registrationFeePaid: dto.registrationFeePaid }
+          : {}),
+        ...(dto.paymentMode ? { paymentMode: dto.paymentMode } : {}),
+        ...(dto.installments ? { installments: dto.installments } : {}),
+        ...(dto.firstDueDate ? { firstDueDate: dto.firstDueDate } : {}),
+        ...(dto.confirm !== undefined ? { confirm: dto.confirm } : {}),
+      },
+      // A returning student is never recreated, so re-enrolment takes no place under the limit.
+      UNLIMITED,
+    );
     if (result.enrollmentId) this.scheduleAgreement(result.enrollmentId);
     return result;
   }

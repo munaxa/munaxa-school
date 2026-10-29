@@ -14,6 +14,7 @@ import { PasswordService } from './password.service';
 import { FirebaseService } from './firebase.service';
 import { RbacService } from './rbac.service';
 import { MailService } from '../../mail/mail.service';
+import { SubscriptionService } from '../../subscription/subscription.service';
 import type { AuthenticatedUser, TokenPair } from '../auth.types';
 import type {
   LoginDto,
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly firebase: FirebaseService,
     private readonly rbac: RbacService,
     private readonly mail: MailService,
+    private readonly subscriptions: SubscriptionService,
   ) {}
 
   // Temporary passwords are valid for this long after a Forgot Password request.
@@ -119,6 +121,11 @@ export class AuthService {
       }
 
       const principal = await this.buildPrincipal(tx, user);
+      const refused = await this.subscriptionRefusal(principal);
+      if (refused) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.login.blocked', { refused }, meta);
+        return { kind: 'blocked' as const, message: refused };
+      }
       const tokens = await this.issueTokens(tx, principal, meta);
       await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
       await this.audit(tx, user.tenantId, user.id, 'auth.login.success', {}, meta);
@@ -154,6 +161,8 @@ export class AuthService {
       if (blocked) throw new ForbiddenException(blocked);
 
       const principal = await this.buildPrincipal(tx, user);
+      const refused = await this.subscriptionRefusal(principal);
+      if (refused) throw new ForbiddenException(refused);
       const tokens = await this.issueTokens(tx, principal, meta);
       await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
       await this.audit(tx, user.tenantId, user.id, 'auth.session.exchange', {}, meta);
@@ -184,6 +193,9 @@ export class AuthService {
       const blocked = this.loginBlockReason(user);
       if (blocked) return { kind: 'blocked' as const, message: blocked };
       const principal = await this.buildPrincipal(tx, user);
+      // A session outlives no archive: refresh is where an existing sign-in meets the policy.
+      const refused = await this.subscriptionRefusal(principal);
+      if (refused) return { kind: 'blocked' as const, message: refused };
 
       // Rotate within the same family.
       const rotated = await this.persistRefreshToken(tx, principal, meta, existing.familyId);
@@ -385,6 +397,12 @@ export class AuthService {
 
   // ----- Internals ---------------------------------------------------------
   /** Returns a human-readable reason if the account cannot log in, else null. */
+  /** The subscription half of every sign-in: see `SubscriptionService.signInRefusal`. */
+  private async subscriptionRefusal(principal: AuthenticatedUser): Promise<string | null> {
+    if (principal.isPlatform) return null;
+    return this.subscriptions.signInRefusal(principal.tenantId);
+  }
+
   private loginBlockReason(user: User): string | null {
     if (user.deletedAt || user.status === UserStatus.DISABLED) return 'Account is disabled';
     if (user.status === UserStatus.SUSPENDED) return 'Account is suspended';

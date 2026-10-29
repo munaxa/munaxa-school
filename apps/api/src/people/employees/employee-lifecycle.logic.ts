@@ -18,6 +18,24 @@ export const ENTRY_STATUSES: readonly EmploymentStatus[] = [
   EmploymentStatus.ACTIVE,
 ];
 
+/**
+ * Statuses in which a person is on staff, and so holds a place under the plan's staff limit: hired
+ * and not yet gone. Candidates in the recruitment pipeline do not; neither does anyone who has left.
+ */
+export const STAFF_STATUSES: readonly EmploymentStatus[] = [
+  EmploymentStatus.HIRED,
+  EmploymentStatus.PROBATION,
+  EmploymentStatus.ACTIVE,
+  EmploymentStatus.TRANSFERRED,
+  EmploymentStatus.PROMOTION,
+  EmploymentStatus.ON_LEAVE,
+  EmploymentStatus.SUSPENDED,
+];
+
+export function isStaffStatus(status: EmploymentStatus): boolean {
+  return STAFF_STATUSES.includes(status);
+}
+
 /** Exit statuses: the employment has ended. From here the only move is to ARCHIVED. */
 export const EXIT_STATUSES: readonly EmploymentStatus[] = [
   EmploymentStatus.RETIRED,

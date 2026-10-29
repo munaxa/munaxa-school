@@ -77,11 +77,13 @@ jobs:
           scope: '@munaxa'
 
       # The shared design system is published from munaxa-platform to GitHub Packages.
-      # GITHUB_TOKEN carries the `packages: read` permission granted at the job level.
+      # GITHUB_TOKEN is scoped to this repository and reads @munaxa/* only if each package has been
+      # granted to it, so a fresh install (no pnpm store cache) is refused with ERR_PNPM_FETCH_403.
+      # PLATFORM_PACKAGES_TOKEN (read:packages) is used when present, as in munaxa-work.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Prisma generate
         run: pnpm prisma:generate
@@ -169,7 +171,7 @@ jobs:
           scope: '@munaxa'
       - run: pnpm install --frozen-lockfile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
       # Every production deploy waits on the `production-gate` job (scripts/deploy-gate.mjs).
       # The lint keeps a new or edited workflow from routing around it; the report shows on each
       # pull request whether the `production` environment would currently let a deploy through.

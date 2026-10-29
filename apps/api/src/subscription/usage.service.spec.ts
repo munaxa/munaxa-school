@@ -1,4 +1,5 @@
 import { LimitKey } from '@school/domain';
+import type { LicenceSource } from './licence.source';
 import { UsageService, API_CALLS_METRIC, AI_UNITS_METRIC } from './usage.service';
 import type { DomainEvents, DomainEvent } from '../events/domain-events';
 import type { SubscriptionRepository } from './subscription.repository';
@@ -49,8 +50,11 @@ describe('UsageService.handle', () => {
     const repo = { setUsage, incrementUsage } as unknown as SubscriptionRepository;
     const subscriptions = { invalidate } as unknown as SubscriptionService;
     const events = { subscribe: jest.fn() } as unknown as DomainEvents;
+    const reportUsage = jest.fn().mockResolvedValue(undefined);
+    const licence = { reportUsage } as unknown as LicenceSource;
     return {
-      service: new UsageService(events, repo, subscriptions),
+      service: new UsageService(events, repo, subscriptions, licence),
+      reportUsage,
       setUsage,
       incrementUsage,
       invalidate,
@@ -68,6 +72,14 @@ describe('UsageService.handle', () => {
     const { service, incrementUsage } = make();
     await service.handle({ type: 'ApiRequestRecorded', tenantId: 't1', count: 3 });
     expect(incrementUsage).toHaveBeenCalledWith('t1', API_CALLS_METRIC, 3);
+  });
+
+  it('reports levels to the licensing source and keeps traffic counters local', async () => {
+    const { service, reportUsage } = make();
+    await service.handle({ type: 'CampusCreated', tenantId: 't1', total: 3 });
+    await service.handle({ type: 'ApiRequestRecorded', tenantId: 't1', count: 3 });
+    expect(reportUsage).toHaveBeenCalledTimes(1);
+    expect(reportUsage).toHaveBeenCalledWith('t1', LimitKey.CAMPUSES, 3);
   });
 
   it('ignores events it does not track', async () => {

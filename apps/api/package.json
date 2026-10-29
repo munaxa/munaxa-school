@@ -27,6 +27,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",
     "@aws-sdk/s3-request-presigner": "^3.717.0",
+    "@munaxa/licensing": "^0.1.0",
     "@school/contracts": "workspace:*",
     "@school/domain": "workspace:*",
     "@school/utils": "workspace:*",
@@ -58,6 +59,7 @@
   "devDependencies": {
     "@munaxa/config-eslint": "^1.0.0",
     "@munaxa/config-typescript": "^1.0.0",
+    "@munaxa/crypto": "^2.4.1",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
@@ -90,8 +92,22 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
+      "^.+/node_modules/.+\\.js$": [
+        "ts-jest",
+        {
+          "isolatedModules": true,
+          "tsconfig": {
+            "allowJs": true,
+            "module": "commonjs",
+            "target": "es2022"
+          }
+        }
+      ],
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(\\.pnpm/@munaxa\\+|@munaxa/))"
+    ],
     "moduleNameMapper": {
       "^@school/domain$": "<rootDir>/../../../packages/domain/src/index.ts",
       "^@school/contracts$": "<rootDir>/../../../packages/contracts/src/index.ts",

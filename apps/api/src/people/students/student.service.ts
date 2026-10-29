@@ -45,14 +45,18 @@ export class StudentService {
     // A Student is a permanent identity record; placement is set when the student is enrolled.
     // Enforce the plan's student limit centrally (core Students module is never hidden — we only
     // block crossing the quota, with an upgrade message). The live count is authoritative.
+    // The count and the create share one locked transaction, so two concurrent requests cannot
+    // both take the last place under the limit.
     const tenantId = requireTenantId();
-    const count = await this.repo.countActive();
-    await this.subscriptions.assertCapacity(tenantId, LimitKey.STUDENTS, count, 1);
-    const student = await this.repo.create(this.toCreateInput(dto));
+    const capacity = await this.subscriptions.capacity(tenantId, LimitKey.STUDENTS);
+    const { created, total } = await this.repo.createWithinCapacity(
+      [this.toCreateInput(dto)],
+      capacity,
+    );
     // Publish a fact; the UsageService consumer updates the usage counter (event-driven, decoupled
     // from subscription logic). The new count is authoritative so the counter never drifts.
-    this.events.emit({ type: 'StudentCreated', tenantId, total: count + 1 });
-    return student;
+    this.events.emit({ type: 'StudentCreated', tenantId, total });
+    return created[0]!;
   }
 
   list(filter: {
@@ -239,8 +243,13 @@ export class StudentService {
 
     let created = 0;
     if (valid.length > 0) {
-      const inserted = await this.repo.createManyTx(valid);
-      created = inserted.length;
+      // The plan's student limit applies to an import exactly as to the form: the whole file fits,
+      // or nothing is created and the limit is named.
+      const tenantId = requireTenantId();
+      const capacity = await this.subscriptions.capacity(tenantId, LimitKey.STUDENTS);
+      const inserted = await this.repo.createWithinCapacity(valid, capacity);
+      created = inserted.created.length;
+      this.events.emit({ type: 'StudentCreated', tenantId, total: inserted.total });
     }
     return { created, failed };
   }

@@ -1,6 +1,9 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { EmploymentStatus, type Employee, type Prisma } from '@prisma/client';
-import { TenantRepository } from '../../common/tenant.repository';
+import { lockScope, TenantRepository } from '../../common/tenant.repository';
+import { assertRoom, CAPACITY_SCOPE, type Capacity } from '../../subscription/capacity';
+import { isStaffStatus, STAFF_STATUSES } from './employee-lifecycle.logic';
+import type { TxClient } from '../../prisma/tenant.helpers';
 import { TenantContextStore } from '../../prisma/tenant-context';
 import { stampsTerminationDate } from './employee-lifecycle.logic';
 import { allocateEmployeeNumber } from './employee-number';
@@ -85,13 +88,26 @@ const INACTIVE_STATUSES: EmploymentStatus[] = [
 @Injectable()
 export class EmployeeRepository extends TenantRepository {
   /** Create an employee and seed its first EmployeeStatusHistory row + audit, atomically. */
+  /**
+   * Creates the employee. One created on staff ({@link isStaffStatus}) takes a place under the
+   * plan's staff limit: counted and created under the tenant's staff lock, taken first, so
+   * concurrent hires cannot both take the last place. `staffTotal` is the new count when it moved.
+   */
   create(
     data: Omit<Prisma.EmployeeUncheckedCreateInput, 'tenantId'>,
     initialStatus: EmploymentStatus,
-    teaching: TeachingFacetInput = {},
-  ): Promise<EmployeeDetail> {
+    teaching: TeachingFacetInput,
+    capacity: Capacity,
+  ): Promise<{ employee: EmployeeDetail; staffTotal: number | null }> {
     const actorUserId = TenantContextStore.get()?.actorUserId ?? null;
     return this.run(async (tx, tenantId) => {
+      let staffTotal: number | null = null;
+      if (isStaffStatus(initialStatus)) {
+        await lockScope(tx, CAPACITY_SCOPE.staff, tenantId);
+        const current = await countStaff(tx);
+        assertRoom(capacity, current, 1);
+        staffTotal = current + 1;
+      }
       // Everyone on staff carries a staff number — payroll, the attendance devices and the staff
       // card all refer to a person by it — so the school issues the next one rather than leaving
       // it to whoever fills the form. A number typed in by hand is still honoured, and still has
@@ -128,9 +144,10 @@ export class EmployeeRepository extends TenantRepository {
       });
       await this.syncTeacherFacet(tx, tenantId, created.id, teaching);
       // Re-read with relations so the response includes the just-written status-history row.
-      return withOpenFacet(
+      const employee = withOpenFacet(
         await tx.employee.findUniqueOrThrow({ where: { id: created.id }, include: DETAIL_INCLUDE }),
       );
+      return { employee, staffTotal };
     });
   }
 
@@ -211,9 +228,16 @@ export class EmployeeRepository extends TenantRepository {
     toStatus: EmploymentStatus,
     reason: string | undefined,
     effectiveDate: Date | undefined,
-  ): Promise<EmployeeDetail> {
+    capacity: Capacity,
+  ): Promise<{ employee: EmployeeDetail; staffTotal: number | null }> {
     const actorUserId = TenantContextStore.get()?.actorUserId ?? null;
     return this.run(async (tx, tenantId) => {
+      // Joining the staff takes a place under the plan's limit, checked under the staff lock;
+      // leaving it frees one. Either way the count moves, and is reported.
+      const joins = !isStaffStatus(fromStatus) && isStaffStatus(toStatus);
+      const moves = isStaffStatus(fromStatus) !== isStaffStatus(toStatus);
+      if (moves) await lockScope(tx, CAPACITY_SCOPE.staff, tenantId);
+      if (joins) assertRoom(capacity, await countStaff(tx), 1);
       await tx.employee.update({
         where: { id },
         data: {
@@ -243,9 +267,10 @@ export class EmployeeRepository extends TenantRepository {
       });
       // The teaching facet is the same person: a teacher who has left HR has left the classroom.
       await tx.teacher.updateMany({ where: { employeeId: id }, data: { status: toStatus } });
-      return withOpenFacet(
+      const employee = withOpenFacet(
         await tx.employee.findUniqueOrThrow({ where: { id }, include: DETAIL_INCLUDE }),
       );
+      return { employee, staffTotal: moves ? await countStaff(tx) : null };
     });
   }
 
@@ -381,9 +406,11 @@ export class EmployeeRepository extends TenantRepository {
     return employeeNumber;
   }
 
-  softDelete(id: string): Promise<Employee> {
+  /** Soft-deletes the employee; `staffTotal` is the new staff count when they were on staff. */
+  softDelete(id: string): Promise<{ employee: Employee; staffTotal: number | null }> {
     const actorUserId = TenantContextStore.get()?.actorUserId ?? null;
     return this.run(async (tx, tenantId) => {
+      await lockScope(tx, CAPACITY_SCOPE.staff, tenantId);
       const employee = await tx.employee.update({
         where: { id },
         data: { deletedAt: new Date(), updatedById: actorUserId },
@@ -399,7 +426,12 @@ export class EmployeeRepository extends TenantRepository {
         entityType: 'Employee',
         entityId: id,
       });
-      return employee;
+      return { employee, staffTotal: isStaffStatus(employee.status) ? await countStaff(tx) : null };
     });
   }
+}
+
+/** People on staff in the transaction's tenant: the figure the plan's staff limit counts. */
+function countStaff(tx: TxClient): Promise<number> {
+  return tx.employee.count({ where: { deletedAt: null, status: { in: [...STAFF_STATUSES] } } });
 }

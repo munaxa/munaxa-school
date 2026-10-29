@@ -3,8 +3,14 @@ import { LimitKey, PlanFeature } from '@school/domain';
 import { SubscriptionService } from './subscription.service';
 import type { SubscriptionRepository } from './subscription.repository';
 import type { SubscriptionSnapshot } from './subscription.types';
+import type { LicenceSource } from './licence.source';
 
 const TENANT = 't1';
+
+/** `LICENSING_MODE=DATABASE`: the licence defers to the subscription plane, as before. */
+const databaseMode = {
+  current: () => Promise.resolve({ configured: false }),
+} as unknown as LicenceSource;
 
 /** Build a snapshot with a Starter-like plan by default. */
 function snapshot(
@@ -86,7 +92,7 @@ function makeService(snap: SubscriptionSnapshot) {
     loadSnapshot: jest.fn().mockResolvedValue(snap),
     setUsage,
   } as unknown as SubscriptionRepository;
-  return { service: new SubscriptionService(repo), setUsage };
+  return { service: new SubscriptionService(repo, databaseMode), setUsage };
 }
 
 describe('SubscriptionService', () => {
@@ -278,5 +284,32 @@ describe('SubscriptionService', () => {
       await service.syncUsage(TENANT, LimitKey.STUDENTS, 5);
       expect(setUsage).toHaveBeenCalledWith(TENANT, LimitKey.STUDENTS, 5);
     });
+  });
+});
+
+describe('the sign-in policy', () => {
+  it('lets every school in except an archived one', async () => {
+    for (const status of [
+      'TRIALING',
+      'ACTIVE',
+      'PAST_DUE',
+      'READ_ONLY',
+      'SUSPENDED',
+      'EXPIRED',
+      'CANCELLED',
+    ]) {
+      const { service } = makeService(snapshot({ status }));
+      await expect(service.signInRefusal(TENANT)).resolves.toBeNull();
+    }
+    const { service: archived } = makeService(snapshot({ status: 'ARCHIVED' }));
+    await expect(archived.signInRefusal(TENANT)).resolves.toMatch(/archived/);
+    const { service: unsubscribed } = makeService(snapshot({ noSubscription: true }));
+    await expect(unsubscribed.signInRefusal(TENANT)).resolves.toBeNull();
+  });
+
+  it('a school that signs in while suspended reads but cannot change anything', async () => {
+    const { service } = makeService(snapshot({ status: 'SUSPENDED' }));
+    await expect(service.signInRefusal(TENANT)).resolves.toBeNull();
+    await expect(service.canMutate(TENANT)).resolves.toBe(false);
   });
 });
