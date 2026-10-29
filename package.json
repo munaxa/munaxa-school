@@ -2,7 +2,7 @@
   "name": "munaxa-school",
   "version": "0.1.0",
   "private": true,
-  "description": "Munaxa School — the School Operating System. An independent product repository: API, admin, mobile, demo, database and infrastructure. Consumes the shared design system from @munaxa/*.",
+  "description": "Munaxa School \u2014 the School Operating System. An independent product repository: API, admin, mobile, demo, database and infrastructure. Consumes the shared design system from @munaxa/*.",
   "license": "UNLICENSED",
   "packageManager": "pnpm@10.33.0",
   "engines": {
@@ -64,6 +64,14 @@
       "protobufjs",
       "@sentry/cli",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "multer": "^2.5.0",
+      "deepmerge-ts": "^8.0.2",
+      "postcss": "^8.5.25",
+      "vite": "^7.3.7",
+      "js-yaml@5.2.1": "^5.4.1",
+      "glob@10.3.3": "^10.5.0"
+    }
   }
 }

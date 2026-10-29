@@ -45,10 +45,7 @@ export class GradeService {
   async importCsv(dto: ImportGradesDto): Promise<ImportResult> {
     let records: Record<string, string>[];
     try {
-      records = parse(dto.csv, { columns: true, skip_empty_lines: true, trim: true }) as Record<
-        string,
-        string
-      >[];
+      records = parse(dto.csv, { columns: true, skip_empty_lines: true, trim: true });
     } catch {
       throw new BadRequestException('Could not parse CSV');
     }

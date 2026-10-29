@@ -205,10 +205,7 @@ export class StudentService {
   async importCsv(csv: string): Promise<ImportResult> {
     let records: Record<string, string>[];
     try {
-      records = parse(csv, { columns: true, skip_empty_lines: true, trim: true }) as Record<
-        string,
-        string
-      >[];
+      records = parse(csv, { columns: true, skip_empty_lines: true, trim: true });
     } catch {
       throw new BadRequestException('Could not parse CSV');
     }

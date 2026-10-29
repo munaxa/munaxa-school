@@ -169,8 +169,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Every dependency, development tooling included, and a real gate: the former
+      # `pnpm audit --prod || true` could not fail. A new high or critical advisory fails the
+      # build; fix it by upgrading (docs/security/dependency-advisories.md lists the overrides).
       - name: Dependency audit
-        run: pnpm audit --prod || true
+        run: pnpm audit --audit-level high
       # The gitleaks-action wrapper requires a paid licence for organisation-owned
       # repositories, which this became on the move to the munaxa org. The scanner
       # itself is MIT-licensed, so run the upstream binary directly and keep the check.
