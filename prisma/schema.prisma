@@ -5634,12 +5634,15 @@ model TenantSubscription {
 /// What this deployment last verified about the school's entitlements (docs/ops/licensing.md).
 /// Written by the licensing source only; `lastObservedAt` only moves forward.
 model LicensingState {
-  tenantId       String   @id @db.Uuid
-  snapshot       Json?
-  source         String
-  lastObservedAt DateTime @db.Timestamptz(6)
-  createdAt      DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+  tenantId           String   @id @db.Uuid
+  snapshot           Json?
+  source             String
+  lastObservedAt     DateTime @db.Timestamptz(6)
+  /// The newest verified revocation list (`mxr1`) and its sequence, which only grows.
+  revocationList     String?
+  revocationSequence Int?
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

@@ -96,4 +96,48 @@ describe('LicensingState (e2e)', () => {
     ).resolves.toBe(0);
     expect((await store.read(SCHOOL_B))?.snapshot?.tenantId).toBe(SCHOOL_B);
   });
+
+  it('keeps the revocation list with the higher sequence only, per school', async () => {
+    await store.writeRevocationList(SCHOOL_A, 'list-5', 5);
+    await store.writeRevocationList(SCHOOL_A, 'list-3', 3);
+    expect((await store.read(SCHOOL_A))?.revocationList).toBe('list-5');
+    await store.writeRevocationList(SCHOOL_A, 'list-6', 6);
+    expect((await store.read(SCHOOL_A))?.revocationList).toBe('list-6');
+    // A later snapshot write leaves the kept list alone.
+    await store.write(SCHOOL_A, {
+      snapshot: snapshotFor(SCHOOL_A),
+      source: 'LICENSE_FILE',
+      observedAt: new Date('2026-10-28T10:00:00Z'),
+    });
+    expect((await store.read(SCHOOL_A))?.revocationList).toBe('list-6');
+    // One school's list is not another's, and cannot be written through another's context.
+    expect((await store.read(SCHOOL_B))?.revocationList).toBeNull();
+    await expect(
+      withTenant(
+        prisma,
+        SCHOOL_A,
+        (tx) =>
+          tx.$executeRaw`UPDATE "LicensingState" SET "revocationList" = 'x', "revocationSequence" = 99 WHERE "tenantId" = ${SCHOOL_B}::uuid`,
+      ),
+    ).resolves.toBe(0);
+  });
+
+  it('refuses a list without its sequence, and a sequence below one', async () => {
+    await expect(
+      withTenant(
+        prisma,
+        SCHOOL_B,
+        (tx) =>
+          tx.$executeRaw`UPDATE "LicensingState" SET "revocationList" = 'x' WHERE "tenantId" = ${SCHOOL_B}::uuid`,
+      ),
+    ).rejects.toThrow(/LicensingState_revocation_pair_check/);
+    await expect(
+      withTenant(
+        prisma,
+        SCHOOL_B,
+        (tx) =>
+          tx.$executeRaw`UPDATE "LicensingState" SET "revocationList" = 'x', "revocationSequence" = 0 WHERE "tenantId" = ${SCHOOL_B}::uuid`,
+      ),
+    ).rejects.toThrow(/LicensingState_revocation_sequence_check/);
+  });
 });

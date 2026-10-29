@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { ConfigService } from '@nestjs/config';
 import { AsymmetricSigner } from '@munaxa/crypto';
-import { armorLicense, issueLicense, type LicensePayload } from '@munaxa/licensing';
+import {
+  REVOCATION_LIST_FORMAT,
+  armorLicense,
+  issueLicense,
+  issueRevocationList,
+  type LicensePayload,
+} from '@munaxa/licensing';
 import { PlanFeature } from '@school/domain';
 import type { Env } from '../config/env.validation';
 import { validateEnv } from '../config/env.validation';
@@ -25,6 +31,25 @@ const pair = {
 };
 const issuer = new AsymmetricSigner('ES256', [pair]);
 const path = join(directory, 'school.license');
+const revocations = join(directory, 'school.revocations');
+
+/** A signed revocation list naming `licenseIds`, numbered `sequence`. */
+function revocationList(sequence: number, licenseIds: readonly string[], signer = issuer): string {
+  return issueRevocationList(
+    {
+      format: REVOCATION_LIST_FORMAT,
+      product: 'school',
+      sequence,
+      issuedAt: '2026-06-01T00:00:00.000Z',
+      revoked: licenseIds.map((licenseId) => ({
+        licenseId,
+        revokedAt: '2026-06-01T00:00:00.000Z',
+        reason: 'CONTRACT_ENDED' as const,
+      })),
+    },
+    signer,
+  );
+}
 
 function licence(overrides: Partial<LicensePayload> = {}): string {
   return armorLicense(
@@ -148,5 +173,81 @@ describe('LicenceSource and SubscriptionService on premises', () => {
     expect(() =>
       validateEnv({ DATABASE_URL: env.DATABASE_URL, LICENSING_MODE: 'LICENSE_FILE' }),
     ).toThrow(/LICENSE_FILE_PATH/);
+  });
+});
+
+describe('offline revocation (platform ADR-0022)', () => {
+  const revocable = { ...env, LICENSE_REVOCATION_PATH: revocations };
+  const serviceWith = (store: MemoryLicensingStateStore) =>
+    new SubscriptionService(untouchable, new LicenceSource(configOf(revocable), store));
+  afterEach(() => rmSync(revocations, { force: true }));
+
+  it('a licence the delivered list names is suspended: features stay, writes stop', async () => {
+    writeFileSync(path, licence());
+    writeFileSync(revocations, revocationList(2, ['lic_1']));
+    const s = serviceWith(new MemoryLicensingStateStore());
+    await expect(s.canMutate(TENANT)).resolves.toBe(false);
+    await expect(s.status(TENANT)).resolves.toBe('SUSPENDED');
+  });
+
+  it('a list that does not name this licence changes nothing', async () => {
+    writeFileSync(path, licence());
+    writeFileSync(revocations, revocationList(2, ['lic_someone_else']));
+    const s = serviceWith(new MemoryLicensingStateStore());
+    await expect(s.canMutate(TENANT)).resolves.toBe(true);
+    await expect(s.status(TENANT)).resolves.toBe('ACTIVE');
+  });
+
+  it('a revocation sticks: deleting the file or offering an older list does not undo it', async () => {
+    writeFileSync(path, licence());
+    writeFileSync(revocations, revocationList(3, ['lic_1']));
+    const store = new MemoryLicensingStateStore();
+    await expect(serviceWith(store).canMutate(TENANT)).resolves.toBe(false);
+    expect(store.sequences.get(TENANT)).toBe(3);
+
+    // A new process (restart), the file now gone: the persisted list still applies.
+    rmSync(revocations);
+    await expect(serviceWith(store).canMutate(TENANT)).resolves.toBe(false);
+
+    // An older list, which did not yet name the licence, is not taken.
+    writeFileSync(revocations, revocationList(2, []));
+    await expect(serviceWith(store).canMutate(TENANT)).resolves.toBe(false);
+    expect(store.sequences.get(TENANT)).toBe(3);
+  });
+
+  it('a list signed by another key is not taken, and grants nothing', async () => {
+    const { privateKey: other, publicKey: otherPublic } = generateKeyPairSync('ec', {
+      namedCurve: 'P-256',
+    });
+    const forger = new AsymmetricSigner('ES256', [
+      {
+        kid: pair.kid,
+        privateKey: other.export({ type: 'pkcs8', format: 'pem' }).toString(),
+        publicKey: otherPublic.export({ type: 'spki', format: 'pem' }).toString(),
+      },
+    ]);
+    writeFileSync(path, licence({ expiresAt: '2026-02-01T00:00:00.000Z' }));
+    writeFileSync(revocations, revocationList(9, [], forger));
+    const store = new MemoryLicensingStateStore();
+    await expect(serviceWith(store).canMutate(TENANT)).resolves.toBe(false);
+    await expect(serviceWith(store).status(TENANT)).resolves.toBe('EXPIRED');
+    expect(store.sequences.get(TENANT)).toBeUndefined();
+  });
+
+  it('a kept list that no longer verifies fails closed', async () => {
+    writeFileSync(path, licence());
+    writeFileSync(revocations, revocationList(4, []));
+    const store = new MemoryLicensingStateStore();
+    await expect(serviceWith(store).canMutate(TENANT)).resolves.toBe(true);
+    const row = store.rows.get(TENANT)!;
+    store.rows.set(TENANT, { ...row, revocationList: `${row.revocationList}x` });
+    rmSync(revocations);
+    await expect(serviceWith(store).canMutate(TENANT)).resolves.toBe(false);
+  });
+
+  it('without LICENSE_REVOCATION_PATH the licence behaves as before', async () => {
+    writeFileSync(path, licence());
+    writeFileSync(revocations, revocationList(2, ['lic_1']));
+    await expect(service().canMutate(TENANT)).resolves.toBe(true);
   });
 });
