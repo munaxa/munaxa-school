@@ -1,24 +1,55 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { StorageService, ALLOWED_UPLOAD_MIME } from './storage.service';
+import type { CommitOutcome, StorageLedgerRepository } from './storage-ledger.repository';
+import type { SubscriptionService } from '../subscription/subscription.service';
+import type { DomainEvents } from '../events/domain-events';
+import { UNLIMITED, type Capacity } from '../subscription/capacity';
 import { TenantContextStore } from '../prisma/tenant-context';
 
+/** A ledger that records what it was asked, and answers `commit` with `outcome`. */
+function fakeLedger(outcome: CommitOutcome = { kind: 'stored', total: 0n }) {
+  return {
+    reserve: jest.fn().mockResolvedValue(0n),
+    commit: jest.fn().mockResolvedValue(outcome),
+    release: jest.fn().mockResolvedValue(0n),
+    settle: jest.fn().mockResolvedValue(undefined),
+    expiredReservations: jest.fn().mockResolvedValue([]),
+    reservedSize: jest.fn().mockResolvedValue(1024n),
+    reconcile: jest.fn(),
+  };
+}
+
 /** Minimal ConfigService stub: unconfigured storage (returns stub URLs, exercises validation). */
-function makeService(overrides: Record<string, string> = {}): StorageService {
+function makeService(
+  overrides: Record<string, string> = {},
+  ledger = fakeLedger(),
+  capacity: Capacity = UNLIMITED,
+) {
   const config = {
     get: (key: string) => overrides[key],
   } as unknown as ConfigService;
-  return new StorageService(config);
+  const subscriptions = { capacity: jest.fn().mockResolvedValue(capacity) };
+  const events = { emit: jest.fn() };
+  const service = new StorageService(
+    config,
+    ledger as unknown as StorageLedgerRepository,
+    subscriptions as unknown as SubscriptionService,
+    events as unknown as DomainEvents,
+  );
+  return Object.assign(service, { fakes: { ledger, events } });
 }
+
+const inTenant = <T>(fn: () => T) => TenantContextStore.run({ tenantId: 'tenant-1' }, fn);
 
 describe('StorageService — upload validation (file security)', () => {
   const service = makeService();
 
   it('accepts allow-listed content types', async () => {
     const key = service.buildKey('tenant-1', 'receipts', 'a.pdf');
-    await expect(service.presignUpload(key, 'application/pdf', 1024)).resolves.toMatchObject({
-      fileKey: key,
-    });
+    await expect(
+      inTenant(() => service.presignUpload(key, 'application/pdf', 1024)),
+    ).resolves.toMatchObject({ fileKey: key });
     expect(() => service.assertUploadAllowed('image/png')).not.toThrow();
     expect(() => service.assertUploadAllowed('image/jpeg; charset=binary')).not.toThrow();
   });
@@ -74,9 +105,9 @@ describe('StorageService — upload validation (file security)', () => {
 
     it('presigns a branding image upload (stub URL when storage unconfigured)', async () => {
       const key = service.buildKey('tenant-1', 'organization', 'logo.svg');
-      await expect(service.presignImageUpload(key, 'image/svg+xml', 1024)).resolves.toMatchObject({
-        fileKey: key,
-      });
+      await expect(
+        inTenant(() => service.presignImageUpload(key, 'image/svg+xml', 1024)),
+      ).resolves.toMatchObject({ fileKey: key });
     });
   });
 
@@ -101,6 +132,137 @@ describe('StorageService — upload validation (file security)', () => {
           ForbiddenException,
         );
       }
+    });
+  });
+
+  describe('the storage limit (storage_gb)', () => {
+    const key = 'tenants/tenant-1/homework/h/0-a.pdf';
+
+    it('reserves the declared size, or the per-upload ceiling when none is declared', async () => {
+      const svc = makeService();
+      await inTenant(() => svc.presignUpload(key, 'application/pdf', 4096));
+      await inTenant(() => svc.presignUpload(key, 'application/pdf'));
+      await inTenant(() => svc.presignImageUpload(key, 'image/png'));
+      expect(svc.fakes.ledger.reserve.mock.calls.map((call) => call[1])).toEqual([
+        4096n,
+        BigInt(50 * 1024 * 1024),
+        BigInt(5 * 1024 * 1024),
+      ]);
+    });
+
+    it('settles expired reservations before reserving more', async () => {
+      const svc = makeService();
+      svc.fakes.ledger.expiredReservations.mockResolvedValue([{ key: 'tenants/tenant-1/x' }]);
+      await inTenant(() => svc.presignUpload(key, 'application/pdf', 1));
+      // No bucket here, so nothing arrived: the reservation is released.
+      expect(svc.fakes.ledger.settle).toHaveBeenCalledWith('tenants/tenant-1/x', null);
+      expect(svc.fakes.ledger.settle.mock.invocationCallOrder[0]).toBeLessThan(
+        svc.fakes.ledger.reserve.mock.invocationCallOrder[0]!,
+      );
+    });
+
+    it('records a confirmed upload and reports the new total in whole GB, rounded up', async () => {
+      const svc = makeService({}, fakeLedger({ kind: 'stored', total: 3n * 1024n ** 3n }));
+      await inTenant(() => svc.commitUpload(key));
+      expect(svc.fakes.ledger.commit).toHaveBeenCalledWith(key, 1024n, UNLIMITED);
+      expect(svc.fakes.events.emit).toHaveBeenCalledWith({
+        type: 'StorageChanged',
+        tenantId: 'tenant-1',
+        gigabytes: 3,
+      });
+      const partial = makeService({}, fakeLedger({ kind: 'stored', total: 3n * 1024n ** 3n + 1n }));
+      await inTenant(() => partial.commitUpload(key));
+      expect(partial.fakes.events.emit).toHaveBeenCalledWith(
+        expect.objectContaining({ gigabytes: 4 }),
+      );
+    });
+
+    it('measures a confirmed upload by what the bucket holds, not what the client said', async () => {
+      const svc = makeService({ AWS_S3_BUCKET: 'b', AWS_ACCESS_KEY_ID: 'k' });
+      const head = jest
+        .spyOn(
+          svc as unknown as { objectSize: (k: string) => Promise<bigint | null> },
+          'objectSize',
+        )
+        .mockResolvedValue(7_000_000n);
+      await inTenant(() => svc.commitUpload(key));
+      expect(head).toHaveBeenCalledWith(key);
+      expect(svc.fakes.ledger.commit).toHaveBeenCalledWith(key, 7_000_000n, UNLIMITED);
+      expect(svc.fakes.ledger.reservedSize).not.toHaveBeenCalled();
+    });
+
+    it('refuses to confirm an upload that never arrived', async () => {
+      const svc = makeService({ AWS_S3_BUCKET: 'b', AWS_ACCESS_KEY_ID: 'k' });
+      jest
+        .spyOn(
+          svc as unknown as { objectSize: (k: string) => Promise<bigint | null> },
+          'objectSize',
+        )
+        .mockResolvedValue(null);
+      await expect(inTenant(() => svc.commitUpload(key))).rejects.toThrow(BadRequestException);
+      expect(svc.fakes.ledger.commit).not.toHaveBeenCalled();
+    });
+
+    it('deletes an upload that does not fit, and refuses with the plan message', async () => {
+      const refusal = new ForbiddenException('You have reached the storage (GB) limit (1).');
+      const svc = makeService(
+        { AWS_S3_BUCKET: 'b', AWS_ACCESS_KEY_ID: 'k' },
+        fakeLedger({ kind: 'refused', total: 10n }),
+        { limit: 1, refusal },
+      );
+      jest
+        .spyOn(
+          svc as unknown as { objectSize: (k: string) => Promise<bigint | null> },
+          'objectSize',
+        )
+        .mockResolvedValue(2n * 1024n ** 3n);
+      const removed = jest
+        .spyOn(
+          svc as unknown as { removeFromBucket: (k: string) => Promise<void> },
+          'removeFromBucket',
+        )
+        .mockResolvedValue(undefined);
+      await expect(inTenant(() => svc.commitUpload(key))).rejects.toBe(refusal);
+      expect(removed).toHaveBeenCalledWith(key);
+    });
+
+    it('deletes an upload confirmed after the subscription stopped allowing growth', async () => {
+      const svc = makeService({ AWS_S3_BUCKET: 'b', AWS_ACCESS_KEY_ID: 'k' });
+      jest
+        .spyOn(
+          svc as unknown as { objectSize: (k: string) => Promise<bigint | null> },
+          'objectSize',
+        )
+        .mockResolvedValue(10n);
+      const removed = jest
+        .spyOn(
+          svc as unknown as { removeFromBucket: (k: string) => Promise<void> },
+          'removeFromBucket',
+        )
+        .mockResolvedValue(undefined);
+      const refusal = new ForbiddenException('does not allow adding more');
+      (
+        svc as unknown as { subscriptions: { capacity: jest.Mock } }
+      ).subscriptions.capacity.mockRejectedValue(refusal);
+      await expect(inTenant(() => svc.commitUpload(key))).rejects.toBe(refusal);
+      expect(removed).toHaveBeenCalledWith(key);
+      expect(svc.fakes.ledger.release).toHaveBeenCalledWith(key);
+      expect(svc.fakes.ledger.commit).not.toHaveBeenCalled();
+    });
+
+    it("refuses to confirm another school's key before measuring anything", async () => {
+      const svc = makeService();
+      await expect(
+        inTenant(() => svc.commitUpload('tenants/tenant-2/homework/x.pdf')),
+      ).rejects.toThrow(ForbiddenException);
+      expect(svc.fakes.ledger.reservedSize).not.toHaveBeenCalled();
+    });
+
+    it('releases the bytes of a deleted object', async () => {
+      const svc = makeService();
+      await inTenant(() => svc.deleteObject(key));
+      expect(svc.fakes.ledger.release).toHaveBeenCalledWith(key);
+      expect(svc.fakes.events.emit).toHaveBeenCalled();
     });
   });
 });

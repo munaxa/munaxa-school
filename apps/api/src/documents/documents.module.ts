@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { StorageService } from '../common/storage.service';
 import { OrganizationModule } from '../organization/organization.module';
 import { AccountRepository } from '../finance/account/account.repository';
 import { FinancialAccountRepository } from '../finance/financial-account/financial-account.repository';
@@ -36,7 +35,6 @@ import { RegistrationAgreementService } from './registration-agreement.service';
     PdfRenderer,
     FinanceDocumentsService,
     RegistrationAgreementService,
-    StorageService,
     // Read-only finance collaborators reused by the document collectors.
     StatementService,
     AccountRepository,

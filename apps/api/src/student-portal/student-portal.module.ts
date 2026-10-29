@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { SchedulingModule } from '../scheduling/scheduling.module';
-import { StorageService } from '../common/storage.service';
 import { StudentScopeService } from './common/student-scope.service';
 import { MeController } from './me/me.controller';
 import { MeService } from './me/me.service';
@@ -23,7 +22,6 @@ import { GamificationRepository } from './gamification/gamification.repository';
   controllers: [MeController, ResourceController, AchievementController],
   providers: [
     StudentScopeService,
-    StorageService,
     MeService,
     MeRepository,
     ResourceService,

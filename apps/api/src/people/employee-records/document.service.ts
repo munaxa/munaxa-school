@@ -26,6 +26,7 @@ export class EmployeeDocumentService {
     // Reject a fileKey pointing at another tenant's namespace (defence in depth) + type/size guard.
     this.storage.assertKeyInTenant(dto.fileKey);
     this.storage.assertUploadAllowed(dto.contentType, dto.size);
+    await this.storage.commitUpload(dto.fileKey);
 
     let version = 1;
     if (dto.supersedesId) {

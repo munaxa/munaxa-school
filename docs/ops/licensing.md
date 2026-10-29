@@ -16,7 +16,7 @@ subscription plane:
 | Question | Answered by |
 | --- | --- |
 | Is a paid capability available? | The snapshot's `features`. Core School OS modules are never gated |
-| What is a limit? | The snapshot's `limits` (`students`, `campuses`, `staff`, `storage_gb`); `null` is unlimited, absent is 0. Students, campuses and staff are enforced (see below); `storage_gb` is not yet |
+| What is a limit? | The snapshot's `limits` (`students`, `campuses`, `staff`, `storage_gb`); `null` is unlimited, absent is 0. Students, campuses, staff and storage are enforced (see below) |
 | May the school write? | The status after dates: active, trial and past-due write; expired, suspended and cancelled are read-only through `ReadOnlyStateGuard` |
 | May the school grow? | As above, and not while the service is unreachable for more than an hour (see below) |
 
@@ -103,13 +103,33 @@ place; ten simultaneous requests with room for three create exactly three
 | Staff | non-deleted employees whose status is on staff: `HIRED`, `PROBATION`, `ACTIVE`, `TRANSFERRED`, `PROMOTION`, `ON_LEAVE`, `SUSPENDED` | creating an employee on staff, and any transition that joins the staff (a hire). Candidates in the recruitment pipeline take no place |
 
 Every change publishes the new total, which sets the usage table and, when hosted, is reported to
-the central service: students, campuses and staff.
+the central service: students, campuses, staff and storage.
 
-**`storage_gb` is not enforced.** Files are uploaded directly to the bucket through pre-signed URLs
-with a client-declared size, and nothing meters what is stored, so there is no trustworthy figure to
-hold a limit against. Enforcing it needs the stored size recorded when each upload is confirmed
-(an object `HEAD`) and summed per school; until then the limit is sold and shown but not applied,
-and `storage_gb` usage is not reported.
+### Storage
+
+`storage_gb` is enforced against the bytes a school actually holds in the bucket, recorded in a
+ledger (`StoredObject`, one row per object key), and **never against a size the client declares**.
+Every upload path — homework, payment receipts, parent and employee documents, student resources,
+branding assets, signed agreements — goes through `StorageService`, provided once for the API.
+
+| Step | What happens |
+| --- | --- |
+| Issue an upload URL | Under the school's storage lock: expired reservations are settled first, then the declared size — or the per-upload ceiling (50 MB; 5 MB for images) when none is declared — is reserved for the URL's lifetime plus five minutes. Refused when stored bytes plus live reservations plus this one would pass the limit. The URL signs the declared length, so the bucket rejects a different body |
+| Confirm the upload | The object's size is read from the bucket (`HEAD`), not from the request, and the limit is re-checked under the lock with that size in place of the reservation. Too large: the object is deleted and the confirmation refused. Not there: refused. Confirming the same key again counts it once |
+| Replace or delete | Branding assets delete the object they replace or remove (unless another slot still uses it); agreements delete superseded copies. Each deletion releases its bytes |
+| Upload never confirmed | When its reservation expires it is settled with what the bucket holds: counted if the object arrived, released if not |
+| Reconciliation | `pnpm --filter @school/api storage:reconcile` lists each school's prefix and makes the ledger agree: unknown objects (never confirmed, or older than the ledger) are counted, objects gone from the bucket are released. A row changed after the listing began is left alone, so an upload confirmed or a file deleted while it runs is never miscounted. Run it daily, and once after the `stored_objects` migration first deploys so existing files count |
+
+Ten simultaneous upload URLs with room for three issue exactly three
+(`test/storage-quota.e2e-spec.ts`); without the lock, eight were issued. Usage is reported in whole
+GB rounded up; the limit itself is held on exact bytes, in binary gigabytes (1 GB = 2^30 bytes).
+
+Uploads are growth: under a licence or the central service, an upload is refused while the
+subscription does not allow adding more, like any other create. The confirmation step is checked
+the same way, so an upload started just before a suspension is deleted rather than kept.
+
+The bucket role needs `s3:PutObject`, `s3:GetObject` (also used by `HEAD`), `s3:DeleteObject`, and
+`s3:ListBucket` limited to the `tenants/` prefix (for reconciliation).
 
 ## Limits, stated rather than discovered
 

@@ -34,6 +34,7 @@ export class DocumentService {
     await this.scope.assertManageAccess(dto.studentId);
     this.storage.assertKeyInTenant(dto.fileKey);
     this.storage.assertUploadAllowed(dto.contentType, dto.size);
+    await this.storage.commitUpload(dto.fileKey);
     return this.repo.create({
       studentId: dto.studentId,
       title: dto.title,

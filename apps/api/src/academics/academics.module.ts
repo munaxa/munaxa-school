@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { StorageService } from '../common/storage.service';
 import { HomeworkController } from './homework/homework.controller';
 import { HomeworkService } from './homework/homework.service';
 import { HomeworkRepository } from './homework/homework.repository';
@@ -17,7 +16,6 @@ import { GradeRepository } from './grades/grade.repository';
 @Module({
   controllers: [HomeworkController, BehaviorController, GradeController],
   providers: [
-    StorageService,
     HomeworkService,
     HomeworkRepository,
     BehaviorService,

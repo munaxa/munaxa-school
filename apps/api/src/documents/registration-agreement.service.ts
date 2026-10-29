@@ -379,6 +379,7 @@ export class RegistrationAgreementService {
       }
     } else if (dto.fileKey) {
       this.storage.assertKeyInTenant(dto.fileKey);
+      await this.storage.commitUpload(dto.fileKey);
       fileKey = dto.fileKey;
     } else {
       throw new BadRequestException('No file provided (fileData or fileKey is required)');

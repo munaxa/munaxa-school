@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { StorageService } from '../../common/storage.service';
 import { ContractController } from './contract.controller';
 import { ContractService } from './contract.service';
 import { ContractRepository } from './contract.repository';
@@ -45,7 +44,6 @@ import { DriverRepository } from './driver.repository';
     PersonalRecordsRepository,
     DriverService,
     DriverRepository,
-    StorageService,
   ],
 })
 export class EmployeeRecordsModule {}

@@ -53,7 +53,7 @@ export class PaymentService {
     if ((dto.method === 'CLIQ' || dto.method === 'EWALLET') && !dto.receiptKey && !dto.reference) {
       throw new BadRequestException('CliQ/e-wallet payments require a receipt or a reference');
     }
-    if (dto.receiptKey) this.storage.assertKeyInTenant(dto.receiptKey);
+    if (dto.receiptKey) await this.storage.commitUpload(dto.receiptKey);
     return this.repo.create({
       studentId: dto.studentId,
       amount: dto.amount,
@@ -79,7 +79,7 @@ export class PaymentService {
     if ((dto.method === 'CLIQ' || dto.method === 'EWALLET') && !dto.receiptKey && !dto.reference) {
       throw new BadRequestException('CliQ/e-wallet payments require a receipt or a reference');
     }
-    if (dto.receiptKey) this.storage.assertKeyInTenant(dto.receiptKey);
+    if (dto.receiptKey) await this.storage.commitUpload(dto.receiptKey);
     const payment = await this.repo.createForFinancialAccount({
       payerId: financialAccountId,
       amount: dto.amount,

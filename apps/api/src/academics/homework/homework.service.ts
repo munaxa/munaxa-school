@@ -73,6 +73,7 @@ export class HomeworkService {
     // and re-validate the declared type/size (the presign URL could be skipped entirely).
     this.storage.assertKeyInTenant(dto.fileKey);
     this.storage.assertUploadAllowed(dto.contentType, dto.size);
+    await this.storage.commitUpload(dto.fileKey);
     return this.repo.addAttachment({
       homeworkId,
       fileName: dto.fileName,

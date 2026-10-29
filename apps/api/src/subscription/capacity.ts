@@ -21,6 +21,7 @@ export const CAPACITY_SCOPE = {
   students: 'school:capacity:students',
   campuses: 'school:capacity:campuses',
   staff: 'school:capacity:staff',
+  storage: 'school:capacity:storage',
 } as const;
 
 /** Throws the capacity's refusal when `current + additional` would pass its limit. */

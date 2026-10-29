@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { StorageService } from '../common/storage.service';
 import { EInvoicingModule } from '../einvoicing/einvoicing.module';
 import { CommunicationModule } from '../communication/communication.module';
 import { DocumentsModule } from '../documents/documents.module';
@@ -65,7 +64,6 @@ import { FinanceReportsRepository } from './reports/reports.repository';
     AdmissionsController,
   ],
   providers: [
-    StorageService,
     AccountService,
     AccountRepository,
     FinancialAccountService,

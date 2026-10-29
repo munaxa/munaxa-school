@@ -32,6 +32,8 @@ export class ResourceService {
       // Reject a fileKey pointing at another tenant's object (cross-tenant download via presign).
       this.storage.assertKeyInTenant(dto.fileKey);
       if (dto.contentType) this.storage.assertUploadAllowed(dto.contentType, dto.size);
+      // Counted against the plan's storage at the size the bucket reports (StorageService).
+      await this.storage.commitUpload(dto.fileKey);
     }
     if (dto.sectionId && !(await this.repo.sectionExists(dto.sectionId))) {
       throw new BadRequestException('Section not found in this tenant');

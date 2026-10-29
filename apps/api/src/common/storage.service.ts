@@ -1,6 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LimitKey } from '@school/domain';
 import { randomUUID } from 'node:crypto';
+import { DomainEvents } from '../events/domain-events';
+import type { Capacity } from '../subscription/capacity';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { BYTES_PER_GB, StorageLedgerRepository } from './storage-ledger.repository';
 import { requireTenantId } from './tenant.util';
 
 export interface PresignedUpload {
@@ -34,12 +39,27 @@ export const ALLOWED_UPLOAD_MIME: ReadonlySet<string> = new Set([
 /** Hard ceiling enforced at presign time regardless of the per-feature DTO limit (defense in depth). */
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB
 
+/** How long a presigned URL stays valid, and so how long its reservation holds room. */
+const UPLOAD_URL_SECONDS = 900;
+/** A reservation outlives its URL by this much, so an upload that starts at the last second fits. */
+const RESERVATION_SLACK_SECONDS = 300;
+
 /**
  * S3 storage for secure direct-to-bucket uploads via pre-signed URLs. The AWS SDK is
  * lazily imported only when configured (AWS_S3_BUCKET present); otherwise a deterministic
  * dev/test stub URL is returned so the flow is exercisable without cloud credentials.
  *
  * Keys are namespaced by tenant: `tenants/<tenantId>/<prefix>/<uuid>-<safeName>`.
+ *
+ * It is also where the plan's `storage_gb` limit is enforced, against the bytes the school actually
+ * holds (`StorageLedgerRepository`), never a size the client declares:
+ *  - issuing an upload URL reserves its declared size — or the per-upload ceiling when none is
+ *    declared — and is refused when that would not fit;
+ *  - confirming an upload ({@link commitUpload}) reads the object's real size from the bucket and
+ *    re-checks; an object that does not fit is deleted and the confirmation refused;
+ *  - deleting an object releases its bytes;
+ *  - expired reservations are settled with what the bucket holds before each new one, and
+ *    {@link reconcileTenant} brings the ledger in line with a listing of the bucket.
  */
 @Injectable()
 export class StorageService {
@@ -47,7 +67,12 @@ export class StorageService {
   private readonly region: string;
   private readonly endpoint?: string;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly ledger: StorageLedgerRepository,
+    private readonly subscriptions: SubscriptionService,
+    private readonly events: DomainEvents,
+  ) {
     this.bucket = config.get<string>('AWS_S3_BUCKET') || undefined;
     this.region = config.get<string>('AWS_REGION') ?? 'eu-central-1';
     this.endpoint = config.get<string>('AWS_S3_ENDPOINT') || undefined;
@@ -129,6 +154,7 @@ export class StorageService {
     sizeBytes?: number,
   ): Promise<PresignedUpload> {
     this.assertImageAllowed(contentType, sizeBytes);
+    await this.reserve(fileKey, sizeBytes ?? StorageService.MAX_IMAGE_BYTES);
     if (!this.configured) {
       const base = this.endpoint ?? 'https://uploads.munaxa.local';
       return { uploadUrl: `${base}/${this.bucket ?? 'munaxa-dev'}/${fileKey}?stub=put`, fileKey };
@@ -143,7 +169,7 @@ export class StorageService {
       ...(sizeBytes !== undefined ? { ContentLength: sizeBytes } : {}),
       ServerSideEncryption: 'AES256',
     });
-    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 900 });
+    const uploadUrl = await getSignedUrl(client, command, { expiresIn: UPLOAD_URL_SECONDS });
     return { uploadUrl, fileKey };
   }
 
@@ -154,6 +180,7 @@ export class StorageService {
   ): Promise<PresignedUpload> {
     // Reject dangerous/oversized uploads before a presigned URL is ever minted.
     this.assertUploadAllowed(contentType, sizeBytes);
+    await this.reserve(fileKey, sizeBytes ?? MAX_UPLOAD_BYTES);
 
     if (!this.configured) {
       const base = this.endpoint ?? 'https://uploads.munaxa.local';
@@ -172,7 +199,7 @@ export class StorageService {
       // Encrypt at rest (SSE-S3) even if the bucket default is somehow misconfigured.
       ServerSideEncryption: 'AES256',
     });
-    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 900 });
+    const uploadUrl = await getSignedUrl(client, command, { expiresIn: UPLOAD_URL_SECONDS });
     return { uploadUrl, fileKey };
   }
 
@@ -182,10 +209,8 @@ export class StorageService {
    * is not configured (dev/test) so the calling flow stays exercisable without cloud credentials.
    */
   async deleteObject(fileKey: string): Promise<void> {
-    if (!this.configured) return;
-    const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
-    const client = new S3Client({ region: this.region, endpoint: this.endpoint });
-    await client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: fileKey }));
+    await this.removeFromBucket(fileKey);
+    this.reportStored(requireTenantId(), await this.ledger.release(fileKey));
   }
 
   /**
@@ -196,6 +221,13 @@ export class StorageService {
    */
   async putObject(fileKey: string, body: Buffer, contentType: string): Promise<void> {
     if (!this.configured) return;
+    // The bytes are in hand, so their size is known exactly: reserve it, write, and record it.
+    await this.reserve(fileKey, body.length);
+    await this.writeObject(fileKey, body, contentType);
+    await this.commitUpload(fileKey);
+  }
+
+  private async writeObject(fileKey: string, body: Buffer, contentType: string): Promise<void> {
     const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
     const client = new S3Client({ region: this.region, endpoint: this.endpoint });
     await client.send(
@@ -220,6 +252,129 @@ export class StorageService {
     const bytes = await res.Body?.transformToByteArray();
     if (!bytes) throw new BadRequestException('Stored object is empty');
     return Buffer.from(bytes);
+  }
+
+  /**
+   * Records a direct upload as stored, at the size the bucket reports for it. Call it at the
+   * "confirm" step of every upload, after {@link assertKeyInTenant} and before persisting the key.
+   * Idempotent: confirming the same key again (a retried request, or one object attached twice)
+   * counts it once. Refuses — and deletes the object — when it does not fit the plan; refuses when
+   * the object never arrived.
+   */
+  async commitUpload(fileKey: string): Promise<void> {
+    this.assertKeyInTenant(fileKey);
+    const tenantId = requireTenantId();
+    const actual = this.configured
+      ? await this.objectSize(fileKey)
+      : await this.ledger.reservedSize(fileKey);
+    if (actual === null) {
+      throw new BadRequestException(
+        'The upload has not arrived. Upload the file, then confirm it.',
+      );
+    }
+    let capacity: Capacity;
+    try {
+      capacity = await this.subscriptions.capacity(tenantId, LimitKey.STORAGE_GB);
+    } catch (refusal) {
+      // The subscription stopped allowing growth while the file was in flight: it is not kept.
+      await this.removeFromBucket(fileKey);
+      this.reportStored(tenantId, await this.ledger.release(fileKey));
+      throw refusal;
+    }
+    const outcome = await this.ledger.commit(fileKey, actual, capacity);
+    if (outcome.kind === 'gone') {
+      throw new BadRequestException('This upload was removed. Upload the file again.');
+    }
+    this.reportStored(tenantId, outcome.total);
+    if (outcome.kind === 'refused') {
+      await this.removeFromBucket(fileKey);
+      throw (
+        capacity.refusal ?? new ForbiddenException('Your plan does not allow storing more files.')
+      );
+    }
+  }
+
+  /**
+   * Brings one school's ledger in line with its bucket prefix: objects uploaded but never
+   * confirmed, and objects from before the ledger, are counted; objects gone from the bucket are
+   * not. Run by `storage:reconcile` (docs/ops/licensing.md). A no-op without a configured bucket.
+   */
+  async reconcileTenant(tenantId: string): Promise<{ adopted: number; vanished: number } | null> {
+    if (!this.configured) return null;
+    const listedAt = new Date();
+    const listed = await this.listPrefix(`tenants/${tenantId}/`);
+    const result = await this.ledger.reconcile(tenantId, listed, listedAt);
+    this.reportStored(tenantId, result.total);
+    return { adopted: result.adopted, vanished: result.vanished };
+  }
+
+  /** Reserves room for an upload URL about to be issued, after settling expired reservations. */
+  private async reserve(fileKey: string, bytes: number): Promise<void> {
+    const tenantId = requireTenantId();
+    await this.settleExpired();
+    const capacity = await this.subscriptions.capacity(tenantId, LimitKey.STORAGE_GB);
+    const expiresAt = new Date(
+      Date.now() + (UPLOAD_URL_SECONDS + RESERVATION_SLACK_SECONDS) * 1000,
+    );
+    await this.ledger.reserve(fileKey, BigInt(bytes), expiresAt, capacity);
+  }
+
+  /**
+   * An expired reservation is settled with what the bucket holds: the object counts if it arrived
+   * — confirmed or not — and is released if it did not. Done before every reservation, so an upload
+   * that is never confirmed cannot hold room it does not use, nor occupy the bucket uncounted.
+   */
+  private async settleExpired(): Promise<void> {
+    for (const row of await this.ledger.expiredReservations()) {
+      const size = this.configured ? await this.objectSize(row.key) : null;
+      await this.ledger.settle(row.key, size);
+    }
+  }
+
+  private reportStored(tenantId: string, totalBytes: bigint): void {
+    // Whole GB, rounded up: the usage table holds integers, and a school holding any bytes at all
+    // must not read as holding none. The limit itself is enforced on exact bytes (the ledger).
+    const gigabytes = Number((totalBytes + BYTES_PER_GB - 1n) / BYTES_PER_GB);
+    this.events.emit({ type: 'StorageChanged', tenantId, gigabytes });
+  }
+
+  private async removeFromBucket(fileKey: string): Promise<void> {
+    if (!this.configured) return;
+    const { S3Client, DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+    const client = new S3Client({ region: this.region, endpoint: this.endpoint });
+    await client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: fileKey }));
+  }
+
+  /** The object's size as the bucket reports it, or `null` when there is no such object. */
+  private async objectSize(fileKey: string): Promise<bigint | null> {
+    const { S3Client, HeadObjectCommand } = await import('@aws-sdk/client-s3');
+    const client = new S3Client({ region: this.region, endpoint: this.endpoint });
+    try {
+      const head = await client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: fileKey }));
+      return BigInt(head.ContentLength ?? 0);
+    } catch (error) {
+      const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata
+        ?.httpStatusCode;
+      if (status === 404) return null;
+      throw error;
+    }
+  }
+
+  private async listPrefix(prefix: string): Promise<Map<string, bigint>> {
+    const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+    const client = new S3Client({ region: this.region, endpoint: this.endpoint });
+    const listed = new Map<string, bigint>();
+    let token: string | undefined;
+    do {
+      const page = await client.send(
+        new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix, ContinuationToken: token }),
+      );
+      for (const object of page.Contents ?? []) {
+        if (object.Key) listed.set(object.Key, BigInt(object.Size ?? 0));
+      }
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+    return listed;
   }
 
   async presignDownload(fileKey: string): Promise<string> {

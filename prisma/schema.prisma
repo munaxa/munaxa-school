@@ -784,6 +784,7 @@ model Tenant {
   subscription       TenantSubscription?
   subscriptionUsages SubscriptionUsage[]
   licensingState     LicensingState?
+  storedObjects      StoredObject[]
   planChanges        PlanChangeHistory[]
   billingProfile     BillingProfile?
   trial              Trial?
@@ -5641,6 +5642,26 @@ model LicensingState {
   updatedAt      DateTime @updatedAt @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+/// Every object this school holds in the bucket, by key, and the bytes it occupies
+/// (docs/ops/licensing.md, "Storage"). The `storage_gb` limit is enforced against this ledger:
+/// `RESERVED` from the moment an upload URL is issued (for the declared or maximum size, until
+/// `expiresAt`), `STORED` once the upload is confirmed with the size the bucket reports, `DELETED`
+/// when the object is removed. Written only by StorageService.
+model StoredObject {
+  key           String   @id
+  tenantId      String   @db.Uuid
+  state         String
+  reservedBytes BigInt
+  storedBytes   BigInt?
+  expiresAt     DateTime @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, state])
 }
 
 model SubscriptionUsage {
