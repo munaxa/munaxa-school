@@ -323,6 +323,18 @@ export function workflowProblems(file, workflow) {
     }
   }
 
+  // The @munaxa/* packages are private: this repository's own GITHUB_TOKEN cannot read them, so an
+  // install or image build that is given only that token fails the moment the cache misses.
+  for (const [id, job] of Object.entries(jobs)) {
+    const text = JSON.stringify(job);
+    if (/(NODE_AUTH_TOKEN"?:"?|github_token=)\$\{\{\s*secrets\.GITHUB_TOKEN\s*\}\}/.test(text)) {
+      add(
+        `job \`${id}\` installs private packages with GITHUB_TOKEN alone; use ` +
+          '`secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN`.',
+      );
+    }
+  }
+
   for (const [id, job] of Object.entries(jobs)) {
     if (job.secrets === 'inherit') add(`job \`${id}\` passes \`secrets: inherit\`.`);
     const used = [...JSON.stringify(job).matchAll(/secrets\.([A-Za-z0-9_]+)/g)].map((m) => m[1]);
