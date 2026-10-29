@@ -18,7 +18,7 @@
     "test": "echo \"no tests yet\" && exit 0"
   },
   "dependencies": {
-    "zod": "^3.24.1"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@munaxa/config-eslint": "^1.0.0",
