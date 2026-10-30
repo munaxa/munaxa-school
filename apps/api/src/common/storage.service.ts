@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { LimitKey } from '@school/domain';
 import { randomUUID } from 'node:crypto';
@@ -46,8 +51,11 @@ const RESERVATION_SLACK_SECONDS = 300;
 
 /**
  * S3 storage for secure direct-to-bucket uploads via pre-signed URLs. The AWS SDK is
- * lazily imported only when configured (AWS_S3_BUCKET present); otherwise a deterministic
- * dev/test stub URL is returned so the flow is exercisable without cloud credentials.
+ * lazily imported only when configured (AWS_S3_BUCKET present, and credentials the SDK can find:
+ * static keys, or the role an ECS task or a web identity provides); otherwise a deterministic
+ * dev/test stub URL is returned so the flow is exercisable without cloud credentials. Production
+ * never gets a stub: an upload there is refused until storage is configured, because a stub URL
+ * stores nothing while the confirm step would record the file as kept.
  *
  * Keys are namespaced by tenant: `tenants/<tenantId>/<prefix>/<uuid>-<safeName>`.
  *
@@ -66,6 +74,7 @@ export class StorageService {
   private readonly bucket?: string;
   private readonly region: string;
   private readonly endpoint?: string;
+  private readonly production: boolean;
 
   constructor(
     private readonly config: ConfigService,
@@ -76,10 +85,32 @@ export class StorageService {
     this.bucket = config.get<string>('AWS_S3_BUCKET') || undefined;
     this.region = config.get<string>('AWS_REGION') ?? 'eu-central-1';
     this.endpoint = config.get<string>('AWS_S3_ENDPOINT') || undefined;
+    this.production = config.get<string>('NODE_ENV') === 'production';
   }
 
   get configured(): boolean {
-    return Boolean(this.bucket && this.config.get('AWS_ACCESS_KEY_ID'));
+    return Boolean(this.bucket && this.hasCredentials());
+  }
+
+  /**
+   * Whether the SDK's default chain has credentials to find. On ECS the task role is offered
+   * through AWS_CONTAINER_CREDENTIALS_*_URI and there are no keys, which is how the AWS stack runs
+   * (no IAM user and no access key exists for School).
+   */
+  private hasCredentials(): boolean {
+    return [
+      'AWS_ACCESS_KEY_ID',
+      'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+      'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+      'AWS_WEB_IDENTITY_TOKEN_FILE',
+    ].some((key) => Boolean(this.config.get<string>(key)));
+  }
+
+  /** Production refuses to stand in for a bucket it does not have. */
+  private assertStorageAvailable(): void {
+    if (this.production && !this.configured) {
+      throw new ServiceUnavailableException('File storage is not available');
+    }
   }
 
   buildKey(tenantId: string, prefix: string, fileName: string): string {
@@ -154,6 +185,7 @@ export class StorageService {
     sizeBytes?: number,
   ): Promise<PresignedUpload> {
     this.assertImageAllowed(contentType, sizeBytes);
+    this.assertStorageAvailable();
     await this.reserve(fileKey, sizeBytes ?? StorageService.MAX_IMAGE_BYTES);
     if (!this.configured) {
       const base = this.endpoint ?? 'https://uploads.munaxa.local';
@@ -180,6 +212,7 @@ export class StorageService {
   ): Promise<PresignedUpload> {
     // Reject dangerous/oversized uploads before a presigned URL is ever minted.
     this.assertUploadAllowed(contentType, sizeBytes);
+    this.assertStorageAvailable();
     await this.reserve(fileKey, sizeBytes ?? MAX_UPLOAD_BYTES);
 
     if (!this.configured) {
@@ -263,6 +296,7 @@ export class StorageService {
    */
   async commitUpload(fileKey: string): Promise<void> {
     this.assertKeyInTenant(fileKey);
+    this.assertStorageAvailable();
     const tenantId = requireTenantId();
     const actual = this.configured
       ? await this.objectSize(fileKey)
@@ -378,6 +412,8 @@ export class StorageService {
   }
 
   async presignDownload(fileKey: string): Promise<string> {
+    // Not refused in production: listings sign every key they hold, and with uploads refused an
+    // unconfigured production holds none to sign.
     if (!this.configured) {
       const base = this.endpoint ?? 'https://uploads.munaxa.local';
       return `${base}/${this.bucket ?? 'munaxa-dev'}/${fileKey}?stub=get`;
