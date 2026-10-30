@@ -145,7 +145,10 @@ export class AuthService {
     const identity = await this.firebase.verifyIdToken(dto.firebaseIdToken);
     return withPlatform(this.prisma, async (tx) => {
       let user = await tx.user.findFirst({ where: { firebaseUid: identity.uid } });
-      if (!user && identity.email) {
+      // Linking by email trusts the address only once Firebase has verified it. Anyone can
+      // create a Firebase account claiming any address, and an unverified claim would
+      // otherwise sign them in as the Munaxa user who owns it.
+      if (!user && identity.email && identity.emailVerified) {
         user = await this.resolveUserByEmail(tx, identity.email, dto.tenantSlug);
         if (user) {
           user = await tx.user.update({
