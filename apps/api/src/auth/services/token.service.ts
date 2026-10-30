@@ -45,13 +45,17 @@ export class TokenService {
     };
     const token = this.jwt.sign(payload, {
       secret: this.accessSecret,
+      algorithm: 'HS256',
       expiresIn: this.accessTtl,
     });
     return { token, expiresIn: this.accessTtl };
   }
 
   verifyAccessToken(token: string): AccessTokenPayload {
-    return this.jwt.verify<AccessTokenPayload>(token, { secret: this.accessSecret });
+    return this.jwt.verify<AccessTokenPayload>(token, {
+      secret: this.accessSecret,
+      algorithms: ['HS256'],
+    });
   }
 
   /** Generate an opaque refresh token and its storage hash. */

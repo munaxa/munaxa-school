@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 export interface FirebaseIdentity {
   uid: string;
   email?: string;
+  /** Firebase's email_verified claim. Only a verified address may link an existing account. */
+  emailVerified: boolean;
   phoneNumber?: string;
 }
 
@@ -47,7 +49,12 @@ export class FirebaseService {
         });
     try {
       const decoded = await admin.auth().verifyIdToken(idToken);
-      return { uid: decoded.uid, email: decoded.email, phoneNumber: decoded.phone_number };
+      return {
+        uid: decoded.uid,
+        email: decoded.email,
+        emailVerified: decoded.email_verified === true,
+        phoneNumber: decoded.phone_number,
+      };
     } catch (error) {
       this.logger.warn(`Firebase token verification failed: ${String(error)}`);
       throw new UnauthorizedException('Invalid Firebase token');
