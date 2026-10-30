@@ -10,6 +10,14 @@
 #   2. The API's CORS_ORIGINS must equal the admin's exact public origin.
 # So: deploy the API first, copy its URL into the admin's NEXT_PUBLIC_API_URL, then
 # put the admin's URL into the API's CORS_ORIGINS and redeploy the API.
+#
+# No deploy on a merge: both services have `autoDeployTrigger: off`, so Render builds only when
+# someone presses Manual Deploy (docs/ops/deployment-gates.md). This applies once the Blueprint is
+# synced; until then each service's own Auto-Deploy setting decides.
+#
+# Licensing: production refuses DATABASE licensing (school#18), so the API is licensed by the
+# central Munaxa Control service. CONTROL_PLANE_URL and CONTROL_PLANE_TOKEN are set in the
+# dashboard; until both are, the API refuses to start, and Render keeps the previous deploy live.
 
 services:
   - type: web
@@ -19,10 +27,21 @@ services:
     dockerContext: .
     region: frankfurt
     plan: free
+    autoDeployTrigger: 'off'
     healthCheckPath: /api/v1/health/ready
     envVars:
       - key: NODE_ENV
         value: production
+      # Entitlements come from Munaxa Control. DATABASE grants every module to a school without a
+      # subscription row, which production refuses; no value here falls back to it.
+      - key: LICENSING_MODE
+        value: CONTROL_PLANE
+      # Control's https origin (docs/ops/aws.md names the AWS one).
+      - key: CONTROL_PLANE_URL
+        sync: false
+      # This deployment's service credential, issued in the Control operator portal. A secret.
+      - key: CONTROL_PLANE_TOKEN
+        sync: false
       # PORT is deliberately NOT set here. Render injects its own value (10000) and probes that
       # port from outside the container; pinning PORT to 4000 in the Blueprint would move the
       # listener away from the value the platform assigned. main.ts reads process.env.PORT and
@@ -79,6 +98,7 @@ services:
     dockerContext: .
     region: frankfurt
     plan: free
+    autoDeployTrigger: 'off'
     # ONE service, TWO custom domains (Settings → Custom Domains): the school portal and the
     # Platform Console. Add both `app.<domain>` and `admin.<domain>` here; Render issues a TLS
     # cert per domain. Different origins ⇒ the browser isolates each host's session cookies.

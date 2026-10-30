@@ -13,9 +13,12 @@ on:
       environment:
         description: Target environment
         required: true
-        default: staging
         type: choice
         options: [staging, production]
+      confirm:
+        description: Type the target environment again (staging or production)
+        required: true
+        type: string
       demo_tenant:
         description: 'Also seed the demo tenant (admin@demo.example). Test data only — the password is public.'
         type: boolean
@@ -37,7 +40,14 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v6
-      - name: Require a protected environment for production
+        with:
+          persist-credentials: false
+      - name: Require a run started by hand, with its target confirmed
+        run: node scripts/deploy-gate.mjs verify-dispatch "$TARGET"
+        env:
+          TARGET: ${{ github.event.inputs.environment }}
+          CONFIRM: ${{ github.event.inputs.confirm }}
+      - name: Require a protected environment
         run: node scripts/deploy-gate.mjs verify-environment "$TARGET"
         env:
           TARGET: ${{ github.event.inputs.environment }}
@@ -47,6 +57,7 @@ jobs:
     name: Seed ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     needs: production-gate
+    if: github.event_name == 'workflow_dispatch'
     environment: ${{ github.event.inputs.environment }}
     permissions:
       contents: read

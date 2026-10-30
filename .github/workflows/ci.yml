@@ -172,15 +172,23 @@ jobs:
       - run: pnpm install --frozen-lockfile
         env:
           NODE_AUTH_TOKEN: ${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
-      # Every production deploy waits on the `production-gate` job (scripts/deploy-gate.mjs).
+      # Nothing publishes, migrates or deploys on a merge: every such job is dispatched by hand and
+      # waits on the `production-gate` job and an environment approval (scripts/deploy-gate.mjs).
       # The lint keeps a new or edited workflow from routing around it; the report shows on each
-      # pull request whether the `production` environment would currently let a deploy through.
+      # pull request whether each environment would currently let a run through.
       - name: Deployment gates · tests and workflow lint
         run: |
           node --test scripts/deploy-gate.test.mjs
           node scripts/deploy-gate.mjs lint
-      - name: Deployment gates · production environment
-        run: node scripts/deploy-gate.mjs report-environment production
+      # actionlint, built from its tagged module (Go verifies it against the checksum database).
+      # Workflow syntax, expressions and contexts; the embedded shell is not linted here.
+      - name: Workflow lint (actionlint)
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes= -color
+      - name: Deployment gates · environments
+        run: |
+          for target in production staging image-release; do
+            node scripts/deploy-gate.mjs report-environment "$target"
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Every dependency, development tooling included, and a real gate: the former
