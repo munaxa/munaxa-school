@@ -52,6 +52,21 @@ Secrets (bundle `<env>/school-api`, read by the execution role only): `DATABASE_
 `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (different values), `CONTROL_PLANE_TOKEN` (issued in the
 Control operator portal) and `RESEND_API_KEY` (sending access only).
 
+## File storage
+
+Uploads (receipts, homework, documents, branding) go straight from the browser to S3 through
+pre-signed URLs; the API never holds a storage key. On ECS the API uses its task role through the
+SDK's default chain (`AWS_CONTAINER_CREDENTIALS_RELATIVE_URI`, set by ECS), so no IAM user or
+access key exists. It needs, from the stack:
+
+- an S3 bucket, private, SSE-S3, with CORS allowing `PUT` and `GET` from the School host;
+- `AWS_S3_BUCKET` (plain environment; `AWS_REGION` defaults to `eu-central-1`);
+- a task role allowing `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` on `<bucket>/tenants/*` and
+  `s3:ListBucket` on the bucket (for `storage:reconcile`).
+
+Until then production refuses uploads with 503 rather than issue a stub URL, which would let the
+confirm step record a file that was never stored. Everything else works without a bucket.
+
 ## Checked locally (PostgreSQL 16, Docker)
 
 - Roles created by the stack's `db-bootstrap.sh` as on RDS; the `migrate` image applied all 92

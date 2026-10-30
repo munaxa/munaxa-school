@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { StorageService, ALLOWED_UPLOAD_MIME } from './storage.service';
 import type { CommitOutcome, StorageLedgerRepository } from './storage-ledger.repository';
@@ -264,5 +268,36 @@ describe('StorageService — upload validation (file security)', () => {
       expect(svc.fakes.ledger.release).toHaveBeenCalledWith(key);
       expect(svc.fakes.events.emit).toHaveBeenCalled();
     });
+  });
+});
+
+describe('StorageService — credentials and production', () => {
+  const key = 'tenants/tenant-1/receipts/abc-a.pdf';
+
+  it('is configured by the ECS task role, without an access key', () => {
+    const svc = makeService({
+      AWS_S3_BUCKET: 'b',
+      AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: '/v2/credentials/x',
+    });
+    expect(svc.configured).toBe(true);
+  });
+
+  it('is not configured by a bucket alone', () => {
+    expect(makeService({ AWS_S3_BUCKET: 'b' }).configured).toBe(false);
+  });
+
+  it('refuses uploads in production rather than issue a stub URL', async () => {
+    const svc = makeService({ NODE_ENV: 'production' });
+    await expect(inTenant(() => svc.presignUpload(key, 'application/pdf', 1024))).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+    await expect(inTenant(() => svc.presignImageUpload(key, 'image/png', 1024))).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+    await expect(inTenant(() => svc.commitUpload(key))).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+    expect(svc.fakes.ledger.reserve).not.toHaveBeenCalled();
+    expect(svc.fakes.ledger.commit).not.toHaveBeenCalled();
   });
 });
