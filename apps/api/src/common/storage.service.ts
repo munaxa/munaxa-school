@@ -199,7 +199,7 @@ export class StorageService {
       Key: fileKey,
       ContentType: contentType,
       ...(sizeBytes !== undefined ? { ContentLength: sizeBytes } : {}),
-      ServerSideEncryption: 'AES256',
+      // No ServerSideEncryption here: see presignUpload.
     });
     const uploadUrl = await getSignedUrl(client, command, { expiresIn: UPLOAD_URL_SECONDS });
     return { uploadUrl, fileKey };
@@ -229,8 +229,10 @@ export class StorageService {
       ContentType: contentType,
       // Enforce a max object size at the bucket layer so a stolen/replayed URL can't stream GBs.
       ...(sizeBytes !== undefined ? { ContentLength: sizeBytes } : {}),
-      // Encrypt at rest (SSE-S3) even if the bucket default is somehow misconfigured.
-      ServerSideEncryption: 'AES256',
+      // No ServerSideEncryption: the presigner keeps x-amz-server-side-encryption as a signed
+      // header, so every client would have to send it (and the bucket's CORS allow it), and the
+      // admin and mobile clients send only Content-Type, so S3 refused the PUT. Objects are
+      // encrypted by the bucket's default SSE-S3 (munaxa-platform infra/aws/stack/storage.tf).
     });
     const uploadUrl = await getSignedUrl(client, command, { expiresIn: UPLOAD_URL_SECONDS });
     return { uploadUrl, fileKey };
