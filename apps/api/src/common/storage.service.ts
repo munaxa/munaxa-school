@@ -411,7 +411,13 @@ export class StorageService {
     return listed;
   }
 
-  async presignDownload(fileKey: string): Promise<string> {
+  /**
+   * Pre-sign a download. `attachment` makes the bucket answer with `Content-Disposition:
+   * attachment`, so opening the URL downloads the file instead of rendering it on the bucket
+   * origin; `<img>` still displays it. Branding images use it because they may be SVG, which a
+   * browser would otherwise run as a document.
+   */
+  async presignDownload(fileKey: string, options: { attachment?: boolean } = {}): Promise<string> {
     // Not refused in production: listings sign every key they hold, and with uploads refused an
     // unconfigured production holds none to sign.
     if (!this.configured) {
@@ -421,7 +427,11 @@ export class StorageService {
     const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
     const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
     const client = new S3Client({ region: this.region, endpoint: this.endpoint });
-    const command = new GetObjectCommand({ Bucket: this.bucket, Key: fileKey });
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: fileKey,
+      ...(options.attachment ? { ResponseContentDisposition: 'attachment' } : {}),
+    });
     return getSignedUrl(client, command, { expiresIn: 900 });
   }
 }
