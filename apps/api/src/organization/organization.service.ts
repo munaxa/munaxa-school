@@ -196,7 +196,7 @@ export class OrganizationService {
     const assetUrls: Partial<Record<AssetSlot, string>> = {};
     for (const slot of ASSET_SLOTS) {
       const key = settings[SLOT_TO_COLUMN[slot]] as string | null;
-      if (key) assetUrls[slot] = await this.storage.presignDownload(key);
+      if (key) assetUrls[slot] = await this.storage.presignDownload(key, { attachment: true });
     }
     return { ...settings, assetUrls };
   }

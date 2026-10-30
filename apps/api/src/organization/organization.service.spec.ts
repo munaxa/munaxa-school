@@ -76,6 +76,8 @@ describe('OrganizationService', () => {
       expect(view.assetUrls.logo).toBe('https://download');
       expect(view.assetUrls.stamp).toBeUndefined();
       expect(presignDownload).toHaveBeenCalledTimes(1);
+      // Branding may be SVG: its URL must download, never render on the bucket origin.
+      expect(presignDownload).toHaveBeenCalledWith(expect.any(String), { attachment: true });
     });
   });
 
