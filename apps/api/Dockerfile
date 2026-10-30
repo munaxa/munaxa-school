@@ -61,6 +61,18 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN,required=false \
     (cd /prod/api && /repo/node_modules/.bin/prisma generate --schema=/prod/api/prisma/schema.prisma); \
     rm -f /root/.npmrc
 
+# --- migrate -----------------------------------------------------------------------------------
+# The release job for the shared AWS stack (munaxa-platform infra/aws): `prisma migrate deploy` as
+# the schema owner, then the runtime role's grants (infra/postgres/runtime-grants.sql), once per
+# release before the new API starts. Built from the build stage, which still holds the Prisma CLI;
+# the runtime image below does not. The task receives DATABASE_MIGRATION_URL (the owner role) only.
+FROM build AS migrate
+ENV NODE_ENV=production
+RUN addgroup -S nodejs && adduser -S migrate -G nodejs
+WORKDIR /repo/apps/api
+USER migrate
+CMD ["sh", "-c", "export DATABASE_URL=\"$DATABASE_MIGRATION_URL\" DIRECT_DATABASE_URL=\"$DATABASE_MIGRATION_URL\" && /repo/node_modules/.bin/prisma migrate deploy --schema=../../prisma/schema.prisma && exec /repo/node_modules/.bin/prisma db execute --schema=../../prisma/schema.prisma --file=../../infra/postgres/runtime-grants.sql"]
+
 # ---------- Runtime ----------
 FROM node:${NODE_VERSION} AS runtime
 ENV NODE_ENV=production

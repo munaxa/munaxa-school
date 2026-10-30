@@ -9,22 +9,24 @@ name: Deploy Cloudflare
 # not match a project's watch paths, so no build ran and the Worker kept serving its previous
 # bundle — green `main`, nothing in the dashboard, stale site.
 #
-# Deployment now lives here instead. Every merge to `main` requests a production deploy of every
-# app below, unconditionally and with no path filtering: the apps render their UI from
-# `@munaxa/ui`, so "nothing they consume changed" is not a judgement a path filter can make
-# correctly. A redundant deploy costs one short build; a skipped one costs a silently stale
-# production site.
+# Deployment now lives here instead, and only by hand: a merge to `main` deploys nothing. Run it
+# (Actions → Deploy Cloudflare → Run workflow, from `main`, typing `production` into `confirm`)
+# after a merge that changes the demo or anything it renders from `@munaxa/ui`; with no path
+# filter, it deploys every app below.
 #
-# A request is not a deploy. The `production-gate` job first proves, from the GitHub API, that the
-# `production` environment requires a reviewer's approval (and that admins cannot bypass it, and
-# only `main` may deploy); if it does not, the run fails before anything is built and nothing is
-# deployed. If it does, the deploy job waits in Actions until a reviewer approves it. See
-# docs/ops/deployment-gates.md.
+# The `production-gate` job first checks that the run was started by hand and confirmed, then
+# proves, from the GitHub API, that the `production` environment requires a reviewer's approval
+# (and that admins cannot bypass it, and only `main` may deploy); if not, the run fails before
+# anything is built and nothing is deployed. If it does, the deploy job waits in Actions until a
+# reviewer approves it. See docs/ops/deployment-gates.md.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type production to deploy the demo Worker
+        required: true
+        type: string
 
 # Never let two deploys of the same app race. Do not cancel in progress: a half-finished
 # `wrangler deploy` that loses to a newer run is worse than waiting.
@@ -48,6 +50,13 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Require a run started by hand, with its target confirmed
+        run: node scripts/deploy-gate.mjs verify-dispatch "$TARGET"
+        env:
+          TARGET: production
+          CONFIRM: ${{ inputs.confirm }}
       - name: Require a protected production environment
         run: node scripts/deploy-gate.mjs verify-environment "$TARGET"
         env:
@@ -58,6 +67,7 @@ jobs:
     name: Deploy ${{ matrix.app }} → ${{ matrix.worker }}
     runs-on: ubuntu-latest
     needs: production-gate
+    if: github.event_name == 'workflow_dispatch'
     environment: production
     # Installing needs to pull @munaxa/* from GitHub Packages; the workflow-level
     # contents:read default cannot download a private package.

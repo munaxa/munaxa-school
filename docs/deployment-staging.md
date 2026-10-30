@@ -184,10 +184,12 @@ curl -sS -X POST https://<api>/api/v1/auth/login \
 
 ## CI/CD note — you may already have most of this automated
 
-`.github/workflows/deploy.yml` runs **on every merge to `main`**: it builds & pushes the API and
-admin images to GHCR, **applies database migrations**, and **deploys to staging** (production is a
-manual, environment-gated `workflow_dispatch`). So once the workflow's environment secrets/targets
-are configured, steps 4–6 here largely happen automatically on merge.
+`.github/workflows/deploy.yml` is **run by hand** (Actions → Deploy → Run workflow, from `main`):
+choose the environment, type it again in `confirm`, and tick what to do: build and push the API
+and admin images to GHCR, **apply database migrations**, **roll out**. Each ticked step waits for
+its own approval in the environment (docs/ops/deployment-gates.md); a merge runs none of them. So
+once the workflow's environment secrets/targets are configured, steps 4–6 here are a dispatch
+and three approvals.
 
 Practically: open that workflow and confirm its required secrets/variables (registry, DB URLs,
 deploy target/host) are set for your `staging` environment. If they are, your job is mostly

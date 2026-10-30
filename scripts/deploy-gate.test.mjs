@@ -1,12 +1,21 @@
 /**
- * Tests for the production deployment gate (scripts/deploy-gate.mjs). Run with
+ * Tests for the deployment gate (scripts/deploy-gate.mjs). Run with
  * `node --test scripts/deploy-gate.test.mjs`; CI runs them in the security job.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { parse } from 'yaml';
-import { databaseProblems, environmentProblems, workflowProblems } from './deploy-gate.mjs';
+import {
+  GATE_JOB,
+  databaseProblems,
+  dispatchProblems,
+  environmentProblems,
+  publishes,
+  workflowProblems,
+  wranglerConfigs,
+  wranglerProblems,
+} from './deploy-gate.mjs';
 
 const protectedEnvironment = {
   name: 'production',
@@ -63,20 +72,155 @@ test('deployment branches must be restricted to main', () => {
   assert.deepEqual(environmentProblems(protectedBranches, []), []);
 });
 
-test("this repository's workflows hold the gate", () => {
-  const dir = '.github/workflows';
-  for (const file of readdirSync(dir).filter((f) => f.endsWith('.yml'))) {
-    assert.deepEqual(
-      workflowProblems(file, parse(readFileSync(`${dir}/${file}`, 'utf8'))),
-      [],
-      file,
+test('staging is held to the same rules as production', () => {
+  const staging = { ...protectedEnvironment, name: 'staging' };
+  assert.deepEqual(environmentProblems(staging, onlyMain, 'staging'), []);
+  assert.match(environmentProblems(null, [], 'staging')[0], /"staging" environment does not exist/);
+  assert.match(
+    environmentProblems({ ...staging, protection_rules: [] }, onlyMain, 'staging').join(),
+    /no required reviewers/,
+  );
+});
+
+test('image-release admits only image/* tags', () => {
+  const tags = [{ name: 'image/*', type: 'tag' }];
+  assert.deepEqual(environmentProblems(protectedEnvironment, tags, 'image-release'), []);
+  assert.match(
+    environmentProblems(protectedEnvironment, onlyMain, 'image-release').join(),
+    /exactly the tag `image\/\*`/,
+  );
+  const protectedBranches = {
+    ...protectedEnvironment,
+    deployment_branch_policy: { protected_branches: true, custom_branch_policies: false },
+  };
+  assert.match(
+    environmentProblems(protectedBranches, [], 'image-release').join(),
+    /allows more than/,
+  );
+});
+
+test('an unknown target is refused rather than waved through', () => {
+  assert.match(
+    environmentProblems(protectedEnvironment, onlyMain, 'preview')[0],
+    /not a deployment target/,
+  );
+});
+
+test('a run must be started by hand and its target typed', () => {
+  assert.deepEqual(
+    dispatchProblems({ event: 'workflow_dispatch', target: 'staging', confirm: 'staging' }),
+    [],
+  );
+  assert.match(
+    dispatchProblems({ event: 'push', target: 'staging', confirm: 'staging' }).join(),
+    /only when started by hand; this run came from "push"/,
+  );
+  for (const confirm of [undefined, '', 'production', 'Staging']) {
+    assert.match(
+      dispatchProblems({ event: 'workflow_dispatch', target: 'staging', confirm }).join(),
+      /Type the target environment, staging/,
+      String(confirm),
     );
   }
+  assert.match(
+    dispatchProblems({ event: 'workflow_dispatch', target: '', confirm: '' }).join(),
+    /not a deployment target/,
+  );
+});
+
+const workflows = () => {
+  const dir = '.github/workflows';
+  return readdirSync(dir)
+    .filter((f) => /\.ya?ml$/.test(f))
+    .map((file) => [file, parse(readFileSync(`${dir}/${file}`, 'utf8'))]);
+};
+const triggersOf = (workflow) => {
+  const on = workflow.on ?? workflow[true] ?? {};
+  return typeof on === 'string' ? [on] : Array.isArray(on) ? on : Object.keys(on);
+};
+const ancestorsOf = (jobs, id, seen = new Set()) => {
+  for (const parent of [jobs[id]?.needs ?? []].flat()) {
+    if (!seen.has(parent)) {
+      seen.add(parent);
+      ancestorsOf(jobs, parent, seen);
+    }
+  }
+  return seen;
+};
+/** A job that pushes an image, takes a cloud identity, deploys, or reaches a real database. */
+const hasSideEffect = (job) =>
+  publishes(job) || /secrets\.(DIRECT_DATABASE_URL|CLOUDFLARE_API_TOKEN)/.test(JSON.stringify(job));
+
+test("this repository's workflows hold the gate", () => {
+  for (const [file, workflow] of workflows()) {
+    assert.deepEqual(workflowProblems(file, workflow), [], file);
+  }
+});
+
+test('a push to main starts no workflow that publishes, migrates or deploys', () => {
+  for (const [file, workflow] of workflows()) {
+    const sideEffects = Object.entries(workflow.jobs ?? {}).filter(([, job]) => hasSideEffect(job));
+    if (sideEffects.length === 0) continue;
+    assert.deepEqual(triggersOf(workflow), ['workflow_dispatch'], file);
+  }
+  for (const file of ['deploy.yml', 'deploy-cloudflare.yml', 'seed-environment.yml']) {
+    const workflow = Object.fromEntries(workflows())[file];
+    assert.deepEqual(triggersOf(workflow), ['workflow_dispatch'], file);
+  }
+});
+
+test('every job with a side effect waits for an approval that the gate has proved exists', () => {
+  let seen = 0;
+  for (const [file, workflow] of workflows()) {
+    const jobs = workflow.jobs ?? {};
+    for (const [id, job] of Object.entries(jobs)) {
+      // deploy.yml's rollout is a placeholder today, but it is where a rollout will go.
+      if (!hasSideEffect(job) && !job.environment) continue;
+      seen += 1;
+      assert.ok(job.environment, `${file} ${id} holds no environment, so nobody approves it`);
+      assert.ok(ancestorsOf(jobs, id).has(GATE_JOB), `${file} ${id} does not need the gate`);
+      assert.match(String(job.if), /github\.event_name == 'workflow_dispatch'/, `${file} ${id}`);
+    }
+  }
+  // GHCR images, migrations, rollout, the Worker deploy, the seed, and the ECR images.
+  assert.ok(seen >= 6, `only ${seen} side-effect jobs found`);
+});
+
+test('deploy.yml gates publishing, migrating and rolling out separately', () => {
+  const workflow = Object.fromEntries(workflows())['deploy.yml'];
+  const inputs = workflow.on.workflow_dispatch.inputs;
+  assert.equal(inputs.environment.default, undefined, 'no preselected target');
+  assert.equal(inputs.confirm.required, true);
+  for (const flag of ['publish_images', 'migrate', 'deploy']) {
+    assert.equal(inputs[flag].default, false, flag);
+  }
+  const jobs = workflow.jobs;
+  const expected = { 'build-images': 'publish_images', migrate: 'migrate', deploy: 'deploy' };
+  for (const [id, flag] of Object.entries(expected)) {
+    assert.equal(jobs[id].environment, '${{ inputs.environment }}', id);
+    assert.deepEqual([jobs[id].needs].flat(), [GATE_JOB], `${id} depends only on the gate`);
+    assert.match(jobs[id].if, new RegExp(`inputs\\.${flag}\\b`), id);
+  }
+  const gate = JSON.stringify(jobs[GATE_JOB].steps);
+  assert.ok(gate.indexOf('verify-dispatch') < gate.indexOf('verify-environment'));
+});
+
+test('no Worker deploy here names munaxa.com or an unrelated product', () => {
+  const cloudflare = Object.fromEntries(workflows())['deploy-cloudflare.yml'];
+  const workers = cloudflare.jobs.deploy.strategy.matrix.include.map((entry) => entry.worker);
+  assert.deepEqual(workers, ['munaxademo']);
+  const configs = wranglerConfigs('.');
+  assert.ok(configs.length > 0);
+  for (const file of configs)
+    assert.deepEqual(wranglerProblems(file, readFileSync(file, 'utf8')), []);
+  assert.match(wranglerProblems('w.jsonc', '{\n  "name": "munaxa",\n}').join(), /`munaxa` Worker/);
+  assert.match(wranglerProblems('w.toml', 'name = "canteenhub-prod"').join(), /canteenhub-prod/);
+  assert.deepEqual(wranglerProblems('w.jsonc', '{\n  "name": "munaxademo",\n}'), []);
 });
 
 /** A minimal gated workflow, to mutate. */
 const gated = () => ({
-  on: { push: { branches: ['main'] }, workflow_dispatch: null },
+  on: { workflow_dispatch: null },
   jobs: {
     'production-gate': {
       steps: [
@@ -89,6 +233,7 @@ const gated = () => ({
     build: { needs: 'production-gate', steps: [] },
     deploy: {
       needs: ['build'],
+      if: "github.event_name == 'workflow_dispatch'",
       environment: 'production',
       steps: [{ run: 'deploy', env: { TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}' } }],
     },
@@ -148,15 +293,75 @@ test('a conditional, soft-failing or environment-holding gate fails', () => {
   assert.match(workflowProblems('w.yml', empty).join(), /does not run/);
 });
 
-test('a deploy on pushes to any branch but main fails', () => {
-  for (const push of [
-    {},
-    { branches: ['main', 'release'] },
-    { branches: ['main'], tags: ['v*'] },
+test('a workflow with an environment on any trigger but workflow_dispatch fails', () => {
+  for (const on of [
+    { push: { branches: ['main'] }, workflow_dispatch: null },
+    { push: { branches: ['main'] } },
+    { push: { tags: ['image/**'] } },
+    { schedule: [{ cron: '0 0 * * *' }], workflow_dispatch: null },
+    'push',
   ]) {
     const w = gated();
-    w.on.push = push;
-    assert.match(workflowProblems('w.yml', w).join(), /pushes to `main` only/);
+    w.on = on;
+    assert.match(
+      workflowProblems('w.yml', w).join(),
+      /only on `workflow_dispatch`/,
+      JSON.stringify(on),
+    );
+  }
+});
+
+test('a job with an environment but no dispatch-only condition fails', () => {
+  for (const condition of [undefined, 'true', "github.event_name == 'push'"]) {
+    const w = gated();
+    w.jobs.deploy.if = condition;
+    assert.match(
+      workflowProblems('w.yml', w).join(),
+      /has no `if: github.event_name/,
+      String(condition),
+    );
+  }
+});
+
+test('a target taken from the dispatch form must be confirmed', () => {
+  const w = gated();
+  w.jobs['production-gate'].steps[0].env.TARGET = '${{ inputs.environment }}';
+  w.jobs.deploy.environment = '${{ inputs.environment }}';
+  assert.match(
+    workflowProblems('w.yml', w).join(),
+    /does not run `deploy-gate.mjs verify-dispatch`/,
+  );
+  w.jobs['production-gate'].steps.unshift({
+    run: 'node scripts/deploy-gate.mjs verify-dispatch "$TARGET"',
+    env: { TARGET: '${{ inputs.environment }}', CONFIRM: '${{ inputs.confirm }}' },
+  });
+  assert.deepEqual(workflowProblems('w.yml', w), []);
+});
+
+test('a job that can publish or deploy without an environment fails', () => {
+  const cases = [
+    { permissions: { packages: 'write' }, steps: [] },
+    { permissions: { 'id-token': 'write' }, steps: [] },
+    { steps: [{ uses: 'docker/build-push-action@v6', with: { push: true } }] },
+    { steps: [{ run: 'pnpm --filter munaxademo run cf:deploy' }] },
+    { steps: [{ run: 'npx wrangler deploy' }] },
+  ];
+  for (const job of cases) {
+    const w = { on: { pull_request: null }, jobs: { j: job } };
+    assert.match(workflowProblems('w.yml', w).join(), /holds no environment/, JSON.stringify(job));
+  }
+  const build = {
+    on: { pull_request: null },
+    jobs: { j: { steps: [{ uses: 'docker/build-push-action@v6', with: { push: false } }] } },
+  };
+  assert.deepEqual(workflowProblems('w.yml', build), []);
+});
+
+test("a Worker deploy that names another repository's Worker fails", () => {
+  for (const worker of ['munaxa', 'canteenhub-prod']) {
+    const w = gated();
+    w.jobs.deploy.strategy = { matrix: { include: [{ app: 'x', worker }] } };
+    assert.match(workflowProblems('w.yml', w).join(), new RegExp(`\`${worker}\` Worker`), worker);
   }
 });
 
@@ -178,7 +383,7 @@ test('privileged triggers and secrets: inherit fail', () => {
   );
   assert.match(workflowProblems('w.yml', { on: 'workflow_run', jobs: {} }).join(), /workflow_run/);
   const inherit = {
-    on: { push: { branches: ['main'] } },
+    on: { pull_request: null },
     jobs: { call: { uses: './x.yml', secrets: 'inherit' } },
   };
   assert.match(workflowProblems('w.yml', inherit).join(), /secrets: inherit/);
@@ -241,6 +446,7 @@ const migrating = () => ({
     },
     migrate: {
       needs: 'production-gate',
+      if: "github.event_name == 'workflow_dispatch'",
       environment: 'staging',
       env: { DIRECT_DATABASE_URL: '${{ secrets.DIRECT_DATABASE_URL }}' },
       steps: [
