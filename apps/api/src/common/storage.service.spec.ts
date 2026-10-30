@@ -301,3 +301,29 @@ describe('StorageService — credentials and production', () => {
     expect(svc.fakes.ledger.commit).not.toHaveBeenCalled();
   });
 });
+
+describe('StorageService — presigned uploads a browser can send', () => {
+  const saved = { ...process.env };
+  beforeAll(() => {
+    process.env.AWS_ACCESS_KEY_ID = 'AKIDEXAMPLE';
+    process.env.AWS_SECRET_ACCESS_KEY = 'secret-for-signing-only';
+  });
+  afterAll(() => {
+    process.env = saved;
+  });
+
+  it('signs no header the clients do not send (only host, content-type, content-length)', async () => {
+    const svc = makeService({ AWS_S3_BUCKET: 'b', AWS_ACCESS_KEY_ID: 'AKIDEXAMPLE' });
+    const key = svc.buildKey('tenant-1', 'receipts', 'a.pdf');
+    for (const { uploadUrl } of [
+      await inTenant(() => svc.presignUpload(key, 'application/pdf', 1024)),
+      await inTenant(() => svc.presignImageUpload(key, 'image/png', 1024)),
+    ]) {
+      const signed = new URL(uploadUrl).searchParams.get('X-Amz-SignedHeaders')!.split(';');
+      expect(signed).not.toContain('x-amz-server-side-encryption');
+      for (const header of signed) {
+        expect(['host', 'content-type', 'content-length']).toContain(header);
+      }
+    }
+  });
+});
