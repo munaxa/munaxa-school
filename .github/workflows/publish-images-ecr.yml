@@ -9,8 +9,11 @@
 # stack's private database, once the AWS deployment is validated. The public demo (munaxademo,
 # Cloudflare) is a separate application and is not built here.
 #
-# **Tag-triggered, and the tag names the commit.** A tag `image/<40-hex commit SHA>` on a commit
-# that is on `main`. The jobs that touch ECR run in the protected `image-release` environment and
+# **Dispatched on a tag, and the tag names the commit.** Push a tag `image/<40-hex commit SHA>` on
+# a commit that is on `main`, then run this workflow with "Use workflow from" set to that tag. It
+# is dispatch-only, not tag-triggered, because this repository's deployment-gate lint
+# (scripts/deploy-gate.mjs) admits a job with an environment only on dispatch or on pushes to main,
+# behind the `production-gate` job. The jobs that touch ECR run in the protected `image-release` environment and
 # assume this repository's image publisher role through GitHub OIDC; the role's trust requires that
 # environment and an image/* tag, and it may push only to this product's repositories. No registry
 # credential exists.
@@ -22,9 +25,7 @@
 name: Publish images to ECR
 
 on:
-  push:
-    tags:
-      - 'image/**'
+  workflow_dispatch:
 
 concurrency:
   group: publish-ecr-${{ github.ref }}
@@ -38,6 +39,24 @@ env:
   REGISTRY: 229251310592.dkr.ecr.eu-central-1.amazonaws.com
 
 jobs:
+  # The repository's deployment gate (docs/ops/deployment-gates.md). image-release is not
+  # production, so it records that and passes; the lint requires it before any environment.
+  production-gate:
+    name: Production gate · approval required
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check the target environment
+        run: node scripts/deploy-gate.mjs verify-environment "$TARGET"
+        env:
+          TARGET: image-release
+          GITHUB_TOKEN: ${{ github.token }}
+
   source:
     name: Resolve the source commit
     runs-on: ubuntu-latest
@@ -52,6 +71,9 @@ jobs:
         run: |
           set -euo pipefail
           sha="${REF_NAME#image/}"
+          if [ "$GITHUB_REF_TYPE" != tag ]; then
+            echo "::error::run this workflow from an image/<sha> tag, not from $GITHUB_REF"; exit 1
+          fi
           if ! printf '%s' "$sha" | grep -Eq '^[0-9a-f]{40}$'; then
             echo "::error::tag must be image/<40-hex commit SHA>, got '$REF_NAME'"; exit 1
           fi
@@ -77,7 +99,7 @@ jobs:
 
   publish:
     name: ${{ matrix.repository }}${{ matrix.tag_suffix }}
-    needs: source
+    needs: [production-gate, source]
     runs-on: ubuntu-latest
     environment: image-release # required reviewer; the publisher role trusts only this subject
     permissions:

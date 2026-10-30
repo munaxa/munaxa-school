@@ -8,10 +8,12 @@ and what is checked. The stack's README holds the approval gates, the runbook an
 
 ## Images
 
-`.github/workflows/publish-images-ecr.yml` builds from a tag `image/<40-hex commit SHA>` on a
-commit that is on `main`, in the protected `image-release` environment, and pushes to Amazon ECR
-through GitHub OIDC (no registry credential exists). It is inert until the owner sets the
-repository variable `AWS_IMAGE_PUBLISHER_ROLE_ARN`.
+`.github/workflows/publish-images-ecr.yml` is run by hand from a tag `image/<40-hex commit SHA>`
+on a commit that is on `main`. It runs in the protected `image-release` environment, behind the
+repository's `production-gate` job, and pushes to Amazon ECR through GitHub OIDC (no registry
+credential exists). It is dispatch-only because the deployment-gate lint admits an environment
+only on dispatch or on pushes to `main`. It does nothing until the owner sets the repository
+variable `AWS_IMAGE_PUBLISHER_ROLE_ARN`.
 
 | ECR repository        | Dockerfile target                 | Runs as                                     |
 | --------------------- | --------------------------------- | ------------------------------------------- |
