@@ -52,7 +52,8 @@ export const envSchema = z
 
     /**
      * Where this installation's entitlements come from. `DATABASE` (default): the subscription
-     * plane in this database, exactly as before. `LICENSE_FILE`: a signed Munaxa licence on disk,
+     * plane in this database, exactly as before. Development and test only: production refuses
+     * it, set or defaulted, because a school without a subscription row is granted everything. `LICENSE_FILE`: a signed Munaxa licence on disk,
      * verified offline against the public keys below — for a school running Munaxa on its own
      * server. A licence that is missing or fails verification grants nothing; it never falls back
      * to the database's permissive "no subscription" behaviour. `CONTROL_PLANE`: the central Munaxa
@@ -126,6 +127,17 @@ export const envSchema = z
 
     // Production hardening: secrets that are conveniences in dev are mandatory in production.
     if (env.NODE_ENV !== 'production') return;
+    // `DATABASE` is also what an unset variable means, and it grants every module to a school with
+    // no subscription row, so a production deployment that forgot to say how it is licensed would
+    // run unlicensed. It must name a source that fails closed.
+    if (env.LICENSING_MODE === 'DATABASE') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['LICENSING_MODE'],
+        message:
+          'production needs LICENSE_FILE or CONTROL_PLANE; DATABASE (also the default when unset) is permissive for schools without a subscription',
+      });
+    }
     if (!env.JWT_ACCESS_SECRET) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
