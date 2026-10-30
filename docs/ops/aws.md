@@ -11,9 +11,9 @@ and what is checked. The stack's README holds the approval gates, the runbook an
 `.github/workflows/publish-images-ecr.yml` is run by hand from a tag `image/<40-hex commit SHA>`
 on a commit that is on `main`. It runs in the protected `image-release` environment, behind the
 repository's `production-gate` job, and pushes to Amazon ECR through GitHub OIDC (no registry
-credential exists). It is dispatch-only because the deployment-gate lint admits an environment
-only on dispatch or on pushes to `main`. It does nothing until the owner sets the repository
-variable `AWS_IMAGE_PUBLISHER_ROLE_ARN`.
+credential exists). Like every workflow here that has a side effect, it is dispatch-only
+(docs/ops/deployment-gates.md); `image-release` must require a reviewer and admit only `image/*`
+tags. It does nothing until the owner sets the repository variable `AWS_IMAGE_PUBLISHER_ROLE_ARN`.
 
 | ECR repository        | Dockerfile target                 | Runs as                                     |
 | --------------------- | --------------------------------- | ------------------------------------------- |
@@ -39,7 +39,8 @@ The `migrate` image runs, with the owner URL from its own bundle (`DATABASE_MIGR
    without creating the role), and `_prisma_migrations` revoked from it.
 
 Both steps are idempotent. On AWS the database is private, so migrations run as this task, never
-from a CI runner; `.github/workflows/deploy.yml` (Render) stays as it is until Render is retired.
+from a CI runner. `.github/workflows/deploy.yml` (GHCR images and CI-runner migrations for Render)
+stays, dispatch-only, until Render is retired.
 
 ## Runtime configuration
 

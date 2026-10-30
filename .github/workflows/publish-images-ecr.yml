@@ -12,8 +12,8 @@
 # **Dispatched on a tag, and the tag names the commit.** Push a tag `image/<40-hex commit SHA>` on
 # a commit that is on `main`, then run this workflow with "Use workflow from" set to that tag. It
 # is dispatch-only, not tag-triggered, because this repository's deployment-gate lint
-# (scripts/deploy-gate.mjs) admits a job with an environment only on dispatch or on pushes to main,
-# behind the `production-gate` job. The jobs that touch ECR run in the protected `image-release` environment and
+# (scripts/deploy-gate.mjs) admits a job with an environment only on dispatch, behind the
+# `production-gate` job. The jobs that touch ECR run in the protected `image-release` environment and
 # assume this repository's image publisher role through GitHub OIDC; the role's trust requires that
 # environment and an image/* tag, and it may push only to this product's repositories. No registry
 # credential exists.
@@ -39,8 +39,8 @@ env:
   REGISTRY: 229251310592.dkr.ecr.eu-central-1.amazonaws.com
 
 jobs:
-  # The repository's deployment gate (docs/ops/deployment-gates.md). image-release is not
-  # production, so it records that and passes; the lint requires it before any environment.
+  # The repository's deployment gate (docs/ops/deployment-gates.md): the image-release environment
+  # must require a reviewer and admit only image/* tags, and this run must be on such a tag.
   production-gate:
     name: Production gate · approval required
     runs-on: ubuntu-latest
@@ -100,6 +100,7 @@ jobs:
   publish:
     name: ${{ matrix.repository }}${{ matrix.tag_suffix }}
     needs: [production-gate, source]
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: image-release # required reviewer; the publisher role trusts only this subject
     permissions:

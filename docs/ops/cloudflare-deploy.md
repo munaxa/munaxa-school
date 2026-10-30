@@ -20,10 +20,12 @@ the `school/` nesting is handled automatically.
 
 ## How deploys run
 
-**`.github/workflows/deploy-cloudflare.yml` — every merge to `main` requests a production deploy of
-every app in its matrix, which waits for a reviewer's approval.** Its `production-gate` job fails
-the run before anything is built unless the `production` environment requires a reviewer — see
-[deployment-gates.md](./deployment-gates.md).
+**`.github/workflows/deploy-cloudflare.yml` — run by hand (Actions → Deploy Cloudflare → Run
+workflow, from `main`, `confirm` = `production`); a merge deploys nothing.** It deploys every app
+in its matrix after a reviewer's approval. Its `production-gate` job fails the run before anything
+is built unless it was started by hand and confirmed, and the `production` environment requires
+a reviewer — see [deployment-gates.md](./deployment-gates.md). Run it after a merge that changes
+the demo or anything it renders from `@munaxa/ui`.
 
 The workflow runs each app's own `cf:deploy` script (the same one you run locally), so CI and a
 developer's machine cannot drift apart. It also asserts, before deploying, that each
@@ -42,7 +44,7 @@ admin bypass, and `main` as its only deployment branch; the gate enforces this.
 
 ### No path filtering — deliberately
 
-The workflow deploys every app on every merge, with no path filters. That is not an
+Each run deploys every app, with no path filters. That is not an
 oversight. The apps render their entire UI from `@munaxa/ui`, and `cf:deploy` rebuilds
 that dependency first, so "this merge changed nothing the app consumes" is not a judgement a
 path filter can make correctly. A redundant deploy costs one short build; a skipped one costs a
