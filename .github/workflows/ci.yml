@@ -3,13 +3,11 @@ name: CI
 on:
   # Run on PRs only. The post-merge commit on `main` is identical to the PR head
   # that already passed these checks, so re-running on `push: main` only burns
-  # Actions minutes. Branch protection (required status checks) gates merges.
+  # Actions minutes. The main ruleset requires these checks, so there is no
+  # paths-ignore: a required check that a path filter never starts stays pending
+  # forever, and a docs-only pull request could never merge.
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'LICENSE'
 
 concurrency:
   group: ci-${{ github.ref }}
