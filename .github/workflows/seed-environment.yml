@@ -116,7 +116,8 @@ jobs:
 
       # Platform owner. An unset secret arrives as an empty string, and the script reads its
       # overrides with `??`, which only falls back on undefined — an empty value would win and
-      # then fail validation. Unset them so the script's own defaults apply.
+      # then fail validation. An empty email is unset so the script's default applies; an empty
+      # password stops the job (below), never a default.
       - name: Seed platform owner
         run: |
           [ -n "${PLATFORM_OWNER_EMAIL:-}" ] || unset PLATFORM_OWNER_EMAIL
