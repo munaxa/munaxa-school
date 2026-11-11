@@ -56,7 +56,7 @@ diagnosis → action → verification. Backup/DR strategy rationale lives in
 `docs/architecture/12-disaster-recovery-strategy.md` (RPO/RTO).
 1. Declare an incident; freeze writes (scale API to 0 or enable maintenance mode).
 2. Restore the database to the chosen point (latest snapshot or PITR timestamp) into a new instance.
-3. Re-grant the app role: `psql "$DIRECT_DATABASE_URL" -f infra/postgres/app-role.sql`.
+3. Re-grant the app role: `psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/postgres/runtime-grants.sql` (the role must exist on the new instance with its own password; `app-role.sql` would create it with the committed dev password).
 4. Point `DATABASE_URL`/`DIRECT_DATABASE_URL` at the restored instance; run `prisma migrate status`.
 5. Bring the API up on **one** pod, pass readiness, run a smoke test, then scale out.
 6. Post-incident: write the timeline, root cause, and follow-ups.

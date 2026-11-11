@@ -36,7 +36,7 @@ Secrets come from a managed secrets store (never committed). `.env.example` docu
 2. **Back up** the database (see `runbooks.md` §Backups) and confirm the latest backup is restorable.
 3. **Migrate**: run `prisma migrate deploy` with `DIRECT_DATABASE_URL`. Migrations are
    additive/backward-compatible (expand-then-contract); deploy code that tolerates both shapes.
-4. **Re-grant** the app role if new tables were added: `psql "$DIRECT_DATABASE_URL" -f infra/postgres/app-role.sql`.
+4. **Re-grant** the app role if new tables were added: `psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/postgres/runtime-grants.sql` (never `app-role.sql`, which creates a missing role with the committed dev password).
 5. **Deploy API** behind the load balancer with a rolling/blue-green strategy. New pods must pass
    `GET /api/v1/health/ready` (DB reachable) before receiving traffic; `GET /api/v1/health/live` is
    the liveness probe. `enableShutdownHooks()` drains in-flight requests on SIGTERM.

@@ -120,7 +120,12 @@ jobs:
       - name: Seed platform owner
         run: |
           [ -n "${PLATFORM_OWNER_EMAIL:-}" ] || unset PLATFORM_OWNER_EMAIL
-          [ -n "${PLATFORM_OWNER_PASSWORD:-}" ] || unset PLATFORM_OWNER_PASSWORD
+          # Never the script's built-in default: it is public, and an owner seeded with it signs in
+          # without being asked to change it.
+          if [ -z "${PLATFORM_OWNER_PASSWORD:-}" ]; then
+            echo "::error::Set the PLATFORM_OWNER_PASSWORD secret on this environment; nothing was seeded for the owner."
+            exit 1
+          fi
           pnpm --filter @school/api db:seed:platform-owner
 
       - name: Seed demo tenant

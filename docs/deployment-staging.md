@@ -109,6 +109,12 @@ JWT_REFRESH_SECRET=$(openssl rand -base64 48)
 JWT_ACCESS_TTL=900
 JWT_REFRESH_TTL=2592000
 
+# Licensing: required. With NODE_ENV=production the API refuses to start on DATABASE, which is
+# also what an unset LICENSING_MODE means (docs/ops/licensing.md).
+LICENSING_MODE=CONTROL_PLANE
+CONTROL_PLANE_URL=https://<munaxa-control-api-host>   # https only in production
+CONTROL_PLANE_TOKEN=<service credential mxc_..., issued in the Control operator portal>  # a secret
+
 # Optional for first smoke test (leave blank to no-op): S3, Resend, SMS, Sentry, e-invoicing.
 EMAIL_FROM=no-reply@munaxa.app
 ```
