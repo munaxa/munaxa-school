@@ -171,6 +171,9 @@ jobs:
             exit 0
           fi
           pnpm --filter @school/api prisma:deploy
+      # runtime-grants.sql, not app-role.sql: app-role.sql creates munaxa_app with the committed
+      # local/CI password when the role is missing. Here a missing role stops the job instead; create
+      # it by hand with its own password first (docs/deployment-staging.md step 4).
       - name: Re-apply restricted application role grants
         run: |
           if [ -z "$DIRECT_DATABASE_URL" ]; then
@@ -178,7 +181,7 @@ jobs:
             exit 0
           fi
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
-          psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/postgres/app-role.sql
+          psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/postgres/runtime-grants.sql
 
   # Run the migration first, in its own run, when a release needs one.
   deploy:

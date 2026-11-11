@@ -63,10 +63,16 @@ DIRECT_DATABASE_URL="$OWNER_URL" \
 DATABASE_URL="$OWNER_URL" \
 pnpm --filter @school/api prisma:deploy
 
-# (b) Create the restricted app role + grants (managed DB only — compose does this automatically).
-#     Edit the password in infra/postgres/app-role.sql first (it ships with a dev password),
-#     or run an adapted version. Then:
-psql "$OWNER_URL" -v ON_ERROR_STOP=1 -f infra/postgres/app-role.sql
+# (b) Create the restricted app role, then grant (managed DB only — compose does this automatically).
+#     Never edit a real password into a tracked file: app-role.sql ships with a dev password and is
+#     for local compose only. Pass the password from your secret store as a psql variable (stdin is
+#     interpolated by psql; nothing is written to disk), then apply the grants:
+psql "$OWNER_URL" -v ON_ERROR_STOP=1 -v pw="$APP_DB_PASSWORD" <<'SQL'
+CREATE ROLE munaxa_app WITH LOGIN PASSWORD :'pw' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+SQL
+psql "$OWNER_URL" -v ON_ERROR_STOP=1 -f infra/postgres/runtime-grants.sql
+# An environment where an older deploy ran app-role.sql may still have the dev password:
+# rotate it with ALTER ROLE munaxa_app PASSWORD :'pw' the same way, and update DATABASE_URL.
 
 # (c) Seed the GLOBAL permission catalog (required)
 DATABASE_URL="$OWNER_URL" pnpm --filter @school/api db:seed
@@ -108,6 +114,12 @@ JWT_ACCESS_SECRET=$(openssl rand -base64 48)
 JWT_REFRESH_SECRET=$(openssl rand -base64 48)
 JWT_ACCESS_TTL=900
 JWT_REFRESH_TTL=2592000
+
+# Licensing: required. With NODE_ENV=production the API refuses to start on DATABASE, which is
+# also what an unset LICENSING_MODE means (docs/ops/licensing.md).
+LICENSING_MODE=CONTROL_PLANE
+CONTROL_PLANE_URL=https://<munaxa-control-api-host>   # https only in production
+CONTROL_PLANE_TOKEN=<service credential mxc_..., issued in the Control operator portal>  # a secret
 
 # Optional for first smoke test (leave blank to no-op): S3, Resend, SMS, Sentry, e-invoicing.
 EMAIL_FROM=no-reply@munaxa.app

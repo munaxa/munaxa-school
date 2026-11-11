@@ -116,11 +116,17 @@ jobs:
 
       # Platform owner. An unset secret arrives as an empty string, and the script reads its
       # overrides with `??`, which only falls back on undefined — an empty value would win and
-      # then fail validation. Unset them so the script's own defaults apply.
+      # then fail validation. An empty email is unset so the script's default applies; an empty
+      # password stops the job (below), never a default.
       - name: Seed platform owner
         run: |
           [ -n "${PLATFORM_OWNER_EMAIL:-}" ] || unset PLATFORM_OWNER_EMAIL
-          [ -n "${PLATFORM_OWNER_PASSWORD:-}" ] || unset PLATFORM_OWNER_PASSWORD
+          # Never the script's built-in default: it is public, and an owner seeded with it signs in
+          # without being asked to change it.
+          if [ -z "${PLATFORM_OWNER_PASSWORD:-}" ]; then
+            echo "::error::Set the PLATFORM_OWNER_PASSWORD secret on this environment; nothing was seeded for the owner."
+            exit 1
+          fi
           pnpm --filter @school/api db:seed:platform-owner
 
       - name: Seed demo tenant
