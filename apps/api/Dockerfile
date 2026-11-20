@@ -6,10 +6,35 @@
 # so the build needs a token with `read:packages`:
 #   docker build --secret id=github_token,env=GITHUB_TOKEN -f apps/api/Dockerfile .
 
-ARG NODE_VERSION=22-alpine
+# One operating system for every stage, pinned by digest so a rebuild of the same commit starts from
+# the same bytes: the base Munaxa Identity ships (identity apps/api/Dockerfile, identity#20),
+# node:22-alpine (Node 22.23.5, Alpine 3.24.4) as published on 11 Nov 2026, with zlib raised to
+# 1.4-r0. The floating `node:22-alpine` tag this file used before resolved to zlib 1.3.2-r1, which
+# ECR rates CVE-2026-4738 CRITICAL (it is the finding in munaxa-work/api:b490b25, built the same
+# way). Alpine's aports secfixes list the fix in zlib 1.4-r0 (main/zlib/APKBUILD, 3.24-stable).
+# When an official node:22-alpine digest ships zlib 1.4 or later, move the pin and drop the upgrade.
+# The version is exact, so if Alpine replaces 1.4-r0 the build fails here instead of drifting.
+# .github/scripts/verify-image.sh checks the result.
+ARG NODE_IMAGE=node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+
+FROM ${NODE_IMAGE} AS os
+# OpenSSL is raised to 3.5.9-r1 on the same terms: the pinned image ships libssl3 and libcrypto3
+# 3.5.9-r0, which the CI image scan of 20 Nov 2026 (Grype) reports with 4 HIGH findings
+# (CVE-2026-88823, CVE-2026-95691, CVE-2026-95692, CVE-2026-107496), all fixed in Alpine's 3.5.9-r1
+# (aports 3.24-stable main/openssl/APKBUILD secfixes). Exact versions; the loop fails the build if
+# Alpine replaces any of them.
+# The split is the point: `apk list -I <name>` prints `<name>-<version> <arch> ...` and $1 is the first word.
+# hadolint ignore=SC2046
+RUN apk add --no-cache 'zlib=1.4-r0' 'libssl3=3.5.9-r1' 'libcrypto3=3.5.9-r1' && \
+    for want in zlib=1.4-r0 libssl3=3.5.9-r1 libcrypto3=3.5.9-r1; do \
+      name="${want%%=*}" && set -- $(apk list -I "$name" 2>/dev/null) && installed="${1#"$name"-}" && \
+      if [ "$installed" != "${want#*=}" ]; then \
+        echo "$name is '$installed', expected ${want#*=}" >&2; exit 1; \
+      fi; \
+    done
 
 # ---------- Base ----------
-FROM node:${NODE_VERSION} AS base
+FROM os AS base
 RUN corepack enable
 WORKDIR /repo
 
@@ -70,11 +95,19 @@ FROM build AS migrate
 ENV NODE_ENV=production
 RUN addgroup -S nodejs && adduser -S migrate -G nodejs
 WORKDIR /repo/apps/api
+# No package manager or Node tooling at run time. The service never runs npm, npx, corepack, yarn
+# or pnpm, and the CI image scan of 20 Nov 2026 found HIGH advisories in exactly those: npm's
+# bundled brace-expansion 2.0.2, ip-address 10.1.0, pacote and picomatch 4.0.3, and pnpm 10.33.0.
+# Removed, not upgraded: what is not there cannot be exploited or flagged.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+      /usr/local/bin/yarn /usr/local/bin/yarnpkg /usr/local/bin/pnpm /usr/local/bin/pnpx \
+      /opt/yarn-v* /root/.cache/node /root/.npm
 USER migrate
 CMD ["sh", "-c", "export DATABASE_URL=\"$DATABASE_MIGRATION_URL\" DIRECT_DATABASE_URL=\"$DATABASE_MIGRATION_URL\" && /repo/node_modules/.bin/prisma migrate deploy --schema=../../prisma/schema.prisma && exec /repo/node_modules/.bin/prisma db execute --schema=../../prisma/schema.prisma --file=../../infra/postgres/runtime-grants.sql"]
 
 # ---------- Runtime ----------
-FROM node:${NODE_VERSION} AS runtime
+FROM os AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 # Non-root user (security hardening)
@@ -86,6 +119,14 @@ COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/package.json ./package.json
 COPY --from=build /repo/prisma ./prisma
 
+# No package manager or Node tooling at run time. The service never runs npm, npx, corepack, yarn
+# or pnpm, and the CI image scan of 20 Nov 2026 found HIGH advisories in exactly those: npm's
+# bundled brace-expansion 2.0.2, ip-address 10.1.0, pacote and picomatch 4.0.3, and pnpm 10.33.0.
+# Removed, not upgraded: what is not there cannot be exploited or flagged.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+      /usr/local/bin/yarn /usr/local/bin/yarnpkg /usr/local/bin/pnpm /usr/local/bin/pnpx \
+      /opt/yarn-v* /root/.cache/node /root/.npm
 USER nestjs
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
