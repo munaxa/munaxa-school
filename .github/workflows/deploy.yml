@@ -94,33 +94,75 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push API image
+      # Built into the local daemon first, verified and scanned (HIGH/CRITICAL fail), and only then
+      # pushed: an image that fails either never reaches GHCR. The same scripts as CI and the ECR
+      # release (publish-images-ecr.yml).
+      - name: Build API image (not pushed yet)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: apps/api/Dockerfile
+          target: runtime
           secrets: |
             github_token=${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
-          push: true
+          push: false
+          load: true
+          provenance: false
+          sbom: false
           tags: |
             ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-api:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-api:latest
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
 
-      - name: Build & push Admin image
+      - name: Build Admin image (not pushed yet)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: apps/admin/Dockerfile
           secrets: |
             github_token=${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
-          push: true
+          push: false
+          load: true
+          provenance: false
+          sbom: false
           tags: |
             ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-admin:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/munaxa-admin:latest
           cache-from: type=gha,scope=admin
           cache-to: type=gha,scope=admin,mode=max
+
+      - name: Verify and scan before pushing
+        env:
+          REPO: ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          .github/scripts/verify-image.sh "$REPO/munaxa-api:$SHA" api
+          .github/scripts/verify-image.sh "$REPO/munaxa-admin:$SHA" admin
+          .github/scripts/scan-image.sh "$REPO/munaxa-api:$SHA" school-api image-reports
+          .github/scripts/scan-image.sh "$REPO/munaxa-admin:$SHA" school-admin image-reports
+
+      - name: Keep the SBOMs and scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-reports-ghcr
+          path: image-reports/
+          if-no-files-found: warn
+          retention-days: 400
+
+      - name: Push
+        env:
+          REPO: ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for image in munaxa-api munaxa-admin; do
+            docker push -q "$REPO/$image:$SHA" >/dev/null
+            docker push -q "$REPO/$image:latest" >/dev/null
+            echo "pushed $(docker image inspect --format '{{index .RepoDigests 0}}' "$REPO/$image:$SHA")"
+          done
 
   # Independent of build-images: the migration runs from this checkout, not from an image.
   migrate:
