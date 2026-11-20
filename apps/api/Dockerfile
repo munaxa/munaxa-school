@@ -6,10 +6,28 @@
 # so the build needs a token with `read:packages`:
 #   docker build --secret id=github_token,env=GITHUB_TOKEN -f apps/api/Dockerfile .
 
-ARG NODE_VERSION=22-alpine
+# One operating system for every stage, pinned by digest so a rebuild of the same commit starts from
+# the same bytes: the base Munaxa Identity ships (identity apps/api/Dockerfile, identity#20),
+# node:22-alpine (Node 22.23.5, Alpine 3.24.4) as published on 11 Nov 2026, with zlib raised to
+# 1.4-r0. The floating `node:22-alpine` tag this file used before resolved to zlib 1.3.2-r1, which
+# ECR rates CVE-2026-4738 CRITICAL (it is the finding in munaxa-work/api:b490b25, built the same
+# way). Alpine's aports secfixes list the fix in zlib 1.4-r0 (main/zlib/APKBUILD, 3.24-stable).
+# When an official node:22-alpine digest ships zlib 1.4 or later, move the pin and drop the upgrade.
+# The version is exact, so if Alpine replaces 1.4-r0 the build fails here instead of drifting.
+# .github/scripts/verify-image.sh checks the result.
+ARG NODE_IMAGE=node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+
+FROM ${NODE_IMAGE} AS os
+# The split is the point: `apk list -I zlib` prints `zlib-<version> <arch> ...` and $1 is the first word.
+# hadolint ignore=SC2046
+RUN apk add --no-cache 'zlib=1.4-r0' && \
+    set -- $(apk list -I zlib 2>/dev/null) && installed="${1#zlib-}" && \
+    if [ "$installed" != "1.4-r0" ]; then \
+      echo "zlib is '$installed', expected 1.4-r0 (CVE-2026-4738)" >&2; exit 1; \
+    fi
 
 # ---------- Base ----------
-FROM node:${NODE_VERSION} AS base
+FROM os AS base
 RUN corepack enable
 WORKDIR /repo
 
@@ -74,7 +92,7 @@ USER migrate
 CMD ["sh", "-c", "export DATABASE_URL=\"$DATABASE_MIGRATION_URL\" DIRECT_DATABASE_URL=\"$DATABASE_MIGRATION_URL\" && /repo/node_modules/.bin/prisma migrate deploy --schema=../../prisma/schema.prisma && exec /repo/node_modules/.bin/prisma db execute --schema=../../prisma/schema.prisma --file=../../infra/postgres/runtime-grants.sql"]
 
 # ---------- Runtime ----------
-FROM node:${NODE_VERSION} AS runtime
+FROM os AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 # Non-root user (security hardening)
