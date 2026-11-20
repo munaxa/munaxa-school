@@ -28,7 +28,7 @@
     "@munaxa/tokens": "^1.1.1",
     "@munaxa/ui": "^1.1.1",
     "@school/brand": "workspace:*",
-    "next": "15.5.28",
+    "next": "15.5.29",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
