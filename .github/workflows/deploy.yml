@@ -212,9 +212,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.PLATFORM_PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
       - name: prisma migrate deploy
         run: |
+          # SC-04 (11 Nov audit): this job runs only when the operator asked for a migration, so a
+          # missing secret is a failure, never a green "skipped" run.
           if [ -z "$DIRECT_DATABASE_URL" ]; then
-            echo "::warning::DIRECT_DATABASE_URL secret is not set for this environment — skipping migrations."
-            exit 0
+            echo "::error::DIRECT_DATABASE_URL is not set for this environment; no migration was applied."
+            exit 1
           fi
           pnpm --filter @school/api prisma:deploy
       # runtime-grants.sql, not app-role.sql: app-role.sql creates munaxa_app with the committed
@@ -223,8 +225,8 @@ jobs:
       - name: Re-apply restricted application role grants
         run: |
           if [ -z "$DIRECT_DATABASE_URL" ]; then
-            echo "Skipped (no database secret)."
-            exit 0
+            echo "::error::DIRECT_DATABASE_URL is not set for this environment; grants were not applied."
+            exit 1
           fi
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
           psql "$DIRECT_DATABASE_URL" -v ON_ERROR_STOP=1 -f infra/postgres/runtime-grants.sql
@@ -247,4 +249,7 @@ jobs:
           #  - K8s:  kubectl set image deploy/munaxa-api api=ghcr.io/...:${{ github.sha }}
           #  - VM:   ssh + docker compose pull && up -d (compose file pinned to the sha tag)
           # Health-gate the cutover on /api/v1/health/ready before shifting traffic.
-          echo "No rollout target configured for this environment yet — images are published and ready."
+          # SC-05 (11 Nov audit): nothing is rolled out yet, so a run that asked for a rollout must not
+          # end green. Fails until a target above is wired.
+          echo "::error::No rollout target is configured for this environment; nothing was deployed. The images are published (if requested) and ready."
+          exit 1
