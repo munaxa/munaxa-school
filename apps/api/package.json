@@ -16,6 +16,8 @@
     "prisma:deploy": "prisma migrate deploy --schema=../../prisma/schema.prisma",
     "migrate:tenants": "node scripts/migrate-tenants.cjs",
     "promote:tenant": "node scripts/promote-tenant.cjs",
+    "identity:bind": "node scripts/bind-identity-organisation.cjs",
+    "identity:catalogue": "tsx scripts/emit-identity-catalogue.ts",
     "prisma:studio": "prisma studio --schema=../../prisma/schema.prisma",
     "db:seed": "prisma db seed --schema=../../prisma/schema.prisma",
     "db:seed:demo": "tsx scripts/seed-demo.ts",

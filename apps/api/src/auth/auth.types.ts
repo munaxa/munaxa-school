@@ -11,6 +11,9 @@ export interface AuthenticatedUser {
   // True while the account is on a temporary password and must change it before accessing any
   // protected route. Carried in the access token (mcp claim) and enforced by MustChangePasswordGuard.
   mustChangePassword?: boolean;
+  // Which sign-in produced this principal: School's own (HS256 access token) or a Munaxa Identity
+  // access token (SC-07). Absent means School's own, as every principal was before Identity.
+  authSource?: 'local' | 'identity';
 }
 
 /** Access-token JWT payload. */

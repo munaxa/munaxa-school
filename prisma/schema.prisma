@@ -784,6 +784,7 @@ model Tenant {
   subscription       TenantSubscription?
   subscriptionUsages SubscriptionUsage[]
   licensingState     LicensingState?
+  platformBinding    TenantPlatformBinding?
   storedObjects      StoredObject[]
   planChanges        PlanChangeHistory[]
   billingProfile     BillingProfile?
@@ -2112,6 +2113,10 @@ model User {
   id                     String     @id @default(uuid()) @db.Uuid
   tenantId               String     @db.Uuid
   firebaseUid            String?    @unique
+  /// The Munaxa Identity subject (`sub`) this account signs in as, when the deployment verifies
+  /// Identity access tokens. Unique per tenant; only tokens issued for the organisation bound to
+  /// this tenant (TenantPlatformBinding) can reach it. Never set from a request body.
+  platformSubject        String?    @db.VarChar(255)
   email                  String
   // Optional login handle (e.g. for students/parents without email). Unique per tenant.
   username               String?
@@ -2182,6 +2187,7 @@ model User {
   @@unique([tenantId, email])
   @@unique([tenantId, nationalId])
   @@unique([tenantId, username])
+  @@unique([tenantId, platformSubject])
   @@index([tenantId])
   @@index([tenantId, status])
 }
@@ -5645,6 +5651,25 @@ model LicensingState {
   updatedAt          DateTime @updatedAt @db.Timestamptz(6)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+/// The one Munaxa Identity organisation whose access tokens may act in this school (SC-07).
+/// One organisation per school and one school per organisation, per issuer. Written by the owner
+/// role only (apps/api/scripts/bind-identity-organisation.cjs); the runtime role reads it.
+model TenantPlatformBinding {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @unique @db.Uuid
+  /// Exactly `PLATFORM_AUTH_ISSUER`. A binding never carries over to another Identity deployment.
+  platformIssuer   String    @db.VarChar(2048)
+  /// The organisation id Identity puts in the token's `tid` claim.
+  platformTenantId String    @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  createdBy        String    @db.VarChar(255)
+  deletedAt        DateTime? @db.Timestamptz(6)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([platformIssuer, platformTenantId])
 }
 
 /// Every object this school holds in the bucket, by key, and the bytes it occupies

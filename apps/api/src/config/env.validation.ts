@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { readPlatformAuthentication } from '../auth/identity/platform-auth.config';
+import { localAuthEnabled } from '../auth/local-auth';
 
 /**
  * Strongly-typed, fail-fast environment validation. The app refuses to boot if required
@@ -41,7 +43,37 @@ export const envSchema = z
 
     CORS_ORIGINS: z.string().default('http://localhost:3000'),
 
-    // JWT (consumed in Phase 3; optional at foundation stage)
+    /**
+     * Munaxa Identity (SC-07): verify the ES256 access tokens Identity issues. All four of
+     * ISSUER, AUDIENCE, ALGORITHM and PUBLIC_KEYS, or none. ISSUER must equal Identity's
+     * `IDENTITY_BASE_URL` exactly; AUDIENCE (comma-separated) must overlap the token's `aud`, so
+     * Identity's `IDENTITY_AUTH_AUDIENCE` must include it; ALGORITHM is `ES256`; PUBLIC_KEYS is
+     * `[{"kid":"…","publicKey":"-----BEGIN PUBLIC KEY-----…"}]`, public keys only.
+     */
+    PLATFORM_AUTH_ISSUER: z.string().optional(),
+    PLATFORM_AUTH_AUDIENCE: z.string().optional(),
+    PLATFORM_AUTH_ALGORITHM: z.string().optional(),
+    PLATFORM_AUTH_PUBLIC_KEYS: z.string().optional(),
+    PLATFORM_AUTH_CLOCK_SKEW_MS: z.coerce.number().int().min(0).max(300_000).default(30_000),
+    /** `introspect` (default): ask Identity whether the session still stands. `disabled`: dev only. */
+    PLATFORM_AUTH_REVOCATION_CHECK: z.string().optional(),
+    /** Defaults to `${PLATFORM_AUTH_ISSUER}/api/auth/introspect`. */
+    PLATFORM_AUTH_INTROSPECTION_URL: z.string().optional(),
+    PLATFORM_AUTH_REVOCATION_CACHE_MS: z.coerce.number().int().min(0).max(30_000).default(5_000),
+    PLATFORM_AUTH_INTROSPECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(10_000)
+      .default(2_000),
+    /**
+     * School's own sign-in (password, Firebase exchange, School-signed HS256 tokens). `enabled` or
+     * `disabled`; unset means enabled outside production and DISABLED in production, where
+     * Identity is the sign-in. See `auth/local-auth.ts`.
+     */
+    SCHOOL_LOCAL_AUTH: z.enum(['enabled', 'disabled']).optional(),
+
+    // JWT for School's own sign-in (required in production only while SCHOOL_LOCAL_AUTH=enabled)
     JWT_ACCESS_SECRET: z.string().min(16).optional(),
     JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
     JWT_REFRESH_SECRET: z.string().min(16).optional(),
@@ -78,6 +110,15 @@ export const envSchema = z
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(120),
   })
   .superRefine((env, ctx) => {
+    // Identity verification, in every environment: half a configuration is not a configuration.
+    const identity = readPlatformAuthentication(env);
+    if (identity.kind === 'invalid') {
+      for (const issue of identity.issues) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['PLATFORM_AUTH'], message: issue });
+      }
+    }
+    const local = localAuthEnabled(env);
+
     // Licensing, in every environment: a mode whose inputs are missing would boot and then
     // refuse every write, which reads as an outage rather than as the misconfiguration it is.
     if (env.LICENSING_MODE === 'LICENSE_FILE') {
@@ -138,6 +179,16 @@ export const envSchema = z
           'production needs LICENSE_FILE or CONTROL_PLANE; DATABASE (also the default when unset) is permissive for schools without a subscription',
       });
     }
+    // Somebody must be able to sign in: Identity, or School's own sign-in switched on by name.
+    if (!local && identity.kind !== 'configured') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SCHOOL_LOCAL_AUTH'],
+        message:
+          'production needs Munaxa Identity (PLATFORM_AUTH_*) or SCHOOL_LOCAL_AUTH=enabled; School sign-in is off by default in production',
+      });
+    }
+    if (!local) return;
     if (!env.JWT_ACCESS_SECRET) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

@@ -27,6 +27,7 @@ describe('validateEnv', () => {
     const prodBase = {
       ...base,
       NODE_ENV: 'production',
+      SCHOOL_LOCAL_AUTH: 'enabled',
       JWT_ACCESS_SECRET: 'access-secret-at-least-16',
       JWT_REFRESH_SECRET: 'refresh-secret-at-least-16',
       LICENSING_MODE: 'CONTROL_PLANE',
@@ -39,9 +40,9 @@ describe('validateEnv', () => {
     });
 
     it('requires JWT secrets in production', () => {
-      expect(() => validateEnv({ ...base, NODE_ENV: 'production' })).toThrow(
-        /JWT_ACCESS_SECRET.*required in production/s,
-      );
+      expect(() =>
+        validateEnv({ ...base, NODE_ENV: 'production', SCHOOL_LOCAL_AUTH: 'enabled' }),
+      ).toThrow(/JWT_ACCESS_SECRET.*required in production/s);
     });
 
     it('rejects identical access and refresh secrets in production', () => {
@@ -59,6 +60,7 @@ describe('validateEnv', () => {
     const unlicensed = {
       ...base,
       NODE_ENV: 'production',
+      SCHOOL_LOCAL_AUTH: 'enabled',
       JWT_ACCESS_SECRET: 'access-secret-at-least-16',
       JWT_REFRESH_SECRET: 'refresh-secret-at-least-16',
     };
@@ -112,6 +114,71 @@ describe('validateEnv', () => {
 
     it.each(['development', 'test'])('keeps the DATABASE default in %s', (nodeEnv) => {
       expect(validateEnv({ ...base, NODE_ENV: nodeEnv }).LICENSING_MODE).toBe('DATABASE');
+    });
+  });
+
+  describe('sign-in source (SC-07)', () => {
+    const publicKey = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+      .publicKey.export({ type: 'spki', format: 'pem' })
+      .toString();
+    const licensed = {
+      ...base,
+      NODE_ENV: 'production',
+      LICENSING_MODE: 'CONTROL_PLANE',
+      CONTROL_PLANE_URL: 'https://control.munaxa.test',
+      CONTROL_PLANE_TOKEN: 'mxc_test-service-credential',
+    };
+    const identity = {
+      PLATFORM_AUTH_ISSUER: 'https://identity.munaxa.test',
+      PLATFORM_AUTH_AUDIENCE: 'munaxa-school',
+      PLATFORM_AUTH_ALGORITHM: 'ES256',
+      PLATFORM_AUTH_PUBLIC_KEYS: JSON.stringify([{ kid: 'id-1', publicKey }]),
+    };
+
+    it('refuses production with neither Identity nor School sign-in named', () => {
+      expect(() =>
+        validateEnv({
+          ...licensed,
+          JWT_ACCESS_SECRET: 'access-secret-at-least-16',
+          JWT_REFRESH_SECRET: 'refresh-secret-at-least-16',
+        }),
+      ).toThrow(/SCHOOL_LOCAL_AUTH: production needs Munaxa Identity/);
+    });
+
+    it('accepts production on Identity alone, with no JWT secrets', () => {
+      const env = validateEnv({ ...licensed, ...identity });
+      expect(env.PLATFORM_AUTH_ISSUER).toBe('https://identity.munaxa.test');
+      expect(env.SCHOOL_LOCAL_AUTH).toBeUndefined();
+    });
+
+    it('still requires JWT secrets when School sign-in is enabled beside Identity', () => {
+      expect(() => validateEnv({ ...licensed, ...identity, SCHOOL_LOCAL_AUTH: 'enabled' })).toThrow(
+        /JWT_ACCESS_SECRET: required in production/,
+      );
+    });
+
+    it('refuses a partial Identity configuration in every environment', () => {
+      expect(() =>
+        validateEnv({ ...base, PLATFORM_AUTH_ISSUER: 'https://identity.munaxa.test' }),
+      ).toThrow(/partly configured/);
+    });
+
+    it('refuses a symmetric algorithm', () => {
+      expect(() => validateEnv({ ...base, ...identity, PLATFORM_AUTH_ALGORITHM: 'HS256' })).toThrow(
+        /ES256 only/,
+      );
+    });
+
+    it('refuses a disabled revocation check in production', () => {
+      expect(() =>
+        validateEnv({ ...licensed, ...identity, PLATFORM_AUTH_REVOCATION_CHECK: 'disabled' }),
+      ).toThrow(/"disabled" is refused in production/);
+    });
+
+    it('refuses SCHOOL_LOCAL_AUTH=disabled in production without Identity', () => {
+      expect(() => validateEnv({ ...licensed, SCHOOL_LOCAL_AUTH: 'disabled' })).toThrow(
+        /production needs Munaxa Identity/,
+      );
     });
   });
 });

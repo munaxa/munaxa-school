@@ -47,6 +47,11 @@ stays, dispatch-only, until Render is retired.
 Plain environment (stack `services.tf`): `NODE_ENV=production`, `PORT=4000`, `CORS_ORIGINS`,
 `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`, `EMAIL_SENDER_DOMAIN`, `LICENSING_MODE=CONTROL_PLANE` and
 `CONTROL_PLANE_URL` (Control's API host). Production refuses `DATABASE` licensing (school#18).
+Sign-in (SC-07, `docs/security/identity-integration.md`): production refuses to start unless it
+verifies Munaxa Identity tokens (`PLATFORM_AUTH_ISSUER`, `PLATFORM_AUTH_AUDIENCE=munaxa-school`,
+`PLATFORM_AUTH_ALGORITHM=ES256`, `PLATFORM_AUTH_PUBLIC_KEYS`, all plain: public keys only) or names
+School's own sign-in with `SCHOOL_LOCAL_AUTH=enabled`. The `JWT_*` secrets are needed only while
+School's own sign-in is enabled.
 
 Secrets (bundle `<env>/school-api`, read by the execution role only): `DATABASE_URL`,
 `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (different values), `CONTROL_PLANE_TOKEN` (issued in the
