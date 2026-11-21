@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes, createHash } from 'node:crypto';
 import type { AccessTokenPayload, AuthenticatedUser } from '../auth.types';
+import { localAuthEnabled } from '../local-auth';
 
 /**
  * Issues and verifies tokens.
@@ -23,13 +24,23 @@ export class TokenService {
   ) {
     const isProd = config.get<string>('NODE_ENV') === 'production';
     const secret = config.get<string>('JWT_ACCESS_SECRET');
-    if (!secret && isProd) {
-      throw new Error('JWT_ACCESS_SECRET must be set in production');
+    const local = localAuthEnabled({
+      NODE_ENV: config.get<string>('NODE_ENV'),
+      SCHOOL_LOCAL_AUTH: config.get<string>('SCHOOL_LOCAL_AUTH'),
+    });
+    if (!local) {
+      // School's own sign-in is off (SC-07): nothing is signed with this, and a random per-process
+      // key means no HS256 token, from anywhere, can verify against it.
+      this.accessSecret = randomBytes(32).toString('base64url');
+    } else {
+      if (!secret && isProd) {
+        throw new Error('JWT_ACCESS_SECRET must be set in production');
+      }
+      if (!secret) {
+        this.logger.warn('JWT_ACCESS_SECRET not set — using an insecure development secret');
+      }
+      this.accessSecret = secret ?? 'dev-only-insecure-access-secret';
     }
-    if (!secret) {
-      this.logger.warn('JWT_ACCESS_SECRET not set — using an insecure development secret');
-    }
-    this.accessSecret = secret ?? 'dev-only-insecure-access-secret';
     this.accessTtl = Number(config.get('JWT_ACCESS_TTL') ?? 900);
     this.refreshTtl = Number(config.get('JWT_REFRESH_TTL') ?? 2_592_000);
   }

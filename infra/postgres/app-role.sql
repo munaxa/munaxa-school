@@ -32,3 +32,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO munaxa_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO munaxa_app;
+
+-- Identity bindings (SC-07) are written by the owner only: a runtime that could rebind its own
+-- school could admit another organisation's tokens. Repeated after the blanket grant above so a
+-- re-run never undoes it. Skipped when the table does not exist yet (compose runs this first).
+DO $$ BEGIN
+  IF to_regclass('public."TenantPlatformBinding"') IS NOT NULL THEN
+    REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE "TenantPlatformBinding" FROM munaxa_app;
+  END IF;
+END $$;

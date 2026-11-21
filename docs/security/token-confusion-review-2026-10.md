@@ -31,3 +31,9 @@ passed off as another. Scope: `apps/api` on `main` after #19.
    that signs HS256 tokens with the same secret value would be accepted. Keep `JWT_ACCESS_SECRET`
    unique to this deployment (never shared with Work, Docs or Identity); adding `iss` and `aud`
    would end active sessions and is left for the Identity integration.
+
+**Update (SC-07, November 2026).** Munaxa Identity ES256 access tokens are now accepted when
+`PLATFORM_AUTH_*` is configured. They are verified against Identity's public keys with `iss` and
+`aud`, and they travel on a path separate from School's HS256 token: a token is routed by its
+header algorithm, and each path accepts only its own. See `docs/security/identity-integration.md`.
+

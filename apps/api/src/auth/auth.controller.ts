@@ -2,11 +2,13 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -20,6 +22,7 @@ import { setAuthCookies, clearAuthCookies, refreshTokenFromCookie } from './cook
 import type { AuthenticatedUser } from './auth.types';
 import type { TokenPair } from './auth.types';
 import { AllowInReadOnly } from '../subscription/allow-in-read-only.decorator';
+import { LocalAuthEnabledGuard } from './local-auth';
 import {
   LoginDto,
   SessionExchangeDto,
@@ -54,6 +57,7 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @UseGuards(LocalAuthEnabledGuard)
   @HttpCode(200)
   // Brute-force protection: a tighter per-IP limit than the global throttle.
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
@@ -70,6 +74,7 @@ export class AuthController {
 
   @Public()
   @Post('session')
+  @UseGuards(LocalAuthEnabledGuard)
   @HttpCode(200)
   // Same brute-force ceiling as local login for the credential-exchange path.
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
@@ -86,6 +91,7 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
+  @UseGuards(LocalAuthEnabledGuard)
   @HttpCode(200)
   // Legit clients refresh occasionally; cap abuse while leaving headroom for token rotation.
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
@@ -110,6 +116,7 @@ export class AuthController {
 
   @Public()
   @Post('logout')
+  @UseGuards(LocalAuthEnabledGuard)
   @HttpCode(204)
   @ApiOperation({ summary: 'Revoke a refresh token family' })
   async logout(
@@ -124,6 +131,7 @@ export class AuthController {
 
   @Public()
   @Post('password/reset/request')
+  @UseGuards(LocalAuthEnabledGuard)
   @HttpCode(202)
   // Tight: a reset request emails the user — throttle to prevent mailbox-bombing and enumeration.
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
@@ -134,6 +142,7 @@ export class AuthController {
 
   @Public()
   @Post('password/reset/confirm')
+  @UseGuards(LocalAuthEnabledGuard)
   @HttpCode(204)
   // Tight: prevent brute-forcing the reset token.
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
@@ -146,6 +155,7 @@ export class AuthController {
   @AllowDuringPasswordChange()
   @AllowInReadOnly()
   @Post('password/change')
+  @UseGuards(LocalAuthEnabledGuard)
   @HttpCode(204)
   // Authenticated, but still throttle to blunt online guessing of the current password.
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
@@ -155,6 +165,10 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
     @Req() req: Request,
   ) {
+    // An Identity sign-in's password is Identity's; School holds none to change.
+    if (user.authSource === 'identity') {
+      throw new ForbiddenException('Change your password in Munaxa Identity.');
+    }
     await this.auth.changePassword(user.userId, user.tenantId, dto, this.meta(req));
   }
 
@@ -163,6 +177,8 @@ export class AuthController {
   @Get('me')
   @ApiOperation({ summary: 'Return the current principal (roles + permissions)' })
   me(@CurrentUser() user: AuthenticatedUser) {
+    // An Identity principal's permissions are its token's grants, not School's role tables.
+    if (user.authSource === 'identity') return user;
     return this.auth.me(user.userId, user.tenantId);
   }
 }
