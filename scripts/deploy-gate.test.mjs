@@ -8,6 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import {
   GATE_JOB,
+  TARGETS,
   databaseProblems,
   dispatchProblems,
   environmentProblems,
@@ -99,6 +100,26 @@ test('image-release admits only image/* tags', () => {
   );
 });
 
+test('image-testing needs no approval, and runs only from main', () => {
+  assert.deepEqual(environmentProblems(null, [], 'image-testing'), []);
+  assert.deepEqual(environmentProblems({ name: 'image-testing' }, [], 'image-testing'), []);
+  const spec = TARGETS['image-testing'];
+  assert.equal(spec.approval, false);
+  assert.equal(spec.ref('refs/heads/main'), true);
+  for (const ref of [
+    'refs/heads/x',
+    `refs/tags/image/${'a'.repeat(40)}`,
+    'refs/pull/1/merge',
+    undefined,
+  ]) {
+    assert.equal(spec.ref(ref), false, String(ref));
+  }
+  // Every other target still needs an approval.
+  for (const [name, other] of Object.entries(TARGETS)) {
+    if (name !== 'image-testing') assert.notEqual(other.approval, false, name);
+  }
+});
+
 test('an unknown target is refused rather than waved through', () => {
   assert.match(
     environmentProblems(protectedEnvironment, onlyMain, 'preview')[0],
@@ -151,6 +172,18 @@ const ancestorsOf = (jobs, id, seen = new Set()) => {
 const hasSideEffect = (job) =>
   publishes(job) || /secrets\.(DIRECT_DATABASE_URL|CLOUDFLARE_API_TOKEN)/.test(JSON.stringify(job));
 
+test('the Testing image workflow runs on main only, gated on image-testing, with no prod admin', () => {
+  const workflow = Object.fromEntries(workflows())['publish-images-testing.yml'];
+  assert.deepEqual(triggersOf(workflow).sort(), ['push', 'workflow_dispatch']);
+  assert.deepEqual(workflow.on.push, { branches: ['main'] });
+  const gate = workflow.jobs[GATE_JOB].steps.find((s) => /verify-environment/.test(String(s.run)));
+  assert.equal(gate.env.TARGET, 'image-testing');
+  assert.equal(workflow.jobs.publish.environment, 'image-testing');
+  const text = JSON.stringify(workflow);
+  assert.doesNotMatch(text, /-prod'|tag_suffix":"-prod"|school\.munaxa\.com/);
+  assert.doesNotMatch(text, /:sha-\$|:\$\{\{ env\.SHORT \}\}/);
+});
+
 test("this repository's workflows hold the gate", () => {
   for (const [file, workflow] of workflows()) {
     assert.deepEqual(workflowProblems(file, workflow), [], file);
@@ -161,6 +194,13 @@ test('a push to main starts no workflow that publishes, migrates or deploys', ()
   for (const [file, workflow] of workflows()) {
     const sideEffects = Object.entries(workflow.jobs ?? {}).filter(([, job]) => hasSideEffect(job));
     if (sideEffects.length === 0) continue;
+    // The one exception: Testing images (testing-* tags, no deploy), and only on a push to main.
+    if (file === 'publish-images-testing.yml') {
+      assert.deepEqual(triggersOf(workflow).sort(), ['push', 'workflow_dispatch'], file);
+      assert.deepEqual(workflow.on.push, { branches: ['main'] }, file);
+      for (const [, job] of sideEffects) assert.equal(job.environment, 'image-testing', file);
+      continue;
+    }
     assert.deepEqual(triggersOf(workflow), ['workflow_dispatch'], file);
   }
   for (const file of ['deploy.yml', 'deploy-cloudflare.yml', 'seed-environment.yml']) {
@@ -179,6 +219,7 @@ test('every job with a side effect waits for an approval that the gate has prove
       seen += 1;
       assert.ok(job.environment, `${file} ${id} holds no environment, so nobody approves it`);
       assert.ok(ancestorsOf(jobs, id).has(GATE_JOB), `${file} ${id} does not need the gate`);
+      if (job.environment === 'image-testing') continue; // Testing images run on a merge too
       assert.match(String(job.if), /github\.event_name == 'workflow_dispatch'/, `${file} ${id}`);
     }
   }
@@ -309,6 +350,51 @@ test('a workflow with an environment on any trigger but workflow_dispatch fails'
       JSON.stringify(on),
     );
   }
+});
+
+const testingGated = () => {
+  const w = gated();
+  w.on = { push: { branches: ['main'] }, workflow_dispatch: null };
+  w.jobs['production-gate'].steps[0].env.TARGET = 'image-testing';
+  w.jobs.deploy.environment = 'image-testing';
+  w.jobs.deploy.if = "needs.build.result == 'success'";
+  return w;
+};
+
+test('image-testing alone may also run on a push to main', () => {
+  assert.deepEqual(workflowProblems('w.yml', testingGated()), []);
+});
+
+test('a merge trigger is refused for any other target, branch, tag or mix', () => {
+  const other = testingGated();
+  other.jobs['production-gate'].steps[0].env.TARGET = 'staging';
+  other.jobs.deploy.environment = 'staging';
+  assert.match(workflowProblems('w.yml', other).join(), /only on `workflow_dispatch`/);
+  for (const push of [
+    { branches: ['main', 'dev'] },
+    { branches: ['*'] },
+    { branches: ['main'], tags: ['image/**'] },
+    { tags: ['image/**'] },
+    null,
+  ]) {
+    const w = testingGated();
+    w.on.push = push;
+    assert.match(
+      workflowProblems('w.yml', w).join(),
+      /only on `workflow_dispatch`/,
+      JSON.stringify(push),
+    );
+  }
+  const mixed = testingGated();
+  mixed.jobs.extra = { needs: 'production-gate', environment: 'production', steps: [] };
+  assert.match(workflowProblems('w.yml', mixed).join(), /only on `workflow_dispatch`/);
+  const fromInput = testingGated();
+  fromInput.jobs['production-gate'].steps[0].env.TARGET = '${{ inputs.environment }}';
+  fromInput.jobs.deploy.environment = '${{ inputs.environment }}';
+  assert.match(workflowProblems('w.yml', fromInput).join(), /only on `workflow_dispatch`/);
+  const schedule = testingGated();
+  schedule.on.schedule = [{ cron: '0 0 * * *' }];
+  assert.match(workflowProblems('w.yml', schedule).join(), /not on schedule/);
 });
 
 test('a job with an environment but no dispatch-only condition fails', () => {
