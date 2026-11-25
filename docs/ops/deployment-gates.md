@@ -30,6 +30,7 @@ Nothing that changes anything outside GitHub. `ci.yml` runs on pull requests onl
 | `deploy-cloudflare.yml` | Run workflow, `confirm` = `production` | `deploy`: the `munaxademo` Worker | `production` |
 | `seed-environment.yml` | Run workflow: `environment`, `confirm` | `seed` | The target environment |
 | `publish-images-ecr.yml` | Run workflow from an `image/<sha>` tag | `publish`: ECR, through OIDC | `image-release` |
+| `publish-images-testing.yml` | Run workflow from `main`, optional `sha` (a commit on main) | `publish`: ECR `testing-*` tags only, through OIDC | None: `image-testing` needs no reviewer. The publisher role's AWS trust accepts it only on `refs/heads/main` and only for this file; it deploys nothing |
 
 Run a migration in its own run before a rollout that needs it: `migrate` and `deploy` are
 independent, so ticking both does not order them. The GHCR images (`deploy.yml`) stay the Render
@@ -49,7 +50,8 @@ unrelated product).
 ## Required GitHub settings (one-time, repository admin)
 
 **Settings → Environments** (<https://github.com/munaxa/munaxa-school/settings/environments>), for
-each of `production`, `staging` and `image-release`:
+each of `production`, `staging` and `image-release` (`image-testing` needs none of this: GitHub creates
+it on its first run, and its limits are in the AWS role trust):
 
 1. **Required reviewers**: tick it and add the people who may approve.
    (Leave **Prevent self-review** off if a single person both merges and approves.)

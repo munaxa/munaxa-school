@@ -63,6 +63,15 @@ export const TARGETS = {
     ref: (ref) => /^refs\/tags\/image\/[0-9a-f]{40}$/.test(ref ?? ''),
     refName: 'an image/<sha> tag',
     rule: 'tag:image/*',
+  },  // Testing (nonprod) images only, from main, with no reviewer: publish-images-testing.yml. What
+  // limits it is outside this repository: the image publisher role trusts the image-testing
+  // environment only on refs/heads/main and only for that file, and pushes only testing-* tags
+  // (munaxa-platform infra/aws/bootstrap/iam.tf). It deploys nothing.
+  'image-testing': {
+    ref: (ref) => ref === 'refs/heads/main',
+    refName: 'main',
+    rule: 'branch:main',
+    approval: false,
   },
 };
 /**
@@ -85,6 +94,8 @@ const FORBIDDEN_TRIGGERS = ['pull_request_target', 'workflow_run'];
 export function environmentProblems(environment, branchPolicies, target = 'production') {
   const spec = TARGETS[target];
   if (!spec) return [`"${target}" is not a deployment target this repository knows.`];
+  // A target that needs no approval has nothing here to prove; its ref is checked at run time.
+  if (spec.approval === false) return [];
   if (!environment) {
     return [
       `The "${target}" environment does not exist. A deploy job would create it ` +
@@ -172,6 +183,13 @@ async function verifyEnvironment(target, { advisory = false } = {}) {
         (advisory ? ' is configured.' : ', then re-run.'),
     );
     return advisory ? 0 : 1;
+  }
+  if (spec.approval === false) {
+    console.log(
+      `${target} needs no approval: it runs only from ${spec.refName}, and the AWS role it uses ` +
+        'trusts only that ref and that workflow.',
+    );
+    return 0;
   }
   const names = environment.protection_rules
     .filter((rule) => rule.type === 'required_reviewers')

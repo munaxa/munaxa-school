@@ -195,7 +195,7 @@ jobs:
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck= -pyflakes= -color
       - name: Deployment gates · environments
         run: |
-          for target in production staging image-release; do
+          for target in production staging image-release image-testing; do
             node scripts/deploy-gate.mjs report-environment "$target"
           done
         env:

@@ -8,6 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import {
   GATE_JOB,
+  TARGETS,
   databaseProblems,
   dispatchProblems,
   environmentProblems,
@@ -99,6 +100,21 @@ test('image-release admits only image/* tags', () => {
   );
 });
 
+test('image-testing needs no approval, and runs only from main', () => {
+  assert.deepEqual(environmentProblems(null, [], 'image-testing'), []);
+  assert.deepEqual(environmentProblems({ name: 'image-testing' }, [], 'image-testing'), []);
+  const spec = TARGETS['image-testing'];
+  assert.equal(spec.approval, false);
+  assert.equal(spec.ref('refs/heads/main'), true);
+  for (const ref of ['refs/heads/x', `refs/tags/image/${'a'.repeat(40)}`, 'refs/pull/1/merge', undefined]) {
+    assert.equal(spec.ref(ref), false, String(ref));
+  }
+  // Every other target still needs an approval.
+  for (const [name, other] of Object.entries(TARGETS)) {
+    if (name !== 'image-testing') assert.notEqual(other.approval, false, name);
+  }
+});
+
 test('an unknown target is refused rather than waved through', () => {
   assert.match(
     environmentProblems(protectedEnvironment, onlyMain, 'preview')[0],
@@ -150,6 +166,17 @@ const ancestorsOf = (jobs, id, seen = new Set()) => {
 /** A job that pushes an image, takes a cloud identity, deploys, or reaches a real database. */
 const hasSideEffect = (job) =>
   publishes(job) || /secrets\.(DIRECT_DATABASE_URL|CLOUDFLARE_API_TOKEN)/.test(JSON.stringify(job));
+
+test('the Testing image workflow is dispatch-only, gated on image-testing, and has no prod admin', () => {
+  const workflow = Object.fromEntries(workflows())['publish-images-testing.yml'];
+  assert.deepEqual(triggersOf(workflow), ['workflow_dispatch']);
+  const gate = workflow.jobs[GATE_JOB].steps.find((s) => /verify-environment/.test(String(s.run)));
+  assert.equal(gate.env.TARGET, 'image-testing');
+  assert.equal(workflow.jobs.publish.environment, 'image-testing');
+  const text = JSON.stringify(workflow);
+  assert.doesNotMatch(text, /-prod'|tag_suffix":"-prod"|school\.munaxa\.com/);
+  assert.doesNotMatch(text, /:sha-\$|:\$\{\{ env\.SHORT \}\}/);
+});
 
 test("this repository's workflows hold the gate", () => {
   for (const [file, workflow] of workflows()) {
