@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
- * The deployment gate. Nothing in this repository publishes an image, migrates a database or
- * deploys on a merge: every workflow that can is started by hand, and every job with a side effect
- * holds a GitHub environment that requires a reviewer's approval. Commands:
+ * The deployment gate. Nothing in this repository migrates a database or deploys on a merge, and
+ * nothing publishes on one except Testing images (the `image-testing` target: testing-* tags,
+ * main only, no approval, see TARGETS). Every other workflow with a side effect is started by
+ * hand, and every other job with a side effect holds a GitHub environment that requires a
+ * reviewer's approval. Commands:
  *
  *   node scripts/deploy-gate.mjs verify-dispatch <target>
  *     Run first by the `production-gate` job of a workflow whose target is chosen at dispatch. It
@@ -72,6 +74,8 @@ export const TARGETS = {
     refName: 'main',
     rule: 'branch:main',
     approval: false,
+    // The one target a merge may start: a push to main, and nothing else besides a dispatch.
+    onMerge: true,
   },
 };
 /**
@@ -356,6 +360,19 @@ export function publishes(job) {
 const dispatchOnly = (job) =>
   /github\.event_name\s*==\s*'workflow_dispatch'/.test(String(job.if ?? ''));
 
+/** `on` has a push trigger limited to the branch main: no tags, no other branch, no wildcard. */
+function mergePushOnly(on) {
+  const push = typeof on === 'object' && !Array.isArray(on) ? on.push : undefined;
+  if (!push || typeof push !== 'object') return false;
+  const keys = Object.keys(push).filter((k) => k !== 'paths-ignore' && k !== 'paths');
+  return (
+    keys.length === 1 &&
+    Array.isArray(push.branches) &&
+    push.branches.length === 1 &&
+    push.branches[0] === 'main'
+  );
+}
+
 /** Pure: the problems in one parsed workflow. */
 export function workflowProblems(file, workflow) {
   const problems = [];
@@ -375,14 +392,24 @@ export function workflowProblems(file, workflow) {
   }
 
   if (gated.length > 0) {
-    const others = triggers.filter((trigger) => trigger !== 'workflow_dispatch');
+    const gate = jobs[GATE_JOB];
+    // A merge may start only a workflow whose gate and every gated job name, literally, a target
+    // that allows it (image-testing), and only through `push` to main: no tags, no other branch.
+    const literalTarget = gate ? gateTarget(gate) : undefined;
+    const onMerge =
+      TARGETS[literalTarget]?.onMerge === true &&
+      gated.every(([, job]) => environmentName(job) === literalTarget) &&
+      mergePushOnly(on);
+    const others = triggers.filter(
+      (trigger) => trigger !== 'workflow_dispatch' && !(onMerge && trigger === 'push'),
+    );
     if (others.length > 0 || !triggers.includes('workflow_dispatch')) {
       add(
-        `has jobs with an environment, so it must run only on \`workflow_dispatch\`, ` +
-          `not on ${others.join(', ') || 'nothing'}.`,
+        `has jobs with an environment, so it must run only on \`workflow_dispatch\`` +
+          (TARGETS[literalTarget]?.onMerge ? ' (and `push` to main only)' : '') +
+          `, not on ${others.join(', ') || 'nothing'}.`,
       );
     }
-    const gate = jobs[GATE_JOB];
     if (!gate) add(`has jobs with an environment but no \`${GATE_JOB}\` job.`);
     else {
       if (environmentName(gate) != null)
@@ -405,7 +432,7 @@ export function workflowProblems(file, workflow) {
       }
     }
     for (const [id, job] of gated) {
-      if (!dispatchOnly(job)) {
+      if (!onMerge && !dispatchOnly(job)) {
         add(
           `job \`${id}\` holds an environment but has no \`if: github.event_name == 'workflow_dispatch'\`.`,
         );

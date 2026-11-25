@@ -8,9 +8,10 @@
 # A copy of publish-images-ecr.yml (the production release path, unchanged: an image/<sha> tag and
 # the owner's approval in the `image-release` environment) with these differences:
 #
-# - **When.** Dispatched from main (by hand or by Claude after a merge) for one commit on main.
-#   Never from a branch, a tag or a pull request. Not on the merge itself: this repository's
-#   deployment gate admits a job with an environment only on a dispatch, behind `production-gate`.
+# - **When.** On every push to main (a merged pull request), or dispatched from main for one
+#   commit on main. Never from a branch, a tag or a pull request. A commit that changes only
+#   documentation publishes nothing. The deployment gate admits a push to main for this target
+#   (image-testing) only; every other environment still runs only on a dispatch.
 # - **Where it may push.** The `image-testing` environment, which needs no reviewer (the gate's
 #   `image-testing` target: main only). The image publisher role (munaxa-platform
 #   infra/aws/bootstrap/iam.tf) trusts that environment only for this file on refs/heads/main, so no
@@ -30,9 +31,12 @@
 name: Publish images to ECR for Testing
 
 on:
-  # Started by hand or by Claude after a merge, from main only, for one commit already on main
-  # (default: main's head). Dispatch-only because this repository's deployment gate
-  # (scripts/deploy-gate.mjs) lets nothing with an environment run on a merge.
+  # Every push to main (a merged pull request; CI ran on it as the pull request). The deployment
+  # gate (scripts/deploy-gate.mjs) admits a push to main only for the image-testing target.
+  # Commits that change only documentation publish nothing.
+  push:
+    branches: [main]
+  # By hand or by Claude, from main only, for one commit already on main (default: main's head).
   workflow_dispatch:
     inputs:
       sha:
@@ -145,7 +149,7 @@ jobs:
   publish:
     name: ${{ matrix.repository }}${{ matrix.tag_suffix }}
     needs: [production-gate, source]
-    if: github.event_name == 'workflow_dispatch'
+    if: needs.source.outputs.publish == 'true'
     runs-on: ubuntu-latest
     environment: image-testing # no reviewer; the publisher role trusts it only on main and only for this file
     permissions:

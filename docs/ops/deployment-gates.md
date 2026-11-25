@@ -1,7 +1,8 @@
 # Deployment gates — nothing deploys on a merge, nothing deploys without an approval
 
-A merge to `main` publishes no image, migrates no database, deploys no service and no Worker.
-Every workflow that can do one of those is started by hand (**Actions → workflow → Run workflow**,
+A merge to `main` migrates no database and deploys no service and no Worker. The only image it
+publishes is a **Testing** image (`publish-images-testing.yml`, `testing-*` tags, see below).
+Every other workflow that can do one of those is started by hand (**Actions → workflow → Run workflow**,
 from `main`), and every job that does one holds a GitHub environment, so it waits for a
 reviewer's approval. Before any of those jobs, the workflow's `production-gate` job checks the run
 (`scripts/deploy-gate.mjs`) and **fails it before anything is pushed, migrated or deployed**
@@ -22,7 +23,12 @@ missing approval leaves the job waiting, and nothing after it runs.
 
 ## What runs on a merge to `main`
 
-Nothing that changes anything outside GitHub. `ci.yml` runs on pull requests only.
+`ci.yml` runs on pull requests only. `publish-images-testing.yml` publishes Testing images
+(`testing-<short>`, `testing-sha-<full>`) to ECR and deploys nothing. Its `image-testing` target
+needs no reviewer. The image publisher role's AWS trust accepts it only on `refs/heads/main` and
+only for that file, and the lint allows a `push` trigger (branch `main` only) for that target alone.
+Testing changes only when its pinned digest changes, which is an owner-approved apply in
+munaxa-platform.
 
 | Workflow | Trigger | Jobs with a side effect | Approval |
 | --- | --- | --- | --- |
@@ -30,7 +36,7 @@ Nothing that changes anything outside GitHub. `ci.yml` runs on pull requests onl
 | `deploy-cloudflare.yml` | Run workflow, `confirm` = `production` | `deploy`: the `munaxademo` Worker | `production` |
 | `seed-environment.yml` | Run workflow: `environment`, `confirm` | `seed` | The target environment |
 | `publish-images-ecr.yml` | Run workflow from an `image/<sha>` tag | `publish`: ECR, through OIDC | `image-release` |
-| `publish-images-testing.yml` | Run workflow from `main`, optional `sha` (a commit on main) | `publish`: ECR `testing-*` tags only, through OIDC | None: `image-testing` needs no reviewer. The publisher role's AWS trust accepts it only on `refs/heads/main` and only for this file; it deploys nothing |
+| `publish-images-testing.yml` | Every push to `main` (a merge; documentation-only commits publish nothing), or Run workflow from `main` with an optional `sha` | `publish`: ECR `testing-*` tags only, through OIDC | None: `image-testing` needs no reviewer. The publisher role's AWS trust accepts it only on `refs/heads/main` and only for this file; it deploys nothing |
 
 Run a migration in its own run before a rollout that needs it: `migrate` and `deploy` are
 independent, so ticking both does not order them. The GHCR images (`deploy.yml`) stay the Render
