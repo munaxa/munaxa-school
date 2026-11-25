@@ -106,7 +106,12 @@ test('image-testing needs no approval, and runs only from main', () => {
   const spec = TARGETS['image-testing'];
   assert.equal(spec.approval, false);
   assert.equal(spec.ref('refs/heads/main'), true);
-  for (const ref of ['refs/heads/x', `refs/tags/image/${'a'.repeat(40)}`, 'refs/pull/1/merge', undefined]) {
+  for (const ref of [
+    'refs/heads/x',
+    `refs/tags/image/${'a'.repeat(40)}`,
+    'refs/pull/1/merge',
+    undefined,
+  ]) {
     assert.equal(spec.ref(ref), false, String(ref));
   }
   // Every other target still needs an approval.

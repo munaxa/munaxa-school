@@ -63,7 +63,7 @@ export const TARGETS = {
     ref: (ref) => /^refs\/tags\/image\/[0-9a-f]{40}$/.test(ref ?? ''),
     refName: 'an image/<sha> tag',
     rule: 'tag:image/*',
-  },  // Testing (nonprod) images only, from main, with no reviewer: publish-images-testing.yml. What
+  }, // Testing (nonprod) images only, from main, with no reviewer: publish-images-testing.yml. What
   // limits it is outside this repository: the image publisher role trusts the image-testing
   // environment only on refs/heads/main and only for that file, and pushes only testing-* tags
   // (munaxa-platform infra/aws/bootstrap/iam.tf). It deploys nothing.
