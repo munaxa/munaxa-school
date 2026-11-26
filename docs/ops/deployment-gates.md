@@ -65,8 +65,7 @@ it on its first run, and its limits are in the AWS role trust):
 3. **Deployment branches and tags**: choose **Selected branches and tags** and add the single
    rule: branch `main` for `production` and `staging`, tag `image/*` for `image-release`.
 4. **Environment secrets** (`production`, `staging`): hold `CLOUDFLARE_API_TOKEN`,
-   `CLOUDFLARE_ACCOUNT_ID` (production) and `DIRECT_DATABASE_URL` (and `PLATFORM_OWNER_PASSWORD` if
-   seeding) **here**, then delete any copy under **Settings → Secrets and variables → Actions →
+   `CLOUDFLARE_ACCOUNT_ID` (production) and `DIRECT_DATABASE_URL` **here**, then delete any copy under **Settings → Secrets and variables → Actions →
    Repository secrets**. A repository secret is readable by any workflow on any branch; an
    environment secret only by a job that has passed the environment's rules.
 5. **Environment variables** (`production`, `staging`) `DATABASE_ENVIRONMENT` = the environment's

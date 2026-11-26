@@ -71,6 +71,15 @@ class AuthApi {
     return TokenPair.fromJson(res.data!);
   }
 
+  /// Redeems a "Sign in with Munaxa" hand-off with the app's PKCE verifier.
+  Future<TokenPair> appSession({required String handoff, required String verifier}) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/auth/identity/app-session',
+      data: {'handoff': handoff, 'verifier': verifier},
+    );
+    return TokenPair.fromJson(res.data!);
+  }
+
   Future<TokenPair> refresh(String refreshToken) async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/auth/refresh',

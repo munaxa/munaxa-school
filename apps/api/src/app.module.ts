@@ -36,12 +36,8 @@ import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { PresenceModule } from './presence/presence.module';
 import { AdvancedModule } from './advanced/advanced.module';
-import { PlatformModule } from './platform/platform.module';
 import { EventsModule } from './events/events.module';
-import { WebhooksModule } from './webhooks/webhooks.module';
-import { BillingModule } from './billing/billing.module';
 import { SubscriptionModule } from './subscription/subscription.module';
-import { PlatformConsoleModule } from './platform/console/platform-console.module';
 import { PlanFeatureGuard } from './subscription/plan-feature.guard';
 import { ReadOnlyStateGuard } from './subscription/read-only-state.guard';
 import { OrganizationModule } from './organization/organization.module';
@@ -112,12 +108,8 @@ import { LoggingInterceptor } from './observability/logging.interceptor';
     UsersModule,
     MailModule,
     PresenceModule,
-    PlatformModule,
     EventsModule,
-    WebhooksModule,
     SubscriptionModule,
-    BillingModule,
-    PlatformConsoleModule,
     OrganizationModule,
     DocumentsModule,
     YearEndModule,

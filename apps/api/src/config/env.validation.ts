@@ -89,6 +89,12 @@ export const envSchema = z
     STAFF_PASSWORD_SIGN_IN: z.enum(['enabled', 'disabled', 'emergency']).optional(),
     IDENTITY_ISSUER: z.string().url().optional(),
     IDENTITY_SIGN_IN_REDIRECT_URI: z.string().url().optional(),
+    /**
+     * Where a School mobile app's "Sign in with Munaxa" returns: the app's verified link (https,
+     * Android App Links / iOS universal links) or, outside production, its own scheme such as
+     * `com.munaxa.teacher://signed-in`. Unset: the apps cannot sign in with Munaxa.
+     */
+    IDENTITY_APP_REDIRECT_URI: z.string().url().optional(),
     IDENTITY_SIGN_IN_CLIENTS: z.string().optional(),
     /** A secret: `client-id=<secret>,...`. Never logged. */
     IDENTITY_SIGN_IN_CLIENT_SECRETS: z.string().optional(),
@@ -206,6 +212,34 @@ export const envSchema = z
           path: ['IDENTITY_SIGN_IN_CLIENT_SECRETS'],
           message: 'reuses another secret this service holds',
         });
+      }
+      if (env.IDENTITY_APP_REDIRECT_URI) {
+        const app = new URL(env.IDENTITY_APP_REDIRECT_URI);
+        const https = app.protocol === 'https:';
+        // A custom scheme can be claimed by any app on the device; production returns only to a
+        // link the operating system has verified belongs to the School app.
+        const custom = /^[a-z][a-z0-9+.-]*\.[a-z0-9+.-]+:$/.test(app.protocol);
+        if (
+          app.hash !== '' ||
+          app.search !== '' ||
+          !(https || (custom && env.NODE_ENV !== 'production'))
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['IDENTITY_APP_REDIRECT_URI'],
+            message:
+              env.NODE_ENV === 'production'
+                ? 'must be an https link the app has verified, without query or fragment'
+                : 'https, or a reverse-domain app scheme (com.example.app://…), without query or fragment',
+          });
+        }
+        if (!env.JWT_REFRESH_SECRET) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['JWT_REFRESH_SECRET'],
+            message: 'required with IDENTITY_APP_REDIRECT_URI (it seals the hand-off to the app)',
+          });
+        }
       }
       if (env.NODE_ENV === 'production') {
         for (const key of ['IDENTITY_ISSUER', 'IDENTITY_SIGN_IN_REDIRECT_URI'] as const) {

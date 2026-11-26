@@ -53,7 +53,9 @@ refused staff sign-in answers `403 Staff sign in with Munaxa` and is audited as
 setting from `GET /api/v1/auth/identity/enabled` and shows only **Sign in with Munaxa**
 (`disabled`), or tucks the password form under "Emergency sign-in" (`emergency`).
 
-`emergency` is for an Identity outage: switch it on, sign in, switch it off.
+`emergency` is for an Identity outage: switch it on, sign in, switch it off. School has no second
+factor of its own, so an emergency sign-in is password only: keep it off, alert on every
+`auth.login.emergency` audit event, and revoke the sessions it opened once Identity is back.
 
 Outcomes the sign-in page explains: `?identity=unavailable` (school not configured),
 `failed` (cancelled, expired, or any protocol check failed), `no-account` (no School user with
@@ -61,6 +63,33 @@ that email, or already linked to another Identity account), `blocked` (account d
 suspended, or the school's subscription refuses sign-in), `mfa-required` (an administrator
 without two-step verification). The exact reason is in the API log and
 the audit trail (`auth.identity.*`), never in the address bar.
+
+## The teacher app
+
+The teacher app signs staff in the same way, in the **system browser** (iOS
+`ASWebAuthenticationSession`, Android Custom Tabs; never a web view, RFC 8252):
+
+1. The app makes a PKCE verifier and opens
+   `GET /api/v1/auth/identity/start?school=<code>&app=<S256 challenge>`.
+2. The ordinary flow above runs in the browser. At the callback School sets **no** web cookies: it
+   sends the browser to `IDENTITY_APP_REDIRECT_URI` with `#handoff=<sealed>` (or `#error=<outcome>`,
+   the same outcomes as the web page), in the fragment, which never reaches a server.
+3. The app redeems it: `POST /api/v1/auth/identity/app-session {handoff, verifier}` returns the
+   ordinary mobile token pair.
+
+The hand-off is the new session's refresh token sealed (AES-256-GCM, key derived from
+`JWT_REFRESH_SECRET`) with the app's challenge and a two-minute expiry. It is useless without the
+verifier, and redeeming rotates the refresh token, so a second redemption is refresh-token reuse
+and ends that session. Administrators still need Identity's two-step verification.
+
+**Return address.** Production accepts only an https link that the operating system has verified
+belongs to the app (Android App Links, iOS universal links, iOS 17.4+), because any app can claim a
+custom scheme. Outside production a reverse-domain scheme is accepted, the app's default
+`com.munaxa.teacher://signed-in` (`--dart-define=MUNAXA_SIGN_IN_RETURN=…` changes it). The app's
+platform folders are generated at build time, so the release build adds the
+`flutter_web_auth_2` callback activity (Android) and, for https, the associated domain and the
+`assetlinks.json` / `apple-app-site-association` files on the School host. Until then the app
+signs in through Munaxa on a development build only.
 
 ## Configuration
 
@@ -72,6 +101,7 @@ the audit trail (`auth.identity.*`), never in the address bar.
 | `IDENTITY_SIGN_IN_CLIENTS` | `school-slug\|client-id\|identity-organisation`, `;` between schools |
 | `IDENTITY_SIGN_IN_CLIENT_SECRETS` | `client-id=<secret>`, `,` between. A secret: from the secret store only |
 | `IDENTITY_PUBLIC_KEYS` | Identity's public signing keys, the same JSON Work reads |
+| `IDENTITY_APP_REDIRECT_URI` | Optional: where the teacher app's sign-in returns (above). Needs `JWT_REFRESH_SECRET` |
 | `STAFF_PASSWORD_SIGN_IN` | `disabled`, `emergency` or `enabled`; unset: `disabled` in production, `enabled` elsewhere |
 
 The API refuses to start when the switch is on and any of these is missing or malformed, when a

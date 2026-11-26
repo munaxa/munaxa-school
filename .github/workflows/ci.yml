@@ -141,13 +141,20 @@ jobs:
           cache: true
       - name: Prepare platform folders
         working-directory: apps/mobile
-        run: flutter create --platforms=android,ios .
+        # `flutter create` also writes its template app (lib/main.dart, test/widget_test.dart) when
+        # they are missing; they are not this app and do not build, so they go again.
+        run: |
+          flutter create --platforms=android,ios .
+          git ls-files --error-unmatch lib/main.dart >/dev/null 2>&1 || rm -f lib/main.dart
+          git ls-files --error-unmatch test/widget_test.dart >/dev/null 2>&1 || rm -f test/widget_test.dart
       - name: Pub get
         working-directory: apps/mobile
         run: flutter pub get
       - name: Analyze
         working-directory: apps/mobile
-        run: flutter analyze
+        # Infos (today: material.dart's deprecation in favour of material_ui) are reported, not
+        # fatal; warnings and errors still fail.
+        run: flutter analyze --no-fatal-infos
       - name: Test
         working-directory: apps/mobile
         run: flutter test

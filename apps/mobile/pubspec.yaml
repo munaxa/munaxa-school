@@ -43,6 +43,10 @@ dependencies:
   # Opening external resource/document links
   url_launcher: ^6.3.1
 
+  # Sign in with Munaxa: the system browser (RFC 8252) and the PKCE challenge
+  flutter_web_auth_2: ^4.1.0
+  crypto: ^3.0.6
+
   # Document vault upload (pick a file from device)
   file_picker: ^8.1.6
 

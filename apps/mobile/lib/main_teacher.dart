@@ -9,6 +9,12 @@ Future<void> main() async {
       flavor: Flavor.teacher,
       appName: 'Munaxa Teacher',
       apiBaseUrl: String.fromEnvironment('API_URL', defaultValue: 'http://localhost:4000/api/v1'),
+      // Staff sign in with Munaxa. Production uses the app's verified https link; see
+      // docs/security/identity-sign-in.md ("The teacher app").
+      munaxaSignInReturn: String.fromEnvironment(
+        'MUNAXA_SIGN_IN_RETURN',
+        defaultValue: 'com.munaxa.teacher://signed-in',
+      ),
     ),
   );
 }

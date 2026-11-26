@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config/flavor.dart';
 import '../../core/push/push_service.dart';
 import '../../data/auth/auth_api.dart';
+import '../../data/auth/munaxa_sign_in.dart';
 import '../communication/notifications_providers.dart';
 import 'auth_providers.dart';
 
@@ -57,8 +59,41 @@ class AuthController extends Notifier<AuthStatus> {
     required String password,
     String? tenantSlug,
   }) async {
-    final pair =
-        await _api.login(identifier: identifier, password: password, tenantSlug: tenantSlug);
+    final pair = await _api.login(
+      identifier: identifier,
+      password: password,
+      tenantSlug: tenantSlug,
+    );
+    await ref.read(tokenStorageProvider).save(access: pair.accessToken, refresh: pair.refreshToken);
+    final principal = await _api.me();
+    state = AuthAuthenticated(principal, mustChangePassword: pair.mustChangePassword);
+    if (!pair.mustChangePassword) _registerPush();
+  }
+
+  /// "Sign in with Munaxa" (teacher app): the system browser, then the hand-off. Throws
+  /// [MunaxaSignInException] with School's outcome when it does not end in a session.
+  Future<void> signInWithMunaxa({required String school}) async {
+    final returnTo = AppConfig.instance.munaxaSignInReturn;
+    if (returnTo == null) throw const MunaxaSignInException('unavailable');
+    final signIn = MunaxaSignIn(
+      apiBaseUrl: AppConfig.instance.apiBaseUrl,
+      returnAddress: Uri.parse(returnTo),
+    );
+    final verifier = MunaxaSignIn.newVerifier();
+    final String returned;
+    try {
+      returned = await ref.read(browserSignInProvider)(
+        signIn.startAddress(school: school, verifier: verifier),
+        signIn.returnAddress,
+      );
+    } catch (_) {
+      // Closed or cancelled by the person.
+      throw const MunaxaSignInException('cancelled');
+    }
+    final answer = signIn.readReturn(returned);
+    final handoff = answer.handoff;
+    if (handoff == null) throw MunaxaSignInException(answer.error ?? 'failed');
+    final pair = await _api.appSession(handoff: handoff, verifier: verifier);
     await ref.read(tokenStorageProvider).save(access: pair.accessToken, refresh: pair.refreshToken);
     final principal = await _api.me();
     state = AuthAuthenticated(principal, mustChangePassword: pair.mustChangePassword);
@@ -98,5 +133,4 @@ class AuthController extends Notifier<AuthStatus> {
   }
 }
 
-final authControllerProvider =
-    NotifierProvider<AuthController, AuthStatus>(AuthController.new);
+final authControllerProvider = NotifierProvider<AuthController, AuthStatus>(AuthController.new);

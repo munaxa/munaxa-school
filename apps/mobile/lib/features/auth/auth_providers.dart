@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
 import '../../core/config/flavor.dart';
 import '../../data/auth/auth_api.dart';
@@ -67,3 +68,20 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 final authApiProvider = Provider<AuthApi>((ref) => AuthApi(ref.watch(dioProvider)));
+
+/// Opens [start] in the system browser (ASWebAuthenticationSession on iOS, Custom Tabs on
+/// Android) and completes with the address the browser was sent back to at [returnTo].
+typedef BrowserSignIn = Future<String> Function(Uri start, Uri returnTo);
+
+final browserSignInProvider = Provider<BrowserSignIn>((ref) {
+  return (start, returnTo) {
+    final https = returnTo.scheme == 'https';
+    return FlutterWebAuth2.authenticate(
+      url: start.toString(),
+      callbackUrlScheme: returnTo.scheme,
+      options: https
+          ? FlutterWebAuth2Options(httpsHost: returnTo.host, httpsPath: returnTo.path)
+          : const FlutterWebAuth2Options(),
+    );
+  };
+});

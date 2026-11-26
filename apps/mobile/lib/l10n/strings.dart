@@ -43,6 +43,31 @@ const Map<String, Map<String, String>> _catalog = {
   'auth.passwordRequired': {'en': 'Enter your password', 'ar': 'أدخل كلمة المرور'},
   'auth.signIn': {'en': 'Sign in', 'ar': 'تسجيل الدخول'},
   'auth.signingIn': {'en': 'Signing in…', 'ar': 'جارٍ تسجيل الدخول…'},
+  'auth.signInWithMunaxa': {'en': 'Sign in with Munaxa', 'ar': 'تسجيل الدخول عبر منَخَة'},
+  'auth.schoolCode': {'en': 'School code', 'ar': 'رمز المدرسة'},
+  'auth.schoolCodeRequired': {'en': 'Enter your school code', 'ar': 'أدخل رمز مدرستك'},
+  'auth.usePassword': {'en': 'Sign in with a password', 'ar': 'تسجيل الدخول بكلمة مرور'},
+  'auth.munaxa.failed': {
+    'en': 'Sign in with Munaxa did not finish. Try again.',
+    'ar': 'لم يكتمل تسجيل الدخول عبر منَخَة. حاول مرة أخرى.'
+  },
+  'auth.munaxa.cancelled': {'en': 'Sign in was cancelled.', 'ar': 'أُلغي تسجيل الدخول.'},
+  'auth.munaxa.unavailable': {
+    'en': 'This school does not sign in with Munaxa yet.',
+    'ar': 'هذه المدرسة لا تستخدم تسجيل الدخول عبر منَخَة بعد.'
+  },
+  'auth.munaxa.no-account': {
+    'en': 'No account at this school uses that Munaxa sign-in. Ask your school administrator.',
+    'ar': 'لا يوجد حساب في هذه المدرسة مرتبط بحساب منَخَة هذا. راجع مسؤول المدرسة.'
+  },
+  'auth.munaxa.blocked': {
+    'en': 'This account cannot sign in right now. Ask your school administrator.',
+    'ar': 'لا يمكن لهذا الحساب تسجيل الدخول حاليًا. راجع مسؤول المدرسة.'
+  },
+  'auth.munaxa.mfa-required': {
+    'en': 'Your role needs two-step verification. Turn it on in your Munaxa account and try again.',
+    'ar': 'يتطلب دورك التحقق بخطوتين. فعّله في حساب منَخَة ثم حاول مرة أخرى.'
+  },
   'auth.signInFailed': {
     'en': 'Sign in failed. Check your credentials.',
     'ar': 'فشل تسجيل الدخول. تحقّق من بياناتك.'

@@ -6,11 +6,16 @@ class AppConfig {
     required this.flavor,
     required this.appName,
     required this.apiBaseUrl,
+    this.munaxaSignInReturn,
   });
 
   final Flavor flavor;
   final String appName;
   final String apiBaseUrl;
+
+  /// Where School returns a "Sign in with Munaxa" to this app (School's
+  /// `IDENTITY_APP_REDIRECT_URI`). Null: this app signs in with a password only.
+  final String? munaxaSignInReturn;
 
   static AppConfig? _instance;
 
