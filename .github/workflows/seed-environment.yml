@@ -23,6 +23,18 @@ on:
         description: 'Also seed the demo tenant (admin@demo.example). Test data only — the password is public.'
         type: boolean
         default: false
+      school_slug:
+        description: 'Optional: add a school with this code (lowercase, digits, -). Plans and licences are set in Munaxa Control.'
+        type: string
+        default: ''
+      school_name:
+        description: 'The new school''s name (with school_slug)'
+        type: string
+        default: ''
+      school_admin_email:
+        description: 'Its first administrator, who signs in with Munaxa (with school_slug)'
+        type: string
+        default: ''
 
 concurrency:
   group: seed-${{ github.event.inputs.environment }}
@@ -67,8 +79,6 @@ jobs:
       # app role — the same secret the migrate job uses.
       DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
       DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-      PLATFORM_OWNER_EMAIL: ${{ vars.PLATFORM_OWNER_EMAIL }}
-      PLATFORM_OWNER_PASSWORD: ${{ secrets.PLATFORM_OWNER_PASSWORD }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -116,20 +126,16 @@ jobs:
       - name: Seed permission catalog
         run: pnpm --filter @school/api db:seed
 
-      # Platform owner. An unset secret arrives as an empty string, and the script reads its
-      # overrides with `??`, which only falls back on undefined — an empty value would win and
-      # then fail validation. An empty email is unset so the script's default applies; an empty
-      # password stops the job (below), never a default.
-      - name: Seed platform owner
-        run: |
-          [ -n "${PLATFORM_OWNER_EMAIL:-}" ] || unset PLATFORM_OWNER_EMAIL
-          # Never the script's built-in default: it is public, and an owner seeded with it signs in
-          # without being asked to change it.
-          if [ -z "${PLATFORM_OWNER_PASSWORD:-}" ]; then
-            echo "::error::Set the PLATFORM_OWNER_PASSWORD secret on this environment; nothing was seeded for the owner."
-            exit 1
-          fi
-          pnpm --filter @school/api db:seed:platform-owner
+      # A new school and its first administrator (no School password: staff sign in with Munaxa).
+      # Inputs reach the script through the environment, never the shell command line.
+      - name: Add a school
+        if: ${{ github.event.inputs.school_slug != '' }}
+        run: pnpm --filter @school/api school:provision
+        env:
+          APPLY: 'yes'
+          SCHOOL_SLUG: ${{ github.event.inputs.school_slug }}
+          SCHOOL_NAME: ${{ github.event.inputs.school_name }}
+          ADMIN_EMAIL: ${{ github.event.inputs.school_admin_email }}
 
       - name: Seed demo tenant
         if: ${{ github.event.inputs.demo_tenant == 'true' }}
@@ -141,7 +147,6 @@ jobs:
             echo "### Seeded \`${{ github.event.inputs.environment }}\`"
             echo
             echo "- Permission catalogue: applied (idempotent)"
-            echo "- Platform owner: \`${PLATFORM_OWNER_EMAIL:-owner@munaxa.com}\`"
             if [ "${{ github.event.inputs.demo_tenant }}" = "true" ]; then
               echo "- Demo tenant: \`demo\` / \`admin@demo.example\` — **change this password if the host is reachable**"
             fi

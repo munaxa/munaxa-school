@@ -87,7 +87,7 @@ platform. See [`platform/README.md`](../../platform/README.md).
 - [ops/README.md](./ops/README.md) — deployment, infrastructure, monitoring, runbooks, load
   testing, production readiness, [Cloudflare deploy](./ops/cloudflare-deploy.md)
 - [deployment-staging.md](./deployment-staging.md) — the staging environment
-- [PLATFORM_CONSOLE.md](./PLATFORM_CONSOLE.md) — the multi-tenant operator console
+- [ops/new-school.md](./ops/new-school.md) — adding a school; plans and licences live in Munaxa Control
 - [security/](./security/) — the June 2026 security audit and the password-reset flow
 - [integrations/jofotara/](./integrations/jofotara/) — Jordanian national e-invoicing
 

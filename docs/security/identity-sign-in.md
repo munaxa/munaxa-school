@@ -53,7 +53,9 @@ refused staff sign-in answers `403 Staff sign in with Munaxa` and is audited as
 setting from `GET /api/v1/auth/identity/enabled` and shows only **Sign in with Munaxa**
 (`disabled`), or tucks the password form under "Emergency sign-in" (`emergency`).
 
-`emergency` is for an Identity outage: switch it on, sign in, switch it off.
+`emergency` is for an Identity outage: switch it on, sign in, switch it off. School has no second
+factor of its own, so an emergency sign-in is password only: keep it off, alert on every
+`auth.login.emergency` audit event, and revoke the sessions it opened once Identity is back.
 
 Outcomes the sign-in page explains: `?identity=unavailable` (school not configured),
 `failed` (cancelled, expired, or any protocol check failed), `no-account` (no School user with

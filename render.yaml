@@ -54,9 +54,7 @@ services:
       # postgresql://munaxa_app.<ref>:<APP_PW>@<pooler-host>:5432/postgres?schema=public
       - key: DATABASE_URL
         sync: false
-      # Must list the admin service's exact public origin(s), comma-separated. With the two-domain
-      # setup below, list BOTH: https://app.munaxa.com,https://admin.munaxa.com
-      # See docs/PLATFORM_CONSOLE.md for the custom-domain + platform-login setup.
+      # Must list the admin service's exact public origin(s), comma-separated.
       - key: CORS_ORIGINS
         sync: false
       # Generated per-service and guaranteed distinct (prod requires they differ).
@@ -99,23 +97,12 @@ services:
     region: frankfurt
     plan: free
     autoDeployTrigger: 'off'
-    # ONE service, TWO custom domains (Settings → Custom Domains): the school portal and the
-    # Platform Console. Add both `app.<domain>` and `admin.<domain>` here; Render issues a TLS
-    # cert per domain. Different origins ⇒ the browser isolates each host's session cookies.
+    # The school portal. Munaxa operators manage schools, plans and licences in Munaxa Control.
     domains:
       - app.munaxa.com
-      - admin.munaxa.com
     envVars:
       # Baked into the client bundle at BUILD time → https://<api-service>.onrender.com/api/v1
       - key: NEXT_PUBLIC_API_URL
         sync: false
       - key: NEXT_PUBLIC_ENV
         value: staging
-      # Host-based separation (optional). When both are set, the app host serves ONLY the school
-      # portal and the console host serves ONLY /platform/*; auth pages are shared. Leave unset for
-      # a single shared domain. BUILD-time (inlined) so the client nav matches the middleware —
-      # changing them requires a redeploy. Must match the domains above.
-      - key: NEXT_PUBLIC_APP_HOST
-        value: app.munaxa.com
-      - key: NEXT_PUBLIC_CONSOLE_HOST
-        value: admin.munaxa.com
