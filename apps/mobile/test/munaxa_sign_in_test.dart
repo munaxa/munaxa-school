@@ -83,12 +83,12 @@ void main() {
   });
 
   test('reads the hand-off or the outcome only from its own return address', () {
-    expect(signIn.readReturn('com.munaxa.teacher://signed-in?handoff=abc').handoff, 'abc');
+    expect(signIn.readReturn('com.munaxa.teacher://signed-in#handoff=abc').handoff, 'abc');
     expect(
-      signIn.readReturn('com.munaxa.teacher://signed-in?error=mfa-required').error,
+      signIn.readReturn('com.munaxa.teacher://signed-in#error=mfa-required').error,
       'mfa-required',
     );
-    expect(signIn.readReturn('com.evil.app://signed-in?handoff=abc').handoff, isNull);
+    expect(signIn.readReturn('com.evil.app://signed-in#handoff=abc').handoff, isNull);
   });
 
   test('signs in with the hand-off and the verifier it started with', () async {
@@ -109,7 +109,7 @@ void main() {
         tokenStorageProvider.overrideWithValue(storage),
         browserSignInProvider.overrideWithValue((start, returnTo) async {
           opened = start;
-          return '$returnTo?handoff=sealed';
+          return '$returnTo#handoff=sealed';
         }),
       ],
     );
@@ -129,7 +129,7 @@ void main() {
         authApiProvider.overrideWithValue(_FakeAuthApi()),
         tokenStorageProvider.overrideWithValue(_MemoryTokenStorage()),
         browserSignInProvider.overrideWithValue(
-          (start, returnTo) async => '$returnTo?error=no-account',
+          (start, returnTo) async => '$returnTo#error=no-account',
         ),
       ],
     );

@@ -48,9 +48,13 @@ class MunaxaSignIn {
         uri.path != returnAddress.path) {
       return const MunaxaReturn.failed('failed');
     }
-    final handoff = uri.queryParameters['handoff'];
+    // School answers in the fragment, which never reaches a server.
+    final answer = uri.fragment.isEmpty
+        ? const <String, String>{}
+        : Uri.splitQueryString(uri.fragment);
+    final handoff = answer['handoff'];
     if (handoff != null && handoff.isNotEmpty) return MunaxaReturn.handoff(handoff);
-    return MunaxaReturn.failed(uri.queryParameters['error'] ?? 'failed');
+    return MunaxaReturn.failed(answer['error'] ?? 'failed');
   }
 }
 

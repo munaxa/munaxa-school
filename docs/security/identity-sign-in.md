@@ -72,8 +72,8 @@ The teacher app signs staff in the same way, in the **system browser** (iOS
 1. The app makes a PKCE verifier and opens
    `GET /api/v1/auth/identity/start?school=<code>&app=<S256 challenge>`.
 2. The ordinary flow above runs in the browser. At the callback School sets **no** web cookies: it
-   sends the browser to `IDENTITY_APP_REDIRECT_URI` with `?handoff=<sealed>` (or `?error=<outcome>`,
-   the same outcomes as the web page).
+   sends the browser to `IDENTITY_APP_REDIRECT_URI` with `#handoff=<sealed>` (or `#error=<outcome>`,
+   the same outcomes as the web page), in the fragment, which never reaches a server.
 3. The app redeems it: `POST /api/v1/auth/identity/app-session {handoff, verifier}` returns the
    ordinary mobile token pair.
 

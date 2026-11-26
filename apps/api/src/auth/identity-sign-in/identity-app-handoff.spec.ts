@@ -42,7 +42,7 @@ describe('the hand-off to a School mobile app', () => {
 
   it('returns to the configured address only', () => {
     expect(appReturn('com.munaxa.teacher://signed-in', { error: 'failed' })).toBe(
-      'com.munaxa.teacher://signed-in?error=failed',
+      'com.munaxa.teacher://signed-in#error=failed',
     );
   });
 });

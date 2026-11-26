@@ -28,7 +28,7 @@ on:
         type: string
         default: ''
       school_name:
-        description: 'The new school''s name (with school_slug)'
+        description: "The new school's name (with school_slug)"
         type: string
         default: ''
       school_admin_email:

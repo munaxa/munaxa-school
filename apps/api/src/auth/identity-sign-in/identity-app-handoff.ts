@@ -5,7 +5,8 @@ import { isAppChallenge, sameValue } from './identity-sign-in';
  * Signing in to a School mobile app (the teacher app) with Munaxa, RFC 8252 style: the app opens
  * the system browser on `/auth/identity/start?school=…&app=<PKCE challenge>`, the ordinary
  * server-side flow signs the person in, and School sends the browser back to the app's registered
- * address (IDENTITY_APP_REDIRECT_URI) with a **hand-off** instead of setting web cookies.
+ * address (IDENTITY_APP_REDIRECT_URI) with a **hand-off** (in the fragment) instead of setting web
+ * cookies.
  *
  * The hand-off is the new session's refresh token, sealed (AES-256-GCM) together with the app's
  * challenge and a two-minute expiry. Nothing in it is readable outside School, and redeeming it
@@ -94,9 +95,14 @@ function open(
   }
 }
 
-/** Where the browser goes back to the app: the configured address, never one from the request. */
+/**
+ * Where the browser goes back to the app: the configured address, never one from the request.
+ * The answer travels in the fragment, which a browser never sends to a server, so a hand-off that
+ * reaches a web page instead of the app (the app not installed, a link it does not claim) lands
+ * in no server log, analytics or referrer.
+ */
 export function appReturn(redirectUri: string, params: Record<string, string>): string {
   const url = new URL(redirectUri);
-  for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
+  url.hash = new URLSearchParams(params).toString();
   return url.toString();
 }

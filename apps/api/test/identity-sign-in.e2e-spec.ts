@@ -264,7 +264,9 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
       expect(cookieHeader(callback.headers['set-cookie']).some((c) => c.startsWith('access'))).toBe(
         false,
       );
-      const handoff = handoffFrom(callback.headers.location as string).searchParams.get('handoff');
+      const handoff = new URLSearchParams(
+        handoffFrom(callback.headers.location as string).hash.slice(1),
+      ).get('handoff');
       expect(handoff).toBeTruthy();
 
       // Somebody who caught the hand-off but has no verifier gets nothing.
@@ -297,9 +299,11 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
     it('tells the app why, instead of the web page, when the sign-in is refused', async () => {
       const callback = await signIn('admin-subject', ADMIN_EMAIL, false, challenge);
       expect(callback.status).toBe(303);
-      expect(handoffFrom(callback.headers.location as string).searchParams.get('error')).toBe(
-        'mfa-required',
-      );
+      expect(
+        new URLSearchParams(handoffFrom(callback.headers.location as string).hash.slice(1)).get(
+          'error',
+        ),
+      ).toBe('mfa-required');
     });
 
     it('refuses a start whose challenge is not an S256 challenge', async () => {
@@ -307,9 +311,11 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
         .get('/api/v1/auth/identity/start')
         .query({ school: SLUG, app: 'short' });
       expect(start.status).toBe(303);
-      expect(handoffFrom(start.headers.location as string).searchParams.get('error')).toBe(
-        'unavailable',
-      );
+      expect(
+        new URLSearchParams(handoffFrom(start.headers.location as string).hash.slice(1)).get(
+          'error',
+        ),
+      ).toBe('unavailable');
       expect(start.headers['set-cookie']).toBeUndefined();
     });
   });

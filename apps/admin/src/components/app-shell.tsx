@@ -353,18 +353,16 @@ export function AppShell({
    * Navigation, fully resolved before it reaches the platform. Permissions and feature flags are
    * business rules — the shared shell receives the answers, not the questions.
    */
-  const groups: NavigationGroup[] = NAV_GROUPS
-    .map((group) => ({
-      ...(group.titleKey ? { title: t(group.titleKey) } : {}),
-      id: group.titleKey ?? 'root',
-      items: group.items.filter(canSee).map((item) => ({
-        href: item.href,
-        label: t(item.labelKey),
-        icon: <NavIcon name={item.icon} />,
-        active: isActive(item.href),
-      })),
-    }))
-    .filter((group) => group.items.length > 0);
+  const groups: NavigationGroup[] = NAV_GROUPS.map((group) => ({
+    ...(group.titleKey ? { title: t(group.titleKey) } : {}),
+    id: group.titleKey ?? 'root',
+    items: group.items.filter(canSee).map((item) => ({
+      href: item.href,
+      label: t(item.labelKey),
+      icon: <NavIcon name={item.icon} />,
+      active: isActive(item.href),
+    })),
+  })).filter((group) => group.items.length > 0);
 
   // The platform imports no router. Next's typed routes cannot see hrefs coming from the static
   // nav table, so the cast is required by `next build` exactly as it was before.
