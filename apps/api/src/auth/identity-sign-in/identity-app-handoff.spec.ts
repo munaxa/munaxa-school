@@ -28,7 +28,7 @@ describe('the hand-off to a School mobile app', () => {
     expect(openHandoff(key, sealed, other, now)).toEqual({ ok: false, reason: 'VERIFIER' });
     expect(openHandoff(key, sealed, 'short', now)).toEqual({ ok: false, reason: 'VERIFIER' });
     const raw = Buffer.from(sealed, 'base64url');
-    raw[raw.length - 1] ^= 1;
+    raw.writeUInt8(raw.readUInt8(raw.length - 1) ^ 1, raw.length - 1);
     expect(openHandoff(key, raw.toString('base64url'), verifier, now).ok).toBe(false);
     expect(openHandoff(handoffKey('another-secret-entirely'), sealed, verifier, now).ok).toBe(
       false,
