@@ -7,10 +7,12 @@ import { PasswordService } from './services/password.service';
 import { FirebaseService } from './services/firebase.service';
 import { RbacService } from './services/rbac.service';
 import { RbacSyncService } from './services/rbac-sync.service';
+import { IdentitySignInController } from './identity-sign-in/identity-sign-in.controller';
+import { IdentitySignInService } from './identity-sign-in/identity-sign-in.service';
 
 @Module({
   imports: [JwtModule.register({})],
-  controllers: [AuthController],
+  controllers: [AuthController, IdentitySignInController],
   providers: [
     AuthService,
     TokenService,
@@ -18,6 +20,7 @@ import { RbacSyncService } from './services/rbac-sync.service';
     FirebaseService,
     RbacService,
     RbacSyncService,
+    IdentitySignInService,
   ],
   exports: [AuthService, TokenService, RbacService, PasswordService],
 })

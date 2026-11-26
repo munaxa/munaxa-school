@@ -114,4 +114,50 @@ describe('validateEnv', () => {
       expect(validateEnv({ ...base, NODE_ENV: nodeEnv }).LICENSING_MODE).toBe('DATABASE');
     });
   });
+  describe('sign in with Munaxa Identity', () => {
+    const pem = generateKeyPairSync('ec', { namedCurve: 'P-256' })
+      .publicKey.export({ type: 'spki', format: 'pem' })
+      .toString();
+    const enabled = {
+      ...base,
+      IDENTITY_SIGN_IN: 'enabled',
+      IDENTITY_ISSUER: 'https://id.test.munaxa.com',
+      IDENTITY_SIGN_IN_REDIRECT_URI: 'https://school.test.munaxa.com/api/v1/auth/identity/callback',
+      IDENTITY_SIGN_IN_CLIENTS: 'al-noor|school-al-noor|al-noor',
+      IDENTITY_SIGN_IN_CLIENT_SECRETS: `school-al-noor=${'s'.repeat(40)}`,
+      IDENTITY_PUBLIC_KEYS: JSON.stringify([{ kid: 'k1', publicKey: pem }]),
+    };
+
+    it('is off by default and needs nothing then', () => {
+      expect(validateEnv({ ...base }).IDENTITY_SIGN_IN).toBe('disabled');
+    });
+
+    it('accepts a complete configuration', () => {
+      expect(validateEnv(enabled).IDENTITY_SIGN_IN).toBe('enabled');
+    });
+
+    it('requires every input once enabled', () => {
+      expect(() => validateEnv({ ...base, IDENTITY_SIGN_IN: 'enabled' })).toThrow(
+        /IDENTITY_ISSUER: required when IDENTITY_SIGN_IN=enabled/,
+      );
+    });
+
+    it('refuses a client without a secret and a malformed key list', () => {
+      expect(() =>
+        validateEnv({
+          ...enabled,
+          IDENTITY_SIGN_IN_CLIENT_SECRETS: `other-client=${'s'.repeat(40)}`,
+        }),
+      ).toThrow(/school-al-noor has no secret/);
+      expect(() => validateEnv({ ...enabled, IDENTITY_PUBLIC_KEYS: '[]' })).toThrow(
+        /IDENTITY_PUBLIC_KEYS: is not valid/,
+      );
+    });
+
+    it('refuses a client secret that is also the JWT secret', () => {
+      expect(() => validateEnv({ ...enabled, JWT_ACCESS_SECRET: 's'.repeat(40) })).toThrow(
+        /reuses another secret/,
+      );
+    });
+  });
 });

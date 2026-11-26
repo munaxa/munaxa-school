@@ -24,6 +24,26 @@ import type {
   ConfirmPasswordResetDto,
 } from '../dto/auth.dto';
 
+/**
+ * Roles whose accounts are never linked to Identity by email alone: they must also prove their
+ * School password once (identity-sign-in, review M-1). Platform roles are always included.
+ */
+const IDENTITY_LINK_BY_PASSWORD_ROLES = new Set<string>([
+  'SchoolAdmin',
+  'Principal',
+  'VicePrincipal',
+  'FinanceOfficer',
+  'Accountant',
+  'HR',
+]);
+
+/** A privileged School user tried Munaxa sign-in before linking: see IdentitySignInController. */
+export class IdentityLinkRequiredException extends UnauthorizedException {
+  constructor() {
+    super('Sign in with your School password once to connect your Munaxa account');
+  }
+}
+
 export interface RequestMeta {
   ip?: string;
   userAgent?: string;
@@ -170,6 +190,116 @@ export class AuthService {
       await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
       await this.audit(tx, user.tenantId, user.id, 'auth.session.exchange', {}, meta);
       return { tokens, mustChangePassword: user.mustChangePassword, user: principal };
+    });
+  }
+
+  // ----- Sign in with Munaxa Identity (auth/identity-sign-in) -------------
+  /**
+   * The School half of a sign-in Identity has already proved: the id token was verified (issuer,
+   * audience, nonce, organisation, a verified email) by IdentitySignInService. Only an existing,
+   * active School user of that school with that email is signed in; nobody is created here, and
+   * roles stay School's own. Identity's subject is remembered on first use, and from then on only
+   * that subject signs in as this user.
+   */
+  async signInWithIdentity(
+    identity: { readonly subject: string; readonly email: string; readonly school: string },
+    meta: RequestMeta,
+  ): Promise<LoginResult> {
+    const outcome = await withPlatform(this.prisma, async (tx) => {
+      const tenant = await tx.tenant.findUnique({ where: { slug: identity.school } });
+      if (!tenant) return { kind: 'invalid' as const };
+      const linked = await tx.user.findFirst({
+        where: { tenantId: tenant.id, identitySubject: identity.subject, deletedAt: null },
+      });
+      let user = linked;
+      if (!user) {
+        const matches = await tx.user.findMany({
+          where: {
+            tenantId: tenant.id,
+            email: { equals: identity.email, mode: 'insensitive' },
+            deletedAt: null,
+          },
+          take: 2,
+        });
+        const [match] = matches;
+        if (matches.length !== 1 || !match) {
+          await this.audit(tx, tenant.id, null, 'auth.identity.no_account', {}, meta);
+          return { kind: 'invalid' as const };
+        }
+        if (match.identitySubject !== null) {
+          // Already linked to another Identity account: the address alone never moves it.
+          await this.audit(tx, tenant.id, match.id, 'auth.identity.subject_mismatch', {}, meta);
+          return { kind: 'invalid' as const };
+        }
+        // Identity vouches for an address an organisation admin may have typed, so an email
+        // match alone never links an account that can administer the school or the platform.
+        const { roles } = await this.rbac.loadUserAuthz(tx, match.id);
+        if (roles.some((r) => isPlatformRole(r) || IDENTITY_LINK_BY_PASSWORD_ROLES.has(r))) {
+          await this.audit(tx, tenant.id, match.id, 'auth.identity.link_required', {}, meta);
+          return { kind: 'link_required' as const };
+        }
+        user = await tx.user.update({
+          where: { id: match.id },
+          data: { identitySubject: identity.subject },
+        });
+        await this.audit(tx, tenant.id, user.id, 'auth.identity.linked', {}, meta);
+      }
+
+      const blocked = this.loginBlockReason(user);
+      if (blocked) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.login.blocked', { blocked }, meta);
+        return { kind: 'blocked' as const, message: blocked };
+      }
+      const principal = await this.buildPrincipal(tx, user);
+      const refused = await this.subscriptionRefusal(principal);
+      if (refused) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.login.blocked', { refused }, meta);
+        return { kind: 'blocked' as const, message: refused };
+      }
+      const tokens = await this.issueTokens(tx, principal, meta);
+      await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+      await this.audit(tx, user.tenantId, user.id, 'auth.login.success', { via: 'identity' }, meta);
+      return {
+        kind: 'ok' as const,
+        result: { tokens, mustChangePassword: user.mustChangePassword, user: principal },
+      };
+    });
+    if (outcome.kind === 'invalid') {
+      throw new UnauthorizedException('No Munaxa School account is linked to this identity');
+    }
+    if (outcome.kind === 'link_required') throw new IdentityLinkRequiredException();
+    if (outcome.kind === 'blocked') throw new ForbiddenException(outcome.message);
+    return outcome.result;
+  }
+
+  /**
+   * Completes a link offer after a successful password sign-in: the same school, the same email,
+   * an unlinked user, and a subject no other user of the school holds. Anything else is ignored;
+   * the password sign-in itself has already succeeded and is never undone here.
+   */
+  async linkIdentityAfterPassword(
+    principal: AuthenticatedUser,
+    offer: { readonly subject: string; readonly email: string; readonly school: string },
+    meta: RequestMeta,
+  ): Promise<boolean> {
+    return withPlatform(this.prisma, async (tx) => {
+      const tenant = await tx.tenant.findUnique({ where: { slug: offer.school } });
+      if (!tenant || tenant.id !== principal.tenantId) return false;
+      const user = await tx.user.findUnique({ where: { id: principal.userId } });
+      if (
+        !user ||
+        user.identitySubject !== null ||
+        user.email.toLowerCase() !== offer.email.toLowerCase()
+      ) {
+        return false;
+      }
+      const taken = await tx.user.findFirst({
+        where: { tenantId: tenant.id, identitySubject: offer.subject },
+      });
+      if (taken) return false;
+      await tx.user.update({ where: { id: user.id }, data: { identitySubject: offer.subject } });
+      await this.audit(tx, tenant.id, user.id, 'auth.identity.linked', { via: 'password' }, meta);
+      return true;
     });
   }
 
