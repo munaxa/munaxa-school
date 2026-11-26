@@ -173,6 +173,77 @@ export class AuthService {
     });
   }
 
+  // ----- Sign in with Munaxa Identity (auth/identity-sign-in) -------------
+  /**
+   * The School half of a sign-in Identity has already proved: the id token was verified (issuer,
+   * audience, nonce, organisation, a verified email) by IdentitySignInService. Only an existing,
+   * active School user of that school with that email is signed in; nobody is created here, and
+   * roles stay School's own. Identity's subject is remembered on first use, and from then on only
+   * that subject signs in as this user.
+   */
+  async signInWithIdentity(
+    identity: { readonly subject: string; readonly email: string; readonly school: string },
+    meta: RequestMeta,
+  ): Promise<LoginResult> {
+    const outcome = await withPlatform(this.prisma, async (tx) => {
+      const tenant = await tx.tenant.findUnique({ where: { slug: identity.school } });
+      if (!tenant) return { kind: 'invalid' as const };
+      const linked = await tx.user.findFirst({
+        where: { tenantId: tenant.id, identitySubject: identity.subject, deletedAt: null },
+      });
+      let user = linked;
+      if (!user) {
+        const matches = await tx.user.findMany({
+          where: {
+            tenantId: tenant.id,
+            email: { equals: identity.email, mode: 'insensitive' },
+            deletedAt: null,
+          },
+          take: 2,
+        });
+        const [match] = matches;
+        if (matches.length !== 1 || !match) {
+          await this.audit(tx, tenant.id, null, 'auth.identity.no_account', {}, meta);
+          return { kind: 'invalid' as const };
+        }
+        if (match.identitySubject !== null) {
+          // Already linked to another Identity account: the address alone never moves it.
+          await this.audit(tx, tenant.id, match.id, 'auth.identity.subject_mismatch', {}, meta);
+          return { kind: 'invalid' as const };
+        }
+        user = await tx.user.update({
+          where: { id: match.id },
+          data: { identitySubject: identity.subject },
+        });
+        await this.audit(tx, tenant.id, user.id, 'auth.identity.linked', {}, meta);
+      }
+
+      const blocked = this.loginBlockReason(user);
+      if (blocked) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.login.blocked', { blocked }, meta);
+        return { kind: 'blocked' as const, message: blocked };
+      }
+      const principal = await this.buildPrincipal(tx, user);
+      const refused = await this.subscriptionRefusal(principal);
+      if (refused) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.login.blocked', { refused }, meta);
+        return { kind: 'blocked' as const, message: refused };
+      }
+      const tokens = await this.issueTokens(tx, principal, meta);
+      await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+      await this.audit(tx, user.tenantId, user.id, 'auth.login.success', { via: 'identity' }, meta);
+      return {
+        kind: 'ok' as const,
+        result: { tokens, mustChangePassword: user.mustChangePassword, user: principal },
+      };
+    });
+    if (outcome.kind === 'invalid') {
+      throw new UnauthorizedException('No Munaxa School account is linked to this identity');
+    }
+    if (outcome.kind === 'blocked') throw new ForbiddenException(outcome.message);
+    return outcome.result;
+  }
+
   // ----- Refresh (rotation + reuse detection) ------------------------------
   async refresh(refreshToken: string, meta: RequestMeta): Promise<TokenPair> {
     const hash = this.tokens.hashRefreshToken(refreshToken);

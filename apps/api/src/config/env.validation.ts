@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { parseIdentityClients, parseIdentityKeys } from '../auth/identity-sign-in/identity-sign-in';
+
 /**
  * Strongly-typed, fail-fast environment validation. The app refuses to boot if required
  * configuration is missing or malformed. Secrets are NEVER hardcoded — only read from env.
@@ -74,6 +76,19 @@ export const envSchema = z
     /** The signed revocation list Munaxa delivers next to the licence (`mxr1`). Optional. */
     LICENSE_REVOCATION_PATH: z.string().min(1).optional(),
 
+    /**
+     * Sign in with Munaxa Identity (auth/identity-sign-in). Off by default; password sign-in is
+     * unchanged either way. See identity-sign-in.ts for the formats.
+     */
+    IDENTITY_SIGN_IN: z.enum(['enabled', 'disabled']).default('disabled'),
+    IDENTITY_ISSUER: z.string().url().optional(),
+    IDENTITY_SIGN_IN_REDIRECT_URI: z.string().url().optional(),
+    IDENTITY_SIGN_IN_CLIENTS: z.string().optional(),
+    /** A secret: `client-id=<secret>,...`. Never logged. */
+    IDENTITY_SIGN_IN_CLIENT_SECRETS: z.string().optional(),
+    /** JSON `[{"kid":"…","publicKey":"-----BEGIN PUBLIC KEY-----…"}]`. Identity's public keys only. */
+    IDENTITY_PUBLIC_KEYS: z.string().optional(),
+
     THROTTLE_TTL: z.coerce.number().int().positive().default(60),
     THROTTLE_LIMIT: z.coerce.number().int().positive().default(120),
   })
@@ -122,6 +137,70 @@ export const envSchema = z
           path: ['CONTROL_PLANE_URL'],
           message: 'must be https in production',
         });
+      }
+    }
+
+    if (env.IDENTITY_SIGN_IN === 'enabled') {
+      for (const key of [
+        'IDENTITY_ISSUER',
+        'IDENTITY_SIGN_IN_REDIRECT_URI',
+        'IDENTITY_SIGN_IN_CLIENTS',
+        'IDENTITY_SIGN_IN_CLIENT_SECRETS',
+        'IDENTITY_PUBLIC_KEYS',
+      ] as const) {
+        if (!env[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: 'required when IDENTITY_SIGN_IN=enabled',
+          });
+        }
+      }
+      const { clients, problems } = parseIdentityClients(
+        env.IDENTITY_SIGN_IN_CLIENTS ?? '',
+        env.IDENTITY_SIGN_IN_CLIENT_SECRETS ?? '',
+      );
+      for (const problem of problems) {
+        const [key = 'IDENTITY_SIGN_IN_CLIENTS', ...rest] = problem.split(': ');
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: rest.join(': ') });
+      }
+      if (clients.length === 0 && problems.length === 0 && env.IDENTITY_SIGN_IN_CLIENTS) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['IDENTITY_SIGN_IN_CLIENTS'],
+          message: 'names no school',
+        });
+      }
+      if (env.IDENTITY_PUBLIC_KEYS) {
+        try {
+          parseIdentityKeys(env.IDENTITY_PUBLIC_KEYS);
+        } catch (error) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['IDENTITY_PUBLIC_KEYS'],
+            message: `is not valid: ${(error as Error).message}`,
+          });
+        }
+      }
+      // The secrets must be School's own: never a key this service already holds for another use.
+      const others = [env.JWT_ACCESS_SECRET, env.JWT_REFRESH_SECRET, env.CONTROL_PLANE_TOKEN];
+      if (clients.some((client) => others.includes(client.secret))) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['IDENTITY_SIGN_IN_CLIENT_SECRETS'],
+          message: 'reuses another secret this service holds',
+        });
+      }
+      if (env.NODE_ENV === 'production') {
+        for (const key of ['IDENTITY_ISSUER', 'IDENTITY_SIGN_IN_REDIRECT_URI'] as const) {
+          if (env[key] && !env[key].startsWith('https://')) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [key],
+              message: 'must be https in production',
+            });
+          }
+        }
       }
     }
 

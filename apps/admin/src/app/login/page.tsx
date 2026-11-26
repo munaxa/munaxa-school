@@ -31,6 +31,14 @@ const REMEMBER_KEY = 'munaxa.remember';
 const IDENTIFIER_KEY = 'munaxa.identifier';
 const SCHOOL_KEY = 'munaxa.school';
 
+/** `?identity=` on return from a Munaxa sign-in that did not complete (API identity-sign-in). */
+const IDENTITY_OUTCOMES: Record<string, string> = {
+  unavailable: 'auth.identityUnavailable',
+  failed: 'auth.identityFailed',
+  'no-account': 'auth.identityNoAccount',
+  blocked: 'auth.identityBlocked',
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useI18n();
@@ -41,6 +49,7 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [identityEnabled, setIdentityEnabled] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [guard, setGuard] = useState<GuardStatus>({
     locked: false,
@@ -62,7 +71,30 @@ export default function LoginPage() {
       /* ignore storage access errors */
     }
     setGuard(guardStatus());
+    const outcome = new URLSearchParams(window.location.search).get('identity');
+    const message = outcome ? IDENTITY_OUTCOMES[outcome] : undefined;
+    if (message) setError(t(message));
+    // Whether this deployment offers Munaxa sign-in at all; off (or unreachable) hides the button.
+    fetch('/api/v1/auth/identity/enabled', { credentials: 'same-origin' })
+      .then((res) => (res.ok ? (res.json() as Promise<{ enabled?: unknown }>) : null))
+      .then((body) => setIdentityEnabled(body?.enabled === true))
+      .catch(() => setIdentityEnabled(false));
+    // Mount only: the outcome is read once from the address the browser arrived on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Off to Munaxa Identity for this school; the API answers with a redirect. */
+  function onIdentitySignIn() {
+    setError(null);
+    const code = sanitizeSchoolCode(schoolCode);
+    setSchoolCode(code);
+    if (!code) {
+      setFieldErrors({ schoolCode: 'auth.identityNeedsSchoolCode' });
+      return;
+    }
+    setFieldErrors({});
+    window.location.assign(`/api/v1/auth/identity/start?school=${encodeURIComponent(code)}`);
+  }
 
   // While locked or rate-limited, tick every second so the countdown updates and the form
   // re-enables the moment the window elapses.
@@ -182,6 +214,7 @@ export default function LoginPage() {
                 : null
             }
             onSubmit={(e) => void onSubmit(e)}
+            onIdentitySignIn={identityEnabled ? onIdentitySignIn : null}
           />
         </div>
 
@@ -218,6 +251,8 @@ interface CardProps {
   blocked: boolean;
   attemptsRemaining: string | null;
   onSubmit: (e: React.FormEvent) => void;
+  /** Null when this deployment does not offer Munaxa sign-in. */
+  onIdentitySignIn: (() => void) | null;
 }
 
 function SignInCard(p: CardProps) {
@@ -365,6 +400,28 @@ function SignInCard(p: CardProps) {
             )}
           </button>
         </form>
+
+        {p.onIdentitySignIn ? (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border" />
+              {t('auth.orDivider')}
+              <span className="h-px flex-1 bg-border" />
+            </div>
+            <button
+              type="button"
+              onClick={p.onIdentitySignIn}
+              disabled={p.loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card py-3 font-display font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <ShieldIcon size={16} />
+              {t('auth.signInWithMunaxa')}
+            </button>
+            <p className="text-center text-xs text-muted-foreground">
+              {t('auth.signInWithMunaxaHint')}
+            </p>
+          </div>
+        ) : null}
 
         {/* Security notice. */}
         <div className="mt-5 flex items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">

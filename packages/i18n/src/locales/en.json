@@ -143,7 +143,15 @@
     "lockedTitle": "Account temporarily locked",
     "lockedBody": "Too many failed sign-in attempts. Please try again in {t}.",
     "rateLimited": "Too many attempts. Please wait {s}s before trying again.",
-    "attemptsRemaining": "{n} attempt(s) remaining before a temporary lock."
+    "attemptsRemaining": "{n} attempt(s) remaining before a temporary lock.",
+    "signInWithMunaxa": "Sign in with Munaxa",
+    "signInWithMunaxaHint": "Uses your organisation’s Munaxa account, including Microsoft or Google sign-in if your school has set it up.",
+    "orDivider": "or",
+    "identityNeedsSchoolCode": "Enter your school code first.",
+    "identityUnavailable": "Your school does not use Munaxa sign-in. Sign in with your password.",
+    "identityFailed": "Munaxa sign-in did not complete. Please try again.",
+    "identityNoAccount": "There is no School account for this person. Ask your school administrator.",
+    "identityBlocked": "This account cannot sign in. Ask your school administrator."
   },
   "shell": {
     "schoolPlane": "School plane",
