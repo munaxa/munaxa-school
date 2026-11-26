@@ -1,0 +1,32 @@
+# Munaxa School: critical security and deployment controls.
+#
+# This file only names owners. Reviews are enforced only when the owner turns on "Require review
+# from Code Owners" on main; that is a repository setting, not changed here. Patterns are anchored
+# with a leading slash so a file of the same name elsewhere does not pick up, or escape, an owner.
+
+# This file itself: without it, anyone could remove an owner in the same PR as the change.
+/.github/CODEOWNERS                    @tam2om
+
+# CI, release and publish workflows; image verify/scan gates and the temporary D-SSL exception.
+/.github/workflows/                    @tam2om
+/.github/scripts/                      @tam2om
+/.github/security/                     @tam2om
+
+# Authentication, sign-in with Munaxa Identity, licensing and tenant isolation.
+/apps/api/src/auth/                    @tam2om
+/apps/api/src/subscription/            @tam2om
+/apps/api/src/config/                  @tam2om
+/apps/api/src/prisma/                  @tam2om
+/apps/api/src/ops/                     @tam2om
+
+# Database schema, migrations (RLS policies) and runtime grants.
+/prisma/                               @tam2om
+/infra/postgres/                       @tam2om
+
+# Images.
+/apps/api/Dockerfile                   @tam2om
+/apps/admin/Dockerfile                 @tam2om
+/apps/admin/next.config.mjs            @tam2om
+
+# Security documentation.
+/docs/security/                        @tam2om

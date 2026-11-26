@@ -72,3 +72,4 @@ school/apps/mobile/*.iml
 # quarter's logo after the approved one changed upstream.
 apps/*/public/branding/
 munaxademo/public/branding/
+__pycache__/
