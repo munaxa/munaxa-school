@@ -3,16 +3,11 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Public } from '../decorators/public.decorator';
-import { AuthService, IdentityLinkRequiredException } from '../services/auth.service';
+import { AuthService, IdentityMfaRequiredException } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
 import { setAuthCookies } from '../cookies';
 import { decodePending, encodePending } from './identity-sign-in';
-import {
-  BINDING_COOKIE,
-  IDENTITY_COOKIE_TTL_MS,
-  LINK_COOKIE,
-  identityCookieOptions,
-} from './identity-cookies';
+import { BINDING_COOKIE, IDENTITY_COOKIE_TTL_MS, identityCookieOptions } from './identity-cookies';
 import { IdentitySignInService } from './identity-sign-in.service';
 
 /** Where the admin shows the outcome. Relative, so it never depends on the request's Host. */
@@ -28,13 +23,14 @@ export class IdentitySignInController {
   ) {}
 
   /**
-   * Whether the sign-in page shows "Sign in with Munaxa" at all. Deployment-wide on purpose: a
-   * per-school answer would tell anyone which school codes exist.
+   * Whether the sign-in page shows "Sign in with Munaxa", and whether it also shows the staff
+   * password form. Deployment-wide on purpose: a per-school answer would tell anyone which school
+   * codes exist.
    */
   @Public()
   @Get('enabled')
-  enabled(): { enabled: boolean } {
-    return { enabled: this.identity.enabled };
+  enabled(): { enabled: boolean; staffPasswords: string } {
+    return { enabled: this.identity.enabled, staffPasswords: this.identity.staffPasswords };
   }
 
   /** `GET /api/v1/auth/identity/start?school=<school code>`: off to Identity, or back to sign-in. */
@@ -86,14 +82,9 @@ export class IdentitySignInController {
       // origin that moves on by itself makes the next navigation same-site.
       continueTo(res, result.mustChangePassword ? '/change-password' : '/');
     } catch (error) {
-      if (error instanceof IdentityLinkRequiredException) {
-        // A privileged School user links only by also proving their School password: the offer
-        // waits in a sealed cookie for their next password sign-in (AuthController.login).
-        res.cookie(LINK_COOKIE(), this.identity.offerLink(completed.claims, completed.school), {
-          ...identityCookieOptions(),
-          maxAge: IDENTITY_COOKIE_TTL_MS,
-        });
-        seeOther(res, `${LOGIN}?identity=link-required`);
+      if (error instanceof IdentityMfaRequiredException) {
+        // Someone who can administer the school signs in with Identity's two-step verification.
+        seeOther(res, `${LOGIN}?identity=mfa-required`);
         return;
       }
       seeOther(

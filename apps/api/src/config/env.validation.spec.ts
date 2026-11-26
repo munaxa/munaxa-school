@@ -32,6 +32,8 @@ describe('validateEnv', () => {
       LICENSING_MODE: 'CONTROL_PLANE',
       CONTROL_PLANE_URL: 'https://control.munaxa.test',
       CONTROL_PLANE_TOKEN: 'mxc_test-service-credential',
+      // These guards are about secrets and licensing; staff sign-in is covered below.
+      STAFF_PASSWORD_SIGN_IN: 'enabled',
     };
 
     it('accepts a fully-configured production environment', () => {
@@ -55,12 +57,40 @@ describe('validateEnv', () => {
     });
   });
 
+  describe('staff sign-in', () => {
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'access-secret-at-least-16',
+      JWT_REFRESH_SECRET: 'refresh-secret-at-least-16',
+      LICENSING_MODE: 'CONTROL_PLANE',
+      CONTROL_PLANE_URL: 'https://control.munaxa.test',
+      CONTROL_PLANE_TOKEN: 'mxc_test-service-credential',
+    };
+
+    it('in production, refuses to leave staff with no way in: Munaxa-only needs Identity', () => {
+      expect(() => validateEnv(prod)).toThrow(/IDENTITY_SIGN_IN must be enabled/);
+      expect(() => validateEnv({ ...prod, STAFF_PASSWORD_SIGN_IN: 'emergency' })).toThrow(
+        /IDENTITY_SIGN_IN must be enabled/,
+      );
+      expect(() => validateEnv({ ...prod, STAFF_PASSWORD_SIGN_IN: 'enabled' })).not.toThrow();
+    });
+
+    it('keeps staff passwords outside production unless told otherwise', () => {
+      expect(() => validateEnv(base)).not.toThrow();
+      expect(() => validateEnv({ ...base, STAFF_PASSWORD_SIGN_IN: 'disabled' })).toThrow(
+        /IDENTITY_SIGN_IN must be enabled/,
+      );
+    });
+  });
+
   describe('licensing in production', () => {
     const unlicensed = {
       ...base,
       NODE_ENV: 'production',
       JWT_ACCESS_SECRET: 'access-secret-at-least-16',
       JWT_REFRESH_SECRET: 'refresh-secret-at-least-16',
+      STAFF_PASSWORD_SIGN_IN: 'enabled',
     };
     const publicKey = generateKeyPairSync('ec', { namedCurve: 'P-256' })
       .publicKey.export({ type: 'spki', format: 'pem' })

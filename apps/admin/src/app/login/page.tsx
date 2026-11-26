@@ -31,13 +31,15 @@ const REMEMBER_KEY = 'munaxa.remember';
 const IDENTIFIER_KEY = 'munaxa.identifier';
 const SCHOOL_KEY = 'munaxa.school';
 
+type PasswordMode = 'enabled' | 'disabled' | 'emergency';
+
 /** `?identity=` on return from a Munaxa sign-in that did not complete (API identity-sign-in). */
 const IDENTITY_OUTCOMES: Record<string, string> = {
   unavailable: 'auth.identityUnavailable',
   failed: 'auth.identityFailed',
   'no-account': 'auth.identityNoAccount',
   blocked: 'auth.identityBlocked',
-  'link-required': 'auth.identityLinkRequired',
+  'mfa-required': 'auth.identityMfaRequired',
 };
 
 export default function LoginPage() {
@@ -51,6 +53,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [identityEnabled, setIdentityEnabled] = useState(false);
+  const [passwordMode, setPasswordMode] = useState<PasswordMode>('enabled');
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [guard, setGuard] = useState<GuardStatus>({
     locked: false,
@@ -77,8 +80,18 @@ export default function LoginPage() {
     if (message) setError(t(message));
     // Whether this deployment offers Munaxa sign-in at all; off (or unreachable) hides the button.
     fetch('/api/v1/auth/identity/enabled', { credentials: 'same-origin' })
-      .then((res) => (res.ok ? (res.json() as Promise<{ enabled?: unknown }>) : null))
-      .then((body) => setIdentityEnabled(body?.enabled === true))
+      .then((res) =>
+        res.ok ? (res.json() as Promise<{ enabled?: unknown; staffPasswords?: unknown }>) : null,
+      )
+      .then((body) => {
+        const enabled = body?.enabled === true;
+        setIdentityEnabled(enabled);
+        const mode = body?.staffPasswords;
+        // Staff passwords are only hidden when there is a Munaxa sign-in to offer instead.
+        setPasswordMode(
+          enabled && (mode === 'disabled' || mode === 'emergency') ? mode : 'enabled',
+        );
+      })
       .catch(() => setIdentityEnabled(false));
     // Mount only: the outcome is read once from the address the browser arrived on.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,6 +121,10 @@ export default function LoginPage() {
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    if (passwordMode === 'disabled') {
+      onIdentitySignIn();
+      return;
+    }
 
     // 1) Sanitise, then reflect the cleaned values back into the fields.
     const clean = {
@@ -216,6 +233,7 @@ export default function LoginPage() {
             }
             onSubmit={(e) => void onSubmit(e)}
             onIdentitySignIn={identityEnabled ? onIdentitySignIn : null}
+            passwordMode={passwordMode}
           />
         </div>
 
@@ -254,6 +272,8 @@ interface CardProps {
   onSubmit: (e: React.FormEvent) => void;
   /** Null when this deployment does not offer Munaxa sign-in. */
   onIdentitySignIn: (() => void) | null;
+  /** `disabled`: staff sign in with Munaxa only. `emergency`: the password form is tucked away. */
+  passwordMode: PasswordMode;
 }
 
 function SignInCard(p: CardProps) {
@@ -288,121 +308,269 @@ function SignInCard(p: CardProps) {
             )}
           </Field>
 
-          <Field
-            label={t('auth.usernameOrEmail')}
-            error={p.fieldErrors.identifier ? t(p.fieldErrors.identifier) : undefined}
-          >
-            {({ id, invalid, describedBy }) => (
-              <InputWithIcon icon={<UserIcon />} invalid={invalid}>
-                <input
-                  id={id}
-                  type="text"
-                  required
-                  maxLength={254}
-                  value={p.identifier}
-                  onChange={(e) => p.setIdentifier(e.target.value)}
-                  autoComplete="username"
-                  placeholder={t('auth.usernamePlaceholder')}
-                  aria-invalid={invalid}
-                  aria-describedby={describedBy}
-                  className="login-input-field"
-                />
-              </InputWithIcon>
-            )}
-          </Field>
-
-          <Field
-            label={t('auth.password')}
-            error={p.fieldErrors.password ? t(p.fieldErrors.password) : undefined}
-          >
-            {({ id, invalid, describedBy }) => (
-              <InputWithIcon icon={<LockIcon />} invalid={invalid}>
-                <input
-                  id={id}
-                  type={p.showPassword ? 'text' : 'password'}
-                  required
-                  maxLength={128}
-                  value={p.password}
-                  onChange={(e) => p.setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  placeholder={t('auth.passwordPlaceholder')}
-                  aria-invalid={invalid}
-                  aria-describedby={describedBy}
-                  className="login-input-field !pe-11"
-                />
-                <button
-                  type="button"
-                  onClick={() => p.setShowPassword((v) => !v)}
-                  aria-label={p.showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                  aria-pressed={p.showPassword}
-                  className="absolute inset-y-0 end-0 flex items-center pe-3 text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {p.showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </InputWithIcon>
-            )}
-          </Field>
-
-          <div className="flex items-center justify-between text-sm">
-            <label className="flex cursor-pointer select-none items-center gap-2 text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={p.remember}
-                onChange={(e) => p.setRemember(e.target.checked)}
-                className="h-4 w-4 rounded border-input accent-primary"
-              />
-              {t('auth.rememberMe')}
-            </label>
-            <Link
-              href={forgotPasswordHref}
-              className="font-medium text-primary-strong hover:underline"
-            >
-              {t('auth.forgotPassword')}
-            </Link>
-          </div>
-
-          {p.blockedMessage ? (
-            <div
-              className="flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
-              role="alert"
-            >
-              <span className="mt-0.5 shrink-0">
+          {p.passwordMode !== 'enabled' && p.onIdentitySignIn ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={p.onIdentitySignIn}
+                disabled={p.loading}
+                className="bg-grad-primary flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-display font-semibold text-primary-foreground shadow-glow transition-[filter,transform] hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-70"
+              >
                 <ShieldIcon size={16} />
-              </span>
-              <div>
-                {p.lockedTitle ? <p className="font-semibold">{p.lockedTitle}</p> : null}
-                <p className="leading-snug">{p.blockedMessage}</p>
-              </div>
+                {t('auth.signInWithMunaxa')}
+              </button>
+              <p className="text-center text-xs text-muted-foreground">
+                {t('auth.signInWithMunaxaHint')}
+              </p>
+              {p.passwordMode === 'disabled' && p.error ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {p.error}
+                </p>
+              ) : null}
             </div>
-          ) : p.error ? (
-            <p className="text-sm text-destructive" role="alert">
-              {p.error}
-            </p>
           ) : null}
 
-          {p.attemptsRemaining && !p.blockedMessage ? (
-            <p className="text-xs text-accent" role="status">
-              {p.attemptsRemaining}
-            </p>
-          ) : null}
+          {p.passwordMode === 'disabled' ? null : p.passwordMode === 'emergency' ? (
+            <details className="rounded-xl border border-border px-3.5 py-3 text-sm">
+              <summary className="cursor-pointer text-muted-foreground">
+                {t('auth.emergencySignIn')}
+              </summary>
+              <div className="mt-4 space-y-4">
+                <Field
+                  label={t('auth.usernameOrEmail')}
+                  error={p.fieldErrors.identifier ? t(p.fieldErrors.identifier) : undefined}
+                >
+                  {({ id, invalid, describedBy }) => (
+                    <InputWithIcon icon={<UserIcon />} invalid={invalid}>
+                      <input
+                        id={id}
+                        type="text"
+                        required
+                        maxLength={254}
+                        value={p.identifier}
+                        onChange={(e) => p.setIdentifier(e.target.value)}
+                        autoComplete="username"
+                        placeholder={t('auth.usernamePlaceholder')}
+                        aria-invalid={invalid}
+                        aria-describedby={describedBy}
+                        className="login-input-field"
+                      />
+                    </InputWithIcon>
+                  )}
+                </Field>
 
-          <button
-            type="submit"
-            disabled={p.loading || p.blocked}
-            className="bg-grad-primary flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-display font-semibold text-primary-foreground shadow-glow transition-[filter,transform] hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {p.loading ? (
-              <>
-                <Spinner />
-                {t('common.loading')}
-              </>
-            ) : (
-              t('auth.signIn')
-            )}
-          </button>
+                <Field
+                  label={t('auth.password')}
+                  error={p.fieldErrors.password ? t(p.fieldErrors.password) : undefined}
+                >
+                  {({ id, invalid, describedBy }) => (
+                    <InputWithIcon icon={<LockIcon />} invalid={invalid}>
+                      <input
+                        id={id}
+                        type={p.showPassword ? 'text' : 'password'}
+                        required
+                        maxLength={128}
+                        value={p.password}
+                        onChange={(e) => p.setPassword(e.target.value)}
+                        autoComplete="current-password"
+                        placeholder={t('auth.passwordPlaceholder')}
+                        aria-invalid={invalid}
+                        aria-describedby={describedBy}
+                        className="login-input-field !pe-11"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => p.setShowPassword((v) => !v)}
+                        aria-label={
+                          p.showPassword ? t('auth.hidePassword') : t('auth.showPassword')
+                        }
+                        aria-pressed={p.showPassword}
+                        className="absolute inset-y-0 end-0 flex items-center pe-3 text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {p.showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </button>
+                    </InputWithIcon>
+                  )}
+                </Field>
+
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex cursor-pointer select-none items-center gap-2 text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={p.remember}
+                      onChange={(e) => p.setRemember(e.target.checked)}
+                      className="h-4 w-4 rounded border-input accent-primary"
+                    />
+                    {t('auth.rememberMe')}
+                  </label>
+                  <Link
+                    href={forgotPasswordHref}
+                    className="font-medium text-primary-strong hover:underline"
+                  >
+                    {t('auth.forgotPassword')}
+                  </Link>
+                </div>
+
+                {p.blockedMessage ? (
+                  <div
+                    className="flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+                    role="alert"
+                  >
+                    <span className="mt-0.5 shrink-0">
+                      <ShieldIcon size={16} />
+                    </span>
+                    <div>
+                      {p.lockedTitle ? <p className="font-semibold">{p.lockedTitle}</p> : null}
+                      <p className="leading-snug">{p.blockedMessage}</p>
+                    </div>
+                  </div>
+                ) : p.error ? (
+                  <p className="text-sm text-destructive" role="alert">
+                    {p.error}
+                  </p>
+                ) : null}
+
+                {p.attemptsRemaining && !p.blockedMessage ? (
+                  <p className="text-xs text-accent" role="status">
+                    {p.attemptsRemaining}
+                  </p>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={p.loading || p.blocked}
+                  className="bg-grad-primary flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-display font-semibold text-primary-foreground shadow-glow transition-[filter,transform] hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {p.loading ? (
+                    <>
+                      <Spinner />
+                      {t('common.loading')}
+                    </>
+                  ) : (
+                    t('auth.signIn')
+                  )}
+                </button>
+              </div>
+            </details>
+          ) : (
+            <>
+              <Field
+                label={t('auth.usernameOrEmail')}
+                error={p.fieldErrors.identifier ? t(p.fieldErrors.identifier) : undefined}
+              >
+                {({ id, invalid, describedBy }) => (
+                  <InputWithIcon icon={<UserIcon />} invalid={invalid}>
+                    <input
+                      id={id}
+                      type="text"
+                      required
+                      maxLength={254}
+                      value={p.identifier}
+                      onChange={(e) => p.setIdentifier(e.target.value)}
+                      autoComplete="username"
+                      placeholder={t('auth.usernamePlaceholder')}
+                      aria-invalid={invalid}
+                      aria-describedby={describedBy}
+                      className="login-input-field"
+                    />
+                  </InputWithIcon>
+                )}
+              </Field>
+
+              <Field
+                label={t('auth.password')}
+                error={p.fieldErrors.password ? t(p.fieldErrors.password) : undefined}
+              >
+                {({ id, invalid, describedBy }) => (
+                  <InputWithIcon icon={<LockIcon />} invalid={invalid}>
+                    <input
+                      id={id}
+                      type={p.showPassword ? 'text' : 'password'}
+                      required
+                      maxLength={128}
+                      value={p.password}
+                      onChange={(e) => p.setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      placeholder={t('auth.passwordPlaceholder')}
+                      aria-invalid={invalid}
+                      aria-describedby={describedBy}
+                      className="login-input-field !pe-11"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => p.setShowPassword((v) => !v)}
+                      aria-label={p.showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                      aria-pressed={p.showPassword}
+                      className="absolute inset-y-0 end-0 flex items-center pe-3 text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {p.showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                    </button>
+                  </InputWithIcon>
+                )}
+              </Field>
+
+              <div className="flex items-center justify-between text-sm">
+                <label className="flex cursor-pointer select-none items-center gap-2 text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={p.remember}
+                    onChange={(e) => p.setRemember(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  {t('auth.rememberMe')}
+                </label>
+                <Link
+                  href={forgotPasswordHref}
+                  className="font-medium text-primary-strong hover:underline"
+                >
+                  {t('auth.forgotPassword')}
+                </Link>
+              </div>
+
+              {p.blockedMessage ? (
+                <div
+                  className="flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-sm text-destructive"
+                  role="alert"
+                >
+                  <span className="mt-0.5 shrink-0">
+                    <ShieldIcon size={16} />
+                  </span>
+                  <div>
+                    {p.lockedTitle ? <p className="font-semibold">{p.lockedTitle}</p> : null}
+                    <p className="leading-snug">{p.blockedMessage}</p>
+                  </div>
+                </div>
+              ) : p.error ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {p.error}
+                </p>
+              ) : null}
+
+              {p.attemptsRemaining && !p.blockedMessage ? (
+                <p className="text-xs text-accent" role="status">
+                  {p.attemptsRemaining}
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={p.loading || p.blocked}
+                className="bg-grad-primary flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-display font-semibold text-primary-foreground shadow-glow transition-[filter,transform] hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {p.loading ? (
+                  <>
+                    <Spinner />
+                    {t('common.loading')}
+                  </>
+                ) : (
+                  t('auth.signIn')
+                )}
+              </button>
+            </>
+          )}
         </form>
 
-        {p.onIdentitySignIn ? (
+        {p.onIdentitySignIn && p.passwordMode === 'enabled' ? (
           <div className="mt-4 space-y-3">
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="h-px flex-1 bg-border" />

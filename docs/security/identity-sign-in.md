@@ -1,8 +1,9 @@
 # Sign in with Munaxa Identity
 
-School can sign people in through **Munaxa Identity** (munaxa-identity ADR-0008), so a school's
-staff use one Munaxa sign-in, with Identity's MFA, lockout, session revocation and Microsoft or
-Google company sign-in. Password sign-in is unchanged and stays available.
+School signs its **staff** in through **Munaxa Identity** (munaxa-identity ADR-0008): one Munaxa
+sign-in, with Identity's MFA, lockout, session revocation and Microsoft or Google company sign-in.
+Since 26 Nov 2026 (owner decision) staff have no School password sign-in in production; parents
+and students keep theirs (see "Staff passwords" below).
 
 ## How it works
 
@@ -22,21 +23,43 @@ Google company sign-in. Password sign-in is unchanged and stays available.
    use (`User.identitySubject`); from then on only that Identity account signs in as this user.
 6. The ordinary School session cookies are set and the browser continues to the portal.
 
-### Privileged accounts link by password once
+### Administrators need two-step verification
 
-Identity marks as verified any address an organisation administrator typed, so an email match
-alone is not enough for an account that can administer the school or the platform. Users holding
-a platform role, `SchoolAdmin`, `Principal`, `VicePrincipal`, `FinanceOfficer`, `Accountant` or
-`HR` are never linked by email alone. The first time they use Munaxa sign-in they see
-"sign in with your password once"; School keeps a sealed (HMAC), ten-minute link offer in a
-`__Host-` cookie, and their next successful **password** sign-in at the same school, with the same
-email, links the Identity account. From then on Munaxa sign-in works for them. Other users link on
-first use by verified email, as above.
+Users holding a platform role, `SchoolAdmin`, `Principal`, `VicePrincipal`, `FinanceOfficer`,
+`Accountant` or `HR` sign in through Identity only when Identity says the sign-in used a second
+factor (`acr: "mfa"` in the id token). This is checked when the account is first linked by its
+checked email and again at every sign-in, so a person promoted after linking is covered too.
+Without it the page says `?identity=mfa-required` and nothing is linked.
+
+Identity only marks an address verified when it was shown to belong to the person (company
+directory, a used recovery link, or an operator's recorded confirmation; munaxa-identity#34), and
+School refuses an id token whose `email_verified` is not `true`.
+
+### Staff passwords
+
+`STAFF_PASSWORD_SIGN_IN` decides whether staff may still use a School password, on the web
+sign-in page (`POST /auth/login`) and in the mobile apps (`POST /auth/login`, `POST /auth/session`):
+
+| Value | Who may sign in without Munaxa |
+| --- | --- |
+| `disabled` (production default) | Parents and students only (users whose every role is `Parent` or `Student`) |
+| `emergency` | As `disabled`, plus `SchoolAdmin` and platform roles; each such sign-in is audited as `auth.login.emergency` |
+| `enabled` (default outside production) | Everyone |
+
+The check runs only after the password is proved, so it reveals nothing to someone without it; a
+refused staff sign-in answers `403 Staff sign in with Munaxa` and is audited as
+`auth.login.password_disabled`. The API refuses to start with `disabled` or `emergency` unless
+`IDENTITY_SIGN_IN=enabled`, so staff are never left with no way in. The web sign-in page reads the
+setting from `GET /api/v1/auth/identity/enabled` and shows only **Sign in with Munaxa**
+(`disabled`), or tucks the password form under "Emergency sign-in" (`emergency`).
+
+`emergency` is for an Identity outage: switch it on, sign in, switch it off.
 
 Outcomes the sign-in page explains: `?identity=unavailable` (school not configured),
 `failed` (cancelled, expired, or any protocol check failed), `no-account` (no School user with
 that email, or already linked to another Identity account), `blocked` (account disabled,
-suspended, or the school's subscription refuses sign-in). The exact reason is in the API log and
+suspended, or the school's subscription refuses sign-in), `mfa-required` (an administrator
+without two-step verification). The exact reason is in the API log and
 the audit trail (`auth.identity.*`), never in the address bar.
 
 ## Configuration
@@ -49,6 +72,7 @@ the audit trail (`auth.identity.*`), never in the address bar.
 | `IDENTITY_SIGN_IN_CLIENTS` | `school-slug\|client-id\|identity-organisation`, `;` between schools |
 | `IDENTITY_SIGN_IN_CLIENT_SECRETS` | `client-id=<secret>`, `,` between. A secret: from the secret store only |
 | `IDENTITY_PUBLIC_KEYS` | Identity's public signing keys, the same JSON Work reads |
+| `STAFF_PASSWORD_SIGN_IN` | `disabled`, `emergency` or `enabled`; unset: `disabled` in production, `enabled` elsewhere |
 
 The API refuses to start when the switch is on and any of these is missing or malformed, when a
 client has no secret, or when a client secret equals another secret School holds.
@@ -62,7 +86,9 @@ client has no secret, or when a client secret equals another secret School holds
 3. Add `<slug>|school-<slug>|<identity organisation>` to `IDENTITY_SIGN_IN_CLIENTS` and switch
    `IDENTITY_SIGN_IN=enabled`.
 4. Make sure each person who should sign in this way has a School user with the same email as
-   their Identity account.
+   their Identity account, and that the address is checked in Identity (company sign-in, or
+   `operator-cli account-email-verified`). Administrators turn on two-step verification in
+   Identity.
 
 ## Known limits
 - `GET /api/v1/auth/identity/start` answers differently for a school code that is configured and

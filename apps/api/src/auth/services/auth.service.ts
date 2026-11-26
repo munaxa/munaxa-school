@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { User, Prisma } from '@prisma/client';
 import { UserStatus } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { isPlatformRole } from '@school/domain';
 import { PrismaService } from '../../prisma/prisma.service';
 import { withPlatform, type TxClient } from '../../prisma/tenant.helpers';
@@ -16,6 +17,7 @@ import { RbacService } from './rbac.service';
 import { MailService } from '../../mail/mail.service';
 import { SubscriptionService } from '../../subscription/subscription.service';
 import type { AuthenticatedUser, TokenPair } from '../auth.types';
+import { staffPasswordSignIn } from './staff-password-sign-in';
 import type {
   LoginDto,
   SessionExchangeDto,
@@ -25,10 +27,11 @@ import type {
 } from '../dto/auth.dto';
 
 /**
- * Roles whose accounts are never linked to Identity by email alone: they must also prove their
- * School password once (identity-sign-in, review M-1). Platform roles are always included.
+ * Roles that can administer the school (or, with every platform role, the platform). Signing in
+ * as one of them through Identity needs Identity's two-step verification (`acr: "mfa"`), both the
+ * first time (when the account is linked by its checked address) and every time after.
  */
-const IDENTITY_LINK_BY_PASSWORD_ROLES = new Set<string>([
+const PRIVILEGED_SCHOOL_ROLES = new Set<string>([
   'SchoolAdmin',
   'Principal',
   'VicePrincipal',
@@ -37,12 +40,20 @@ const IDENTITY_LINK_BY_PASSWORD_ROLES = new Set<string>([
   'HR',
 ]);
 
-/** A privileged School user tried Munaxa sign-in before linking: see IdentitySignInController. */
-export class IdentityLinkRequiredException extends UnauthorizedException {
+/** Roles that keep signing in with a School password (the parent and student apps). */
+const PASSWORD_ROLES = new Set<string>(['Parent', 'Student']);
+
+const isPrivileged = (roles: readonly string[]): boolean =>
+  roles.some((r) => isPlatformRole(r) || PRIVILEGED_SCHOOL_ROLES.has(r));
+
+/** A privileged School user signed in through Identity without two-step verification. */
+export class IdentityMfaRequiredException extends UnauthorizedException {
   constructor() {
-    super('Sign in with your School password once to connect your Munaxa account');
+    super('Turn on two-step verification in your Munaxa account to sign in to School');
   }
 }
+
+const MUNAXA_ONLY = 'Staff sign in with Munaxa';
 
 export interface RequestMeta {
   ip?: string;
@@ -65,7 +76,30 @@ export class AuthService {
     private readonly rbac: RbacService,
     private readonly mail: MailService,
     private readonly subscriptions: SubscriptionService,
+    private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Whether this user may sign in without Munaxa Identity (a School password or the mobile apps'
+   * Firebase exchange). Parents and students always may; staff only when STAFF_PASSWORD_SIGN_IN
+   * allows it. Asked only after the credential was proved, so the answer reveals nothing to someone
+   * who does not hold it.
+   */
+  private async signInWithoutMunaxa(
+    tx: TxClient,
+    user: User,
+  ): Promise<{ allowed: boolean; emergency: boolean }> {
+    const mode = staffPasswordSignIn(this.config.get<string>('STAFF_PASSWORD_SIGN_IN'));
+    if (mode === 'enabled') return { allowed: true, emergency: false };
+    const { roles } = await this.rbac.loadUserAuthz(tx, user.id);
+    if (roles.length > 0 && roles.every((r) => PASSWORD_ROLES.has(r))) {
+      return { allowed: true, emergency: false };
+    }
+    if (mode === 'emergency' && roles.some((r) => isPlatformRole(r) || r === 'SchoolAdmin')) {
+      return { allowed: true, emergency: true };
+    }
+    return { allowed: false, emergency: false };
+  }
 
   // Temporary passwords are valid for this long after a Forgot Password request.
   private static readonly RESET_TTL_MS = 24 * 60 * 60 * 1000;
@@ -122,6 +156,15 @@ export class AuthService {
         return { kind: 'blocked' as const, message: blocked };
       }
 
+      const withoutMunaxa = await this.signInWithoutMunaxa(tx, user);
+      if (!withoutMunaxa.allowed) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.login.password_disabled', {}, meta);
+        return { kind: 'munaxa_only' as const };
+      }
+      if (withoutMunaxa.emergency) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.login.emergency', {}, meta);
+      }
+
       // First successful login on a freshly issued temporary password → audit it before we
       // stamp lastLoginAt (which is what makes the attempt "first").
       if (
@@ -156,6 +199,7 @@ export class AuthService {
     });
 
     if (outcome.kind === 'invalid') throw new UnauthorizedException('Invalid credentials');
+    if (outcome.kind === 'munaxa_only') throw new ForbiddenException(MUNAXA_ONLY);
     if (outcome.kind === 'blocked') throw new ForbiddenException(outcome.message);
     return outcome.result;
   }
@@ -182,6 +226,9 @@ export class AuthService {
       }
       const blocked = this.loginBlockReason(user);
       if (blocked) throw new ForbiddenException(blocked);
+      if (!(await this.signInWithoutMunaxa(tx, user)).allowed) {
+        throw new ForbiddenException(MUNAXA_ONLY);
+      }
 
       const principal = await this.buildPrincipal(tx, user);
       const refused = await this.subscriptionRefusal(principal);
@@ -202,7 +249,12 @@ export class AuthService {
    * that subject signs in as this user.
    */
   async signInWithIdentity(
-    identity: { readonly subject: string; readonly email: string; readonly school: string },
+    identity: {
+      readonly subject: string;
+      readonly email: string;
+      readonly mfa: boolean;
+      readonly school: string;
+    },
     meta: RequestMeta,
   ): Promise<LoginResult> {
     const outcome = await withPlatform(this.prisma, async (tx) => {
@@ -231,12 +283,13 @@ export class AuthService {
           await this.audit(tx, tenant.id, match.id, 'auth.identity.subject_mismatch', {}, meta);
           return { kind: 'invalid' as const };
         }
-        // Identity vouches for an address an organisation admin may have typed, so an email
-        // match alone never links an account that can administer the school or the platform.
+        // The address is one Identity checked (email_verified, required by verifyIdToken). An
+        // account that can administer the school or the platform also needs two-step
+        // verification before it is linked, below.
         const { roles } = await this.rbac.loadUserAuthz(tx, match.id);
-        if (roles.some((r) => isPlatformRole(r) || IDENTITY_LINK_BY_PASSWORD_ROLES.has(r))) {
-          await this.audit(tx, tenant.id, match.id, 'auth.identity.link_required', {}, meta);
-          return { kind: 'link_required' as const };
+        if (isPrivileged(roles) && !identity.mfa) {
+          await this.audit(tx, tenant.id, match.id, 'auth.identity.mfa_required', {}, meta);
+          return { kind: 'mfa_required' as const };
         }
         user = await tx.user.update({
           where: { id: match.id },
@@ -251,6 +304,11 @@ export class AuthService {
         return { kind: 'blocked' as const, message: blocked };
       }
       const principal = await this.buildPrincipal(tx, user);
+      // Every sign-in, not only the first: roles change after linking (review R-2).
+      if (isPrivileged(principal.roles) && !identity.mfa) {
+        await this.audit(tx, user.tenantId, user.id, 'auth.identity.mfa_required', {}, meta);
+        return { kind: 'mfa_required' as const };
+      }
       const refused = await this.subscriptionRefusal(principal);
       if (refused) {
         await this.audit(tx, user.tenantId, user.id, 'auth.login.blocked', { refused }, meta);
@@ -267,40 +325,9 @@ export class AuthService {
     if (outcome.kind === 'invalid') {
       throw new UnauthorizedException('No Munaxa School account is linked to this identity');
     }
-    if (outcome.kind === 'link_required') throw new IdentityLinkRequiredException();
+    if (outcome.kind === 'mfa_required') throw new IdentityMfaRequiredException();
     if (outcome.kind === 'blocked') throw new ForbiddenException(outcome.message);
     return outcome.result;
-  }
-
-  /**
-   * Completes a link offer after a successful password sign-in: the same school, the same email,
-   * an unlinked user, and a subject no other user of the school holds. Anything else is ignored;
-   * the password sign-in itself has already succeeded and is never undone here.
-   */
-  async linkIdentityAfterPassword(
-    principal: AuthenticatedUser,
-    offer: { readonly subject: string; readonly email: string; readonly school: string },
-    meta: RequestMeta,
-  ): Promise<boolean> {
-    return withPlatform(this.prisma, async (tx) => {
-      const tenant = await tx.tenant.findUnique({ where: { slug: offer.school } });
-      if (!tenant || tenant.id !== principal.tenantId) return false;
-      const user = await tx.user.findUnique({ where: { id: principal.userId } });
-      if (
-        !user ||
-        user.identitySubject !== null ||
-        user.email.toLowerCase() !== offer.email.toLowerCase()
-      ) {
-        return false;
-      }
-      const taken = await tx.user.findFirst({
-        where: { tenantId: tenant.id, identitySubject: offer.subject },
-      });
-      if (taken) return false;
-      await tx.user.update({ where: { id: user.id }, data: { identitySubject: offer.subject } });
-      await this.audit(tx, tenant.id, user.id, 'auth.identity.linked', { via: 'password' }, meta);
-      return true;
-    });
   }
 
   // ----- Refresh (rotation + reuse detection) ------------------------------
