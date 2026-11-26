@@ -6,8 +6,6 @@ import {
   encodePending,
   parseIdentityClients,
   parseIdentityKeys,
-  sealLinkOffer,
-  unsealLinkOffer,
   verifyIdToken,
   type IdentityClient,
 } from './identity-sign-in';
@@ -124,8 +122,13 @@ describe('verifyIdToken', () => {
   it('accepts a token Identity signed for this school, with the email lower-cased', () => {
     expect(verifyIdToken(idToken({}), expected)).toEqual({
       ok: true,
-      claims: { subject: 'identity-user-1', email: 'teacher@alnoor.example' },
+      claims: { subject: 'identity-user-1', email: 'teacher@alnoor.example', mfa: false },
     });
+  });
+
+  it('reports a sign-in Identity says used a second factor', () => {
+    const checked = verifyIdToken(idToken({ acr: 'mfa' }), expected);
+    expect(checked.ok && checked.claims.mfa).toBe(true);
   });
 
   it.each([
@@ -156,31 +159,6 @@ describe('verifyIdToken', () => {
       verifyIdToken(idToken({}, { alg: 'ES256', typ: 'JWT', kid: 'k1' }, other), expected),
     ).toEqual({ ok: false, reason: 'SIGNATURE' });
     expect(verifyIdToken('a.b', expected)).toEqual({ ok: false, reason: 'MALFORMED' });
-  });
-});
-
-describe('link offers', () => {
-  const key = Buffer.alloc(32, 7);
-  const offer = {
-    subject: 'identity-user-1',
-    email: 'admin@alnoor.example',
-    school: 'al-noor',
-    expires: Math.floor(Date.now() / 1_000) + 600,
-  };
-
-  it('round-trips under the key', () => {
-    expect(unsealLinkOffer(sealLinkOffer(offer, key), key)).toEqual(offer);
-  });
-
-  it('refuses a changed offer, another key, an expired offer and junk', () => {
-    const sealed = sealLinkOffer(offer, key);
-    const [, tag] = sealed.split('.');
-    const forged = `${Buffer.from(JSON.stringify({ ...offer, email: 'other@alnoor.example' })).toString('base64url')}.${tag}`;
-    expect(unsealLinkOffer(forged, key)).toBeNull();
-    expect(unsealLinkOffer(sealed, Buffer.alloc(32, 8))).toBeNull();
-    expect(unsealLinkOffer(sealLinkOffer({ ...offer, expires: 1 }, key), key)).toBeNull();
-    expect(unsealLinkOffer('x.y.z', key)).toBeNull();
-    expect(unsealLinkOffer(undefined, key)).toBeNull();
   });
 });
 
@@ -223,7 +201,7 @@ describe('IdentitySignInService', () => {
     expect(result).toEqual({
       ok: true,
       school: 'al-noor',
-      claims: { subject: 'identity-user-1', email: 'teacher@alnoor.example' },
+      claims: { subject: 'identity-user-1', email: 'teacher@alnoor.example', mfa: false },
     });
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`${ISSUER}/api/auth/oidc/token`);

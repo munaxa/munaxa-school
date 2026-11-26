@@ -3,8 +3,9 @@
  * cookie and sends the browser to Identity, the callback redeems the code (Identity's token
  * endpoint is stubbed with an id token signed by a test key), links the School user by verified
  * email on first use and signs them in with the ordinary session cookies. A second Identity
- * account with the same email is refused once the first is linked. A School admin is never linked
- * by email alone: only their next password sign-in completes the link (review M-1).
+ * account with the same email is refused once the first is linked. A School admin needs Identity's
+ * two-step verification, at linking and at every sign-in. With STAFF_PASSWORD_SIGN_IN=disabled,
+ * staff cannot use a School password at all; parents and students still can.
  */
 import { createSign, generateKeyPairSync } from 'node:crypto';
 import { Test } from '@nestjs/testing';
@@ -19,6 +20,8 @@ const SLUG = 'identity-e2e';
 const EMAIL = 'teacher@identity-e2e.example';
 const ADMIN_EMAIL = 'admin@identity-e2e.example';
 const ADMIN_PASSWORD = 'Sup3rSecret!';
+const PARENT_EMAIL = 'parent@identity-e2e.example';
+const PARENT_PASSWORD = 'Par3ntSecret!';
 const ISSUER = 'https://id.test.munaxa.com';
 const CLIENT_ID = 'school-identity-e2e';
 const SECRET = 'c'.repeat(43);
@@ -27,6 +30,7 @@ const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'P-256
 
 Object.assign(process.env, {
   IDENTITY_SIGN_IN: 'enabled',
+  STAFF_PASSWORD_SIGN_IN: 'disabled',
   IDENTITY_ISSUER: ISSUER,
   IDENTITY_SIGN_IN_REDIRECT_URI: 'https://school.test.munaxa.com/api/v1/auth/identity/callback',
   IDENTITY_SIGN_IN_CLIENTS: `${SLUG}|${CLIENT_ID}|${SLUG}`,
@@ -38,7 +42,7 @@ Object.assign(process.env, {
 
 const b64 = (value: unknown): string => Buffer.from(JSON.stringify(value)).toString('base64url');
 
-function idToken(subject: string, nonce: string, email: string): string {
+function idToken(subject: string, nonce: string, email: string, mfa: boolean): string {
   const now = Math.floor(Date.now() / 1_000);
   const input = `${b64({ alg: 'ES256', typ: 'JWT', kid: 'k1' })}.${b64({
     iss: ISSUER,
@@ -50,6 +54,8 @@ function idToken(subject: string, nonce: string, email: string): string {
     email: email.toUpperCase(),
     email_verified: true,
     org: SLUG,
+    amr: mfa ? ['pwd', 'otp'] : ['pwd'],
+    ...(mfa ? { acr: 'mfa' } : {}),
   })}`;
   const signature = createSign('SHA256')
     .update(input)
@@ -110,6 +116,16 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
         },
       });
       await rbac.assignRole(tx, TENANT_ID, admin.id, RoleKey.SchoolAdmin);
+      const parent = await tx.user.create({
+        data: {
+          tenantId: TENANT_ID,
+          email: PARENT_EMAIL,
+          status: 'ACTIVE',
+          mustChangePassword: false,
+          passwordHash: await passwords.hash(PARENT_PASSWORD),
+        },
+      });
+      await rbac.assignRole(tx, TENANT_ID, parent.id, RoleKey.Parent);
     });
   });
 
@@ -119,7 +135,7 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
     await app.close();
   });
 
-  async function signIn(subject: string, email = EMAIL) {
+  async function signIn(subject: string, email = EMAIL, mfa = false) {
     const start = await request(app.getHttpServer())
       .get('/api/v1/auth/identity/start')
       .query({ school: SLUG });
@@ -131,7 +147,7 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ id_token: idToken(subject, nonce, email) }),
+      json: () => Promise.resolve({ id_token: idToken(subject, nonce, email, mfa) }),
     });
 
     return request(app.getHttpServer())
@@ -139,6 +155,11 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
       .query({ code: 'the-code', state })
       .set('Cookie', cookieHeader(start.headers['set-cookie']));
   }
+
+  it('tells the sign-in page to offer Munaxa only', async () => {
+    const res = await request(app.getHttpServer()).get('/api/v1/auth/identity/enabled');
+    expect(res.body).toEqual({ enabled: true, staffPasswords: 'disabled' });
+  });
 
   it('sends a school that is not configured back to sign-in', async () => {
     const res = await request(app.getHttpServer())
@@ -185,42 +206,43 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
       )
     )?.identitySubject ?? null;
 
-  it('never links a School admin by email alone', async () => {
-    const res = await signIn('admin-subject', ADMIN_EMAIL);
+  it('refuses a School admin without two-step verification, and links nothing', async () => {
+    const res = await signIn('admin-subject', ADMIN_EMAIL, false);
     expect(res.status).toBe(303);
-    expect(res.headers.location).toBe('/login?identity=link-required');
+    expect(res.headers.location).toBe('/login?identity=mfa-required');
     expect(cookieHeader(res.headers['set-cookie']).some((c) => c.startsWith('munaxa_at='))).toBe(
       false,
     );
     expect(await subjectOf(ADMIN_EMAIL)).toBeNull();
   });
 
-  it('links a School admin at their next password sign-in, then Munaxa sign-in works', async () => {
-    const offered = await signIn('admin-subject', ADMIN_EMAIL);
-    const offer = cookieHeader(offered.headers['set-cookie']).filter((c) =>
-      c.startsWith('munaxa_identity_link='),
-    );
-    expect(offer).toHaveLength(1);
-
-    // A tampered offer is ignored, and the password sign-in still succeeds.
-    const tampered = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .set('Cookie', [`${offer[0]?.split('.')[0] ?? ''}.forged`])
-      .send({ identifier: ADMIN_EMAIL, password: ADMIN_PASSWORD, tenantSlug: SLUG });
-    expect(tampered.status).toBe(200);
-    expect(await subjectOf(ADMIN_EMAIL)).toBeNull();
-
-    const login = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .set('Cookie', offer)
-      .send({ identifier: ADMIN_EMAIL, password: ADMIN_PASSWORD, tenantSlug: SLUG });
-    expect(login.status).toBe(200);
-    expect(await subjectOf(ADMIN_EMAIL)).toBe('admin-subject');
-
-    const res = await signIn('admin-subject', ADMIN_EMAIL);
+  it('links and signs in a School admin who used two-step verification, and asks every time', async () => {
+    const res = await signIn('admin-subject', ADMIN_EMAIL, true);
     expect(res.status).toBe(200);
     expect(cookieHeader(res.headers['set-cookie']).some((c) => c.startsWith('munaxa_at='))).toBe(
       true,
     );
+    expect(await subjectOf(ADMIN_EMAIL)).toBe('admin-subject');
+
+    const again = await signIn('admin-subject', ADMIN_EMAIL, false);
+    expect(again.headers.location).toBe('/login?identity=mfa-required');
+  });
+
+  it('refuses a staff password sign-in, and keeps parents on their password', async () => {
+    const staff = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ identifier: ADMIN_EMAIL, password: ADMIN_PASSWORD, tenantSlug: SLUG });
+    expect(staff.status).toBe(403);
+    expect(staff.body.message).toBe('Staff sign in with Munaxa');
+
+    const wrong = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ identifier: ADMIN_EMAIL, password: 'not-the-password', tenantSlug: SLUG });
+    expect(wrong.status).toBe(401);
+
+    const parent = await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
+      .send({ identifier: PARENT_EMAIL, password: PARENT_PASSWORD, tenantSlug: SLUG });
+    expect(parent.status).toBe(200);
   });
 });

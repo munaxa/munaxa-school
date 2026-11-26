@@ -81,6 +81,12 @@ export const envSchema = z
      * unchanged either way. See identity-sign-in.ts for the formats.
      */
     IDENTITY_SIGN_IN: z.enum(['enabled', 'disabled']).default('disabled'),
+    /**
+     * Whether staff may sign in with a School password: `disabled` (staff use Munaxa; parents and
+     * students keep their passwords), `emergency` (as disabled, plus school and platform
+     * administrators) or `enabled`. Unset: `disabled` in production, `enabled` elsewhere.
+     */
+    STAFF_PASSWORD_SIGN_IN: z.enum(['enabled', 'disabled', 'emergency']).optional(),
     IDENTITY_ISSUER: z.string().url().optional(),
     IDENTITY_SIGN_IN_REDIRECT_URI: z.string().url().optional(),
     IDENTITY_SIGN_IN_CLIENTS: z.string().optional(),
@@ -140,6 +146,16 @@ export const envSchema = z
       }
     }
 
+    const staffPasswords =
+      env.STAFF_PASSWORD_SIGN_IN ?? (env.NODE_ENV === 'production' ? 'disabled' : 'enabled');
+    if (staffPasswords !== 'enabled' && env.IDENTITY_SIGN_IN !== 'enabled') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['STAFF_PASSWORD_SIGN_IN'],
+        message:
+          'staff sign in with Munaxa unless STAFF_PASSWORD_SIGN_IN=enabled, so IDENTITY_SIGN_IN must be enabled',
+      });
+    }
     if (env.IDENTITY_SIGN_IN === 'enabled') {
       for (const key of [
         'IDENTITY_ISSUER',
