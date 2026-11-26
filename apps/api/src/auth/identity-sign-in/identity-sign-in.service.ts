@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { staffPasswordSignIn, type StaffPasswordSignIn } from '../services/staff-password-sign-in';
+import { handoffKey } from './identity-app-handoff';
 import {
   beginSignIn,
   parseIdentityClients,
@@ -36,12 +37,21 @@ export class IdentitySignInService {
   readonly enabled: boolean;
   /** STAFF_PASSWORD_SIGN_IN, resolved: whether the sign-in page shows the password form. */
   readonly staffPasswords: StaffPasswordSignIn;
+  /** IDENTITY_APP_REDIRECT_URI: where a mobile app's sign-in returns. Unset: apps cannot start one. */
+  readonly appRedirectUri: string | null;
+  /** Seals the hand-off to a mobile app (identity-app-handoff.ts). */
+  readonly appHandoffKey: Buffer | null;
 
   constructor(config: ConfigService) {
     this.enabled = config.get<string>('IDENTITY_SIGN_IN') === 'enabled';
     this.staffPasswords = staffPasswordSignIn(config.get<string>('STAFF_PASSWORD_SIGN_IN'));
     this.issuer = config.get<string>('IDENTITY_ISSUER') ?? '';
     this.redirectUri = config.get<string>('IDENTITY_SIGN_IN_REDIRECT_URI') ?? '';
+    const appRedirect = config.get<string>('IDENTITY_APP_REDIRECT_URI');
+    const sealingSecret = config.get<string>('JWT_REFRESH_SECRET');
+    this.appRedirectUri = this.enabled && appRedirect ? appRedirect : null;
+    this.appHandoffKey =
+      this.appRedirectUri !== null && sealingSecret ? handoffKey(sealingSecret) : null;
     // The environment was validated at boot (config/env.validation.ts); parsing again is cheap.
     this.clients = this.enabled
       ? parseIdentityClients(
@@ -59,10 +69,18 @@ export class IdentitySignInService {
     return this.clientFor(school) !== undefined;
   }
 
-  start(school: string): { url: string; pending: PendingSignIn } | null {
+  /** Whether a mobile app may start a sign-in here. */
+  get appsEnabled(): boolean {
+    return this.appRedirectUri !== null && this.appHandoffKey !== null;
+  }
+
+  /** `app`: a mobile app's PKCE challenge, already checked by the caller. */
+  start(school: string, app?: string): { url: string; pending: PendingSignIn } | null {
     const client = this.clientFor(school);
     if (client === undefined) return null;
-    return beginSignIn(this.issuer, this.redirectUri, client);
+    if (app !== undefined && !this.appsEnabled) return null;
+    const started = beginSignIn(this.issuer, this.redirectUri, client);
+    return app === undefined ? started : { ...started, pending: { ...started.pending, app } };
   }
 
   async complete(

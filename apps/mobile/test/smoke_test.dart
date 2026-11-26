@@ -39,4 +39,29 @@ void main() {
     expect(find.text('Sign in'), findsOneWidget);
     expect(find.text('Email or username'), findsOneWidget);
   });
+
+  testWidgets('The teacher app leads with Sign in with Munaxa', (tester) async {
+    AppConfig.init(
+      const AppConfig(
+        flavor: Flavor.teacher,
+        appName: 'Munaxa Teacher',
+        apiBaseUrl: 'http://localhost:4000/api/v1',
+        munaxaSignInReturn: 'com.munaxa.teacher://signed-in',
+      ),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [tokenStorageProvider.overrideWithValue(_EmptyTokenStorage())],
+        child: const MunaxaApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign in with Munaxa'), findsOneWidget);
+    expect(find.text('School code'), findsOneWidget);
+    // The password form is one tap away, not on the first screen.
+    expect(find.text('Sign in with a password'), findsOneWidget);
+    expect(find.text('Email or username'), findsNothing);
+  });
 }

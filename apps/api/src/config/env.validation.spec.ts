@@ -184,6 +184,26 @@ describe('validateEnv', () => {
       );
     });
 
+    it('takes a mobile app address that the app owns, and needs the sealing secret', () => {
+      const app = { ...enabled, JWT_REFRESH_SECRET: 'r'.repeat(32) };
+      expect(
+        validateEnv({ ...app, IDENTITY_APP_REDIRECT_URI: 'com.munaxa.teacher://signed-in' })
+          .IDENTITY_APP_REDIRECT_URI,
+      ).toBe('com.munaxa.teacher://signed-in');
+      expect(() => validateEnv({ ...app, IDENTITY_APP_REDIRECT_URI: 'myapp://signed-in' })).toThrow(
+        /IDENTITY_APP_REDIRECT_URI/,
+      );
+      expect(() =>
+        validateEnv({
+          ...app,
+          IDENTITY_APP_REDIRECT_URI: 'https://school.test.munaxa.com/app?x=1',
+        }),
+      ).toThrow(/IDENTITY_APP_REDIRECT_URI/);
+      expect(() =>
+        validateEnv({ ...enabled, IDENTITY_APP_REDIRECT_URI: 'com.munaxa.teacher://signed-in' }),
+      ).toThrow(/JWT_REFRESH_SECRET: required with IDENTITY_APP_REDIRECT_URI/);
+    });
+
     it('refuses a client secret that is also the JWT secret', () => {
       expect(() => validateEnv({ ...enabled, JWT_ACCESS_SECRET: 's'.repeat(40) })).toThrow(
         /reuses another secret/,

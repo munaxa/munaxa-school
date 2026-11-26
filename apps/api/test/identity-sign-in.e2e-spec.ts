@@ -7,7 +7,7 @@
  * two-step verification, at linking and at every sign-in. With STAFF_PASSWORD_SIGN_IN=disabled,
  * staff cannot use a School password at all; parents and students still can.
  */
-import { createSign, generateKeyPairSync } from 'node:crypto';
+import { createHash, createSign, generateKeyPairSync, randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe, VersioningType, type INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -33,6 +33,8 @@ Object.assign(process.env, {
   STAFF_PASSWORD_SIGN_IN: 'disabled',
   IDENTITY_ISSUER: ISSUER,
   IDENTITY_SIGN_IN_REDIRECT_URI: 'https://school.test.munaxa.com/api/v1/auth/identity/callback',
+  IDENTITY_APP_REDIRECT_URI: 'com.munaxa.teacher://signed-in',
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? 'e2e-refresh-secret-0123456789',
   IDENTITY_SIGN_IN_CLIENTS: `${SLUG}|${CLIENT_ID}|${SLUG}`,
   IDENTITY_SIGN_IN_CLIENT_SECRETS: `${CLIENT_ID}=${SECRET}`,
   IDENTITY_PUBLIC_KEYS: JSON.stringify([
@@ -135,10 +137,10 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
     await app.close();
   });
 
-  async function signIn(subject: string, email = EMAIL, mfa = false) {
+  async function signIn(subject: string, email = EMAIL, mfa = false, appChallenge?: string) {
     const start = await request(app.getHttpServer())
       .get('/api/v1/auth/identity/start')
-      .query({ school: SLUG });
+      .query({ school: SLUG, ...(appChallenge ? { app: appChallenge } : {}) });
     expect(start.status).toBe(303);
     const authorize = new URL(start.headers.location as string);
     expect(authorize.origin + authorize.pathname).toBe(`${ISSUER}/api/auth/oidc/authorize`);
@@ -244,5 +246,71 @@ describe('Sign in with Munaxa Identity (e2e)', () => {
       .post('/api/v1/auth/login')
       .send({ identifier: PARENT_EMAIL, password: PARENT_PASSWORD, tenantSlug: SLUG });
     expect(parent.status).toBe(200);
+  });
+
+  describe('the teacher app (system browser, PKCE hand-off)', () => {
+    const verifier = randomBytes(32).toString('base64url');
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+
+    const handoffFrom = (location: string): URL => {
+      const url = new URL(location);
+      expect(`${url.protocol}//${url.host}${url.pathname}`).toBe('com.munaxa.teacher://signed-in');
+      return url;
+    };
+
+    it('returns to the app with a sealed hand-off, sets no web session, and redeems it once', async () => {
+      const callback = await signIn('identity-subject-1', EMAIL, false, challenge);
+      expect(callback.status).toBe(303);
+      expect(cookieHeader(callback.headers['set-cookie']).some((c) => c.startsWith('access'))).toBe(
+        false,
+      );
+      const handoff = handoffFrom(callback.headers.location as string).searchParams.get('handoff');
+      expect(handoff).toBeTruthy();
+
+      // Somebody who caught the hand-off but has no verifier gets nothing.
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/identity/app-session')
+        .send({ handoff, verifier: randomBytes(32).toString('base64url') })
+        .expect(401);
+
+      const session = await request(app.getHttpServer())
+        .post('/api/v1/auth/identity/app-session')
+        .send({ handoff, verifier })
+        .expect(200);
+      expect(session.body.accessToken).toEqual(expect.any(String));
+      await request(app.getHttpServer())
+        .get('/api/v1/auth/me')
+        .set('Authorization', `Bearer ${session.body.accessToken as string}`)
+        .expect(200);
+
+      // A second redemption is refresh-token reuse: refused, and the session it opened ends.
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/identity/app-session')
+        .send({ handoff, verifier })
+        .expect(401);
+      await request(app.getHttpServer())
+        .post('/api/v1/auth/refresh')
+        .send({ refreshToken: session.body.refreshToken })
+        .expect(401);
+    });
+
+    it('tells the app why, instead of the web page, when the sign-in is refused', async () => {
+      const callback = await signIn('admin-subject', ADMIN_EMAIL, false, challenge);
+      expect(callback.status).toBe(303);
+      expect(handoffFrom(callback.headers.location as string).searchParams.get('error')).toBe(
+        'mfa-required',
+      );
+    });
+
+    it('refuses a start whose challenge is not an S256 challenge', async () => {
+      const start = await request(app.getHttpServer())
+        .get('/api/v1/auth/identity/start')
+        .query({ school: SLUG, app: 'short' });
+      expect(start.status).toBe(303);
+      expect(handoffFrom(start.headers.location as string).searchParams.get('error')).toBe(
+        'unavailable',
+      );
+      expect(start.headers['set-cookie']).toBeUndefined();
+    });
   });
 });

@@ -126,6 +126,11 @@ export interface PendingSignIn {
   readonly nonce: string;
   readonly verifier: string;
   readonly school: string;
+  /**
+   * Set when a School mobile app started the sign-in: the app's own PKCE challenge (S256), which
+   * the app proves with its verifier when it redeems the hand-off (identity-app-handoff.ts).
+   */
+  readonly app?: string;
 }
 
 const token = (): string => randomBytes(32).toString('base64url');
@@ -158,6 +163,10 @@ export function beginSignIn(
 export const tokenEndpoint = (issuer: string): string =>
   `${issuer.replace(/\/+$/, '')}/api/auth/oidc/token`;
 
+/** An S256 PKCE challenge: base64url of a SHA-256 digest, 43 characters. */
+export const isAppChallenge = (value: unknown): value is string =>
+  typeof value === 'string' && /^[A-Za-z0-9_-]{43}$/.test(value);
+
 export function encodePending(pending: PendingSignIn): string {
   return Buffer.from(JSON.stringify(pending), 'utf8').toString('base64url');
 }
@@ -169,16 +178,19 @@ export function decodePending(raw: string | undefined): PendingSignIn | null {
       string,
       unknown
     >;
-    const { state, nonce, verifier, school } = value;
+    const { state, nonce, verifier, school, app } = value;
     if (
       typeof state !== 'string' ||
       typeof nonce !== 'string' ||
       typeof verifier !== 'string' ||
-      typeof school !== 'string'
+      typeof school !== 'string' ||
+      (app !== undefined && !isAppChallenge(app))
     ) {
       return null;
     }
-    return { state, nonce, verifier, school };
+    return app === undefined
+      ? { state, nonce, verifier, school }
+      : { state, nonce, verifier, school, app };
   } catch {
     return null;
   }
