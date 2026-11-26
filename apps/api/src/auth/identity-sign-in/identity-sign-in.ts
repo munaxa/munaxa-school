@@ -1,5 +1,6 @@
 import {
   createHash,
+  createHmac,
   createPublicKey,
   createVerify,
   randomBytes,
@@ -184,6 +185,58 @@ export function decodePending(raw: string | undefined): PendingSignIn | null {
   }
 }
 
+/**
+ * An offer to link an Identity account to a privileged School user, made when that user tried
+ * Munaxa sign-in before linking. It is honoured only by the next successful **password** sign-in
+ * of the School user with the same email in the same school, so linking a privileged account
+ * always proves both: the Identity account (it just signed in) and the School password.
+ * Sealed with an HMAC, so the browser that carries it cannot change whom it names.
+ */
+export interface LinkOffer {
+  readonly subject: string;
+  readonly email: string;
+  readonly school: string;
+  /** Seconds since the epoch. */
+  readonly expires: number;
+}
+
+const mac = (key: Buffer, value: string): string =>
+  createHmac('sha256', key).update(value).digest('base64url');
+
+export function sealLinkOffer(offer: LinkOffer, key: Buffer): string {
+  const body = Buffer.from(JSON.stringify(offer), 'utf8').toString('base64url');
+  return `${body}.${mac(key, body)}`;
+}
+
+export function unsealLinkOffer(
+  raw: string | undefined,
+  key: Buffer,
+  now = Math.floor(Date.now() / 1_000),
+): LinkOffer | null {
+  if (raw === undefined) return null;
+  const [body = '', tag = '', ...rest] = raw.split('.');
+  if (rest.length > 0 || body === '' || !sameValue(tag, mac(key, body))) return null;
+  try {
+    const value = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+    const { subject, email, school, expires } = value;
+    if (
+      typeof subject !== 'string' ||
+      typeof email !== 'string' ||
+      typeof school !== 'string' ||
+      typeof expires !== 'number' ||
+      expires < now
+    ) {
+      return null;
+    }
+    return { subject, email, school, expires };
+  } catch {
+    return null;
+  }
+}
+
 export const sameValue = (a: string, b: string): boolean => {
   const left = createHash('sha256').update(a).digest();
   const right = createHash('sha256').update(b).digest();
@@ -201,6 +254,8 @@ export type IdTokenCheck =
 
 /** Clock skew allowed on exp, nbf and iat. */
 const SKEW_SECONDS = 60;
+/** An id token is redeemed at once; one issued longer ago than this is refused (review L-1). */
+const MAX_AGE_SECONDS = 10 * 60;
 
 /**
  * Verifies the id token Identity returned from the token endpoint: ES256 under one of the
@@ -263,9 +318,10 @@ export function verifyIdToken(
   if (typeof body.nbf === 'number' && body.nbf - SKEW_SECONDS > now) {
     return { ok: false, reason: 'NOT_YET_VALID' };
   }
-  if (typeof body.iat === 'number' && body.iat - SKEW_SECONDS > now) {
+  if (typeof body.iat !== 'number' || body.iat - SKEW_SECONDS > now) {
     return { ok: false, reason: 'NOT_YET_VALID' };
   }
+  if (body.iat + MAX_AGE_SECONDS < now) return { ok: false, reason: 'TOO_OLD' };
   if (typeof body.nonce !== 'string' || !sameValue(body.nonce, expected.nonce)) {
     return { ok: false, reason: 'NONCE' };
   }

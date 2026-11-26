@@ -20,6 +20,8 @@ import { setAuthCookies, clearAuthCookies, refreshTokenFromCookie } from './cook
 import type { AuthenticatedUser } from './auth.types';
 import type { TokenPair } from './auth.types';
 import { AllowInReadOnly } from '../subscription/allow-in-read-only.decorator';
+import { IdentitySignInService } from './identity-sign-in/identity-sign-in.service';
+import { LINK_COOKIE, identityCookieOptions } from './identity-sign-in/identity-cookies';
 import {
   LoginDto,
   SessionExchangeDto,
@@ -35,6 +37,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly tokens: TokenService,
+    private readonly identity: IdentitySignInService,
   ) {}
 
   private meta(req: Request) {
@@ -65,7 +68,25 @@ export class AuthController {
   ) {
     const result = await this.auth.login(dto, this.meta(req));
     this.issueCookies(res, result.tokens);
+    await this.completeIdentityLink(req, res, result.user);
     return { ...result.tokens, mustChangePassword: result.mustChangePassword };
+  }
+
+  /**
+   * A privileged user who tried Munaxa sign-in first carries a sealed link offer; their password
+   * sign-in completes it (identity-sign-in, review M-1). Spent either way; never fails the login.
+   */
+  private async completeIdentityLink(
+    req: Request,
+    res: Response,
+    user: AuthenticatedUser,
+  ): Promise<void> {
+    const raw = (req.cookies as Record<string, string> | undefined)?.[LINK_COOKIE()];
+    if (raw === undefined) return;
+    res.clearCookie(LINK_COOKIE(), identityCookieOptions());
+    const offer = this.identity.readLinkOffer(raw);
+    if (offer === null) return;
+    await this.auth.linkIdentityAfterPassword(user, offer, this.meta(req)).catch(() => false);
   }
 
   @Public()

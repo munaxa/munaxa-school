@@ -1,3 +1,4 @@
+import { hkdfSync } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -5,11 +6,14 @@ import {
   parseIdentityClients,
   parseIdentityKeys,
   sameValue,
+  sealLinkOffer,
   tokenEndpoint,
+  unsealLinkOffer,
   verifyIdToken,
   type IdentityClaims,
   type IdentityClient,
   type IdentityKey,
+  type LinkOffer,
   type PendingSignIn,
 } from './identity-sign-in';
 
@@ -32,6 +36,8 @@ export class IdentitySignInService {
   private readonly redirectUri: string;
   private readonly clients: readonly IdentityClient[];
   private readonly keys: readonly IdentityKey[];
+  /** Seals link offers. Derived from JWT_ACCESS_SECRET (required in production) for this use only. */
+  private readonly linkKey: Buffer;
   readonly enabled: boolean;
 
   constructor(config: ConfigService) {
@@ -45,6 +51,10 @@ export class IdentitySignInService {
           config.get<string>('IDENTITY_SIGN_IN_CLIENT_SECRETS') ?? '',
         ).clients
       : [];
+    const secret = config.get<string>('JWT_ACCESS_SECRET') ?? 'dev-only-insecure-access-secret';
+    this.linkKey = Buffer.from(
+      hkdfSync('sha256', secret, Buffer.alloc(0), 'munaxa-school/identity-link-offer', 32),
+    );
     this.keys = this.enabled
       ? parseIdentityKeys(config.get<string>('IDENTITY_PUBLIC_KEYS') ?? '')
       : [];
@@ -120,6 +130,20 @@ export class IdentitySignInService {
       return { ok: false, reason: checked.reason };
     }
     return { ok: true, claims: checked.claims, school: client.school };
+  }
+
+  /** A sealed offer to link this Identity account at the user's next password sign-in. */
+  offerLink(claims: IdentityClaims, school: string): string {
+    return sealLinkOffer(
+      { ...claims, school, expires: Math.floor(Date.now() / 1_000) + 10 * 60 },
+      this.linkKey,
+    );
+  }
+
+  /** The offer, when the cookie is one this service sealed and it has not expired. */
+  readLinkOffer(raw: string | undefined): LinkOffer | null {
+    if (!this.enabled) return null;
+    return unsealLinkOffer(raw, this.linkKey);
   }
 
   private clientFor(school: string): IdentityClient | undefined {

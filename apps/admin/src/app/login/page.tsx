@@ -37,6 +37,7 @@ const IDENTITY_OUTCOMES: Record<string, string> = {
   failed: 'auth.identityFailed',
   'no-account': 'auth.identityNoAccount',
   blocked: 'auth.identityBlocked',
+  'link-required': 'auth.identityLinkRequired',
 };
 
 export default function LoginPage() {

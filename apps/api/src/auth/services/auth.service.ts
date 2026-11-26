@@ -24,6 +24,26 @@ import type {
   ConfirmPasswordResetDto,
 } from '../dto/auth.dto';
 
+/**
+ * Roles whose accounts are never linked to Identity by email alone: they must also prove their
+ * School password once (identity-sign-in, review M-1). Platform roles are always included.
+ */
+const IDENTITY_LINK_BY_PASSWORD_ROLES = new Set<string>([
+  'SchoolAdmin',
+  'Principal',
+  'VicePrincipal',
+  'FinanceOfficer',
+  'Accountant',
+  'HR',
+]);
+
+/** A privileged School user tried Munaxa sign-in before linking: see IdentitySignInController. */
+export class IdentityLinkRequiredException extends UnauthorizedException {
+  constructor() {
+    super('Sign in with your School password once to connect your Munaxa account');
+  }
+}
+
 export interface RequestMeta {
   ip?: string;
   userAgent?: string;
@@ -211,6 +231,13 @@ export class AuthService {
           await this.audit(tx, tenant.id, match.id, 'auth.identity.subject_mismatch', {}, meta);
           return { kind: 'invalid' as const };
         }
+        // Identity vouches for an address an organisation admin may have typed, so an email
+        // match alone never links an account that can administer the school or the platform.
+        const { roles } = await this.rbac.loadUserAuthz(tx, match.id);
+        if (roles.some((r) => isPlatformRole(r) || IDENTITY_LINK_BY_PASSWORD_ROLES.has(r))) {
+          await this.audit(tx, tenant.id, match.id, 'auth.identity.link_required', {}, meta);
+          return { kind: 'link_required' as const };
+        }
         user = await tx.user.update({
           where: { id: match.id },
           data: { identitySubject: identity.subject },
@@ -240,8 +267,40 @@ export class AuthService {
     if (outcome.kind === 'invalid') {
       throw new UnauthorizedException('No Munaxa School account is linked to this identity');
     }
+    if (outcome.kind === 'link_required') throw new IdentityLinkRequiredException();
     if (outcome.kind === 'blocked') throw new ForbiddenException(outcome.message);
     return outcome.result;
+  }
+
+  /**
+   * Completes a link offer after a successful password sign-in: the same school, the same email,
+   * an unlinked user, and a subject no other user of the school holds. Anything else is ignored;
+   * the password sign-in itself has already succeeded and is never undone here.
+   */
+  async linkIdentityAfterPassword(
+    principal: AuthenticatedUser,
+    offer: { readonly subject: string; readonly email: string; readonly school: string },
+    meta: RequestMeta,
+  ): Promise<boolean> {
+    return withPlatform(this.prisma, async (tx) => {
+      const tenant = await tx.tenant.findUnique({ where: { slug: offer.school } });
+      if (!tenant || tenant.id !== principal.tenantId) return false;
+      const user = await tx.user.findUnique({ where: { id: principal.userId } });
+      if (
+        !user ||
+        user.identitySubject !== null ||
+        user.email.toLowerCase() !== offer.email.toLowerCase()
+      ) {
+        return false;
+      }
+      const taken = await tx.user.findFirst({
+        where: { tenantId: tenant.id, identitySubject: offer.subject },
+      });
+      if (taken) return false;
+      await tx.user.update({ where: { id: user.id }, data: { identitySubject: offer.subject } });
+      await this.audit(tx, tenant.id, user.id, 'auth.identity.linked', { via: 'password' }, meta);
+      return true;
+    });
   }
 
   // ----- Refresh (rotation + reuse detection) ------------------------------

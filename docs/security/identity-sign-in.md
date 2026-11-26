@@ -22,6 +22,17 @@ Google company sign-in. Password sign-in is unchanged and stays available.
    use (`User.identitySubject`); from then on only that Identity account signs in as this user.
 6. The ordinary School session cookies are set and the browser continues to the portal.
 
+### Privileged accounts link by password once
+
+Identity marks as verified any address an organisation administrator typed, so an email match
+alone is not enough for an account that can administer the school or the platform. Users holding
+a platform role, `SchoolAdmin`, `Principal`, `VicePrincipal`, `FinanceOfficer`, `Accountant` or
+`HR` are never linked by email alone. The first time they use Munaxa sign-in they see
+"sign in with your password once"; School keeps a sealed (HMAC), ten-minute link offer in a
+`__Host-` cookie, and their next successful **password** sign-in at the same school, with the same
+email, links the Identity account. From then on Munaxa sign-in works for them. Other users link on
+first use by verified email, as above.
+
 Outcomes the sign-in page explains: `?identity=unavailable` (school not configured),
 `failed` (cancelled, expired, or any protocol check failed), `no-account` (no School user with
 that email, or already linked to another Identity account), `blocked` (account disabled,
@@ -54,6 +65,9 @@ client has no secret, or when a client secret equals another secret School holds
    their Identity account.
 
 ## Known limits
+- `GET /api/v1/auth/identity/start` answers differently for a school code that is configured and
+  one that is not. School codes are not secret (people type them on the sign-in page), and the
+  route is rate limited; accepted.
 
 - A School user whose `mustChangePassword` is set is still sent to the change-password page after
   signing in through Identity, as after any sign-in.

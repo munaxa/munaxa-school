@@ -3,30 +3,17 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Public } from '../decorators/public.decorator';
-import { AuthService } from '../services/auth.service';
+import { AuthService, IdentityLinkRequiredException } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
 import { setAuthCookies } from '../cookies';
 import { decodePending, encodePending } from './identity-sign-in';
+import {
+  BINDING_COOKIE,
+  IDENTITY_COOKIE_TTL_MS,
+  LINK_COOKIE,
+  identityCookieOptions,
+} from './identity-cookies';
 import { IdentitySignInService } from './identity-sign-in.service';
-
-/**
- * The browser's half of the flow between the start and Identity's answer: the state, nonce and
- * PKCE verifier. `httpOnly`, so a script never reads the verifier. `__Host-` in production, so
- * only this exact host can set it and a sibling host cannot plant a binding (login CSRF). `Lax`,
- * because the callback is a top-level navigation back from Identity, which a `Strict` cookie is
- * withheld from. Ten minutes, and spent at the callback whatever happens.
- */
-const isProduction = (): boolean => process.env.NODE_ENV === 'production';
-export const BINDING_COOKIE = (): string =>
-  isProduction() ? '__Host-munaxa_identity' : 'munaxa_identity';
-const BINDING_TTL_MS = 10 * 60 * 1_000;
-
-const bindingOptions = () => ({
-  httpOnly: true,
-  secure: isProduction(),
-  sameSite: 'lax' as const,
-  path: '/',
-});
 
 /** Where the admin shows the outcome. Relative, so it never depends on the request's Host. */
 const LOGIN = '/login';
@@ -61,8 +48,8 @@ export class IdentitySignInController {
       return;
     }
     res.cookie(BINDING_COOKIE(), encodePending(started.pending), {
-      ...bindingOptions(),
-      maxAge: BINDING_TTL_MS,
+      ...identityCookieOptions(),
+      maxAge: IDENTITY_COOKIE_TTL_MS,
     });
     seeOther(res, started.url);
   }
@@ -78,7 +65,7 @@ export class IdentitySignInController {
   ): Promise<void> {
     const cookies = (req.cookies ?? {}) as Record<string, string | undefined>;
     const pending = decodePending(cookies[BINDING_COOKIE()]);
-    res.clearCookie(BINDING_COOKIE(), bindingOptions());
+    res.clearCookie(BINDING_COOKIE(), identityCookieOptions());
 
     const completed = await this.identity.complete(pending, query);
     if (!completed.ok) {
@@ -99,6 +86,16 @@ export class IdentitySignInController {
       // origin that moves on by itself makes the next navigation same-site.
       continueTo(res, result.mustChangePassword ? '/change-password' : '/');
     } catch (error) {
+      if (error instanceof IdentityLinkRequiredException) {
+        // A privileged School user links only by also proving their School password: the offer
+        // waits in a sealed cookie for their next password sign-in (AuthController.login).
+        res.cookie(LINK_COOKIE(), this.identity.offerLink(completed.claims, completed.school), {
+          ...identityCookieOptions(),
+          maxAge: IDENTITY_COOKIE_TTL_MS,
+        });
+        seeOther(res, `${LOGIN}?identity=link-required`);
+        return;
+      }
       seeOther(
         res,
         `${LOGIN}?identity=${error instanceof ForbiddenException ? 'blocked' : 'no-account'}`,

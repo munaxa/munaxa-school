@@ -151,7 +151,8 @@
     "identityUnavailable": "Your school does not use Munaxa sign-in. Sign in with your password.",
     "identityFailed": "Munaxa sign-in did not complete. Please try again.",
     "identityNoAccount": "There is no School account for this person. Ask your school administrator.",
-    "identityBlocked": "This account cannot sign in. Ask your school administrator."
+    "identityBlocked": "This account cannot sign in. Ask your school administrator.",
+    "identityLinkRequired": "Your account needs one extra step. Sign in with your password below once, and your Munaxa account will be connected for next time."
   },
   "shell": {
     "schoolPlane": "School plane",
